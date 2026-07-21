@@ -804,70 +804,6 @@ msgstr "黒番"
 msgid "white player name hint"
 msgstr "白番"
 
-#. in self-play mode
-msgid "gui-locked"
-msgstr "自己対局モードではこの動作 {action} はできません。分散訓練モードを抜けるにはKaTrainを再起動してください。"
-
-#. menu item
-msgid "menu:distributed"
-msgstr "自己対局による分散訓練"
-
-msgid "contribute:register"
-msgstr "登録"
-
-msgid "contribute:start"
-msgstr "貢献を開始！"
-
-#. contribute settings popup
-msgid "contribute settings title"
-msgstr "KataGoの分散訓練に協力"
-
-msgid "contribute:username"
-msgstr "ユーザ名"
-
-#. description for input
-msgid "contribute:maxgames"
-msgstr "最大同時対局数"
-
-msgid "contribute:password"
-msgstr "パスワード"
-
-#. hint for max games
-msgid "contribute:maxgames:hint"
-msgstr ""
-"あなたの環境での最適なnumSearchThreads（探索スレッド数、中級品のGPUなら8程度）に合わせるのが最良です。短時間だけ稼働する場合にはそれよりやや小さい値にするのもよいでしょう（未完了の対局はアップロードされないので）。"
-
-#. hint for ownership
-msgid "contribute:ownership:hint"
-msgstr "訓練速度は若干落ちてしまいますが、黒地か白地かを可視化します"
-
-msgid "contribute:ownership"
-msgstr "黒地か白地かを予測"
-
-#. title
-msgid "contribute:login"
-msgstr "ログイン情報 (katagotraining.org)"
-
-#. description
-msgid "contribute:movespeed"
-msgstr "着手の速さ"
-
-#. hint for move speed
-msgid "contribute:movespeed:hint"
-msgstr "何秒ごとに一手進めるか"
-
-#. description
-msgid "contribute:savesgf"
-msgstr "SGFを保存"
-
-#. hint for save
-msgid "contribute:savesgf:hint"
-msgstr "表示しおわった対局のSGFファイルを./dist_sgfに保存"
-
-#. title
-msgid "contribute:viewer settings"
-msgstr "表示設定"
-
 #. Clear all results and reset to normal query
 msgid "analysis:reset"
 msgstr "分析をリセット"
@@ -900,17 +836,9 @@ msgstr "それでもだめなら、{link}して最新のトラブルシューテ
 msgid "change engine suggestion"
 msgstr "まずは、{link}から別バージョンのKataGoをダウンロードしてうまくいくか試してください。"
 
-#. as in "click here" to go to this page,
-msgid "link_here"
-msgstr "ここをクリック"
-
 #. popup title
 msgid "engine recovery"
 msgstr "KataGoセットアップのヘルプ"
-
-#. label in little popup for analyzing entire game
-msgid "reanalyze mistakes only"
-msgstr "分析を悪手だけに限定"
 
 #. statistic in performance report
 msgid "stat:accuracy"
@@ -932,10 +860,6 @@ msgstr "序盤"
 msgid "Endgame"
 msgstr "終盤"
 
-#. middle of the game filter in performance report
-msgid "Midgame"
-msgstr "中盤"
-
 #. statistic in performance report
 msgid "stat:meanpointloss"
 msgstr "平均損失目数"
@@ -947,10 +871,6 @@ msgstr "AIの上位5候補手との一致率"
 #. statistic in performance report
 msgid "stat:aitopmove"
 msgstr "AIの最善手との一致率"
-
-#. game filter in performance report
-msgid "Entire Game"
-msgstr "全局"
 
 #. on move tree editing, deletes all other branches splitting off from
 #. the path UP TO this node
@@ -982,24 +902,11 @@ msgstr "to move"
 msgid "limit to moves"
 msgstr "Limit to moves"
 
-msgid "contribute:passwordwarning"
-msgstr "(Stored as plain text, do not re-use this anywhere)"
-
 msgid "engine:humanlike_model"
 msgstr "Path to human-like model"
 
-# Quiz popup
-msgid "Generate quiz (beta)"
-msgstr "クイズを生成（ベータ）"
-
 msgid "mykatrain:export-karte"
 msgstr "カルテ出力"
-
-# Phase 230-A.2: menu:other_section / open-latest-report /
-# open-output-folder / export-summary / folder-not-exist /
-# no-reports-found / open-failed を削除（対応する 3 機能を完全削除）
-msgid "mykatrain:export-package"
-msgstr "LLMパッケージ出力"
 
 # Phase 250: 重要局面リスト popup 廃止に伴い、以下の i18n キーは削除。
 # msgid "mykatrain:important-moves"
@@ -1180,12 +1087,6 @@ msgstr "複数局サマリ ({games}局)"
 msgid "mykatrain:llm-coach:type-label-unknown"
 msgstr "(未確定)"
 
-msgid "mykatrain:llm-coach:type-detection-failed"
-msgstr "JSON タイプ判定失敗: {error}"
-
-msgid "mykatrain:llm-coach:summary-perspective-label"
-msgstr "プレイヤー"
-
 msgid "mykatrain:llm-coach:summary-perspective-birdseye"
 msgstr "全体俯瞰"
 
@@ -1218,15 +1119,6 @@ msgstr "デフォルトユーザー「{user}」/ 対象プレイヤー「{player
 
 msgid "mykatrain:batch-analyze"
 msgstr "フォルダ一括解析..."
-
-msgid "mykatrain:training-set"
-msgstr "Training Set 管理..."
-
-msgid "mykatrain:player-profile"
-msgstr "Player Profile..."
-
-msgid "mykatrain:practice-report"
-msgstr "練習レポート..."
 
 msgid "mykatrain:batch:title"
 msgstr "フォルダ一括解析"
@@ -1372,34 +1264,11 @@ msgstr ""
 "損失が {loss:.1f} 点を超える手を最大 {limit} 手まで表示します。\n"
 "行をクリックするとその手の直前に移動します。"
 
-msgid ""
-"No moves with loss greater than {loss:.1f} points were found on the main "
-"line."
-msgstr "本筋には損失が {loss:.1f} 点を超える手はありませんでした。"
-
-msgid "Start quiz"
-msgstr "クイズを開始"
-
-msgid "Quiz mode (beta)"
-msgstr "クイズモード（ベータ）"
-
-msgid "No quiz items to show."
-msgstr "表示できるクイズ項目がありません。"
-
-msgid "Question {idx}/{total}: Move {move} ({player})"
-msgstr "問題 {idx}/{total}: {player} の {move} 手"
-
-msgid "No analysis data for this position."
-msgstr "この局面には解析データがありません。"
-
 msgid "Prev"
 msgstr "前へ"
 
 msgid "Next"
 msgstr "次へ"
-
-msgid "Points lost unknown"
-msgstr "損失値は不明です"
 
 msgid "{loss:.1f} points lost"
 msgstr "{loss:.1f} 点の損失"
@@ -1410,29 +1279,8 @@ msgstr "正解！ {move} が最善手です（{loss_text}）。"
 msgid "{move} is not best ({loss_text})."
 msgstr "{move} は最善ではありません（{loss_text}）。"
 
-msgid "Unknown move"
-msgstr "不明な手"
-
 msgid "Pass"
 msgstr "パス"
-
-msgid "Correct!"
-msgstr "正解！"
-
-msgid "Incorrect"
-msgstr "不正解"
-
-msgid "Best move: {move}"
-msgstr "最善手: {move}"
-
-msgid "Selected move loss: {loss_text}"
-msgstr "選択した手の損失: {loss_text}"
-
-msgid "Played move {move} loss: {loss_text}"
-msgstr "打った手 {move} の損失: {loss_text}"
-
-msgid "Delta vs played: {delta:+.1f} points"
-msgstr "打った手との差: {delta:+.1f} ポイント"
 
 msgid "mykatrain:settings"
 msgstr "myKatrain設定"
@@ -1449,27 +1297,6 @@ msgstr "KataGo"
 
 msgid "mykatrain:settings:engine_save_error"
 msgstr "解析エンジン設定の保存に失敗しました。"
-
-msgid "mykatrain:settings:skill_preset"
-msgstr "棋力プリセット:"
-
-msgid "mykatrain:settings:skill_beginner"
-msgstr "甘口"
-
-msgid "mykatrain:settings:skill_standard"
-msgstr "標準"
-
-msgid "mykatrain:settings:skill_advanced"
-msgstr "辛口"
-
-msgid "mykatrain:settings:skill_relaxed"
-msgstr "激甘"
-
-msgid "mykatrain:settings:skill_pro"
-msgstr "激辛"
-
-msgid "mykatrain:settings:skill_auto"
-msgstr "自動"
 
 # Phase 229: replaced the skill_preset radio group with a single rank
 # input.  The auto-derived preset name is shown as a label below it.
@@ -1538,9 +1365,6 @@ msgstr ""
 msgid "beginner_hint:self_atari:title"
 msgstr "あぶない手"
 
-msgid "beginner_hint:self_atari:body"
-msgstr "そこに打つと、すぐ取られやすいです。"
-
 msgid "beginner_hint:ignore_atari:title"
 msgstr "アタリ放置"
 
@@ -1558,9 +1382,6 @@ msgstr "切られそう"
 
 msgid "beginner_hint:cut_risk:body"
 msgstr "ここを切られると石が分断されます。"
-
-msgid "beginner_hint:self_atari:why"
-msgstr "アタリに打つと、次に相手に取られます。"
 
 msgid "beginner_hint:ignore_atari:why"
 msgstr "アタリを放置すると石を失います。"
@@ -3034,3 +2855,9 @@ msgstr "悪手を打ちました (サウンドオフ)"
 
 msgid "Summary exported"
 msgstr "サマリをエクスポートしました"
+
+msgid "beginner_hint:self_atari:body"
+msgstr "そこに打つと、すぐ取られやすいです。"
+
+msgid "beginner_hint:self_atari:why"
+msgstr "アタリに打つと、次に相手に取られます。"
