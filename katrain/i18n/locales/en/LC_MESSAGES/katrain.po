@@ -55,12 +55,6 @@ msgstr "Manual"
 msgid "mykatrain:export-karte"
 msgstr "Export Karte"
 
-# Phase 230-A.2: menu:other_section / open-latest-report /
-# open-output-folder / export-summary / folder-not-exist /
-# no-reports-found / open-failed removed (3 features deleted)
-msgid "mykatrain:export-package"
-msgstr "Export LLM Package"
-
 # Phase 250: Important-moves list popup deprecated. The following
 # i18n keys are removed; left as comments to keep the diff localised.
 # msgid "mykatrain:important-moves"
@@ -241,12 +235,6 @@ msgstr "Multi-game Summary ({games} games)"
 msgid "mykatrain:llm-coach:type-label-unknown"
 msgstr "(unresolved)"
 
-msgid "mykatrain:llm-coach:type-detection-failed"
-msgstr "JSON type detection failed: {error}"
-
-msgid "mykatrain:llm-coach:summary-perspective-label"
-msgstr "Player"
-
 msgid "mykatrain:llm-coach:summary-perspective-birdseye"
 msgstr "Bird's-eye view"
 
@@ -281,15 +269,6 @@ msgstr "Default user \"{user}\" / Focus player \"{player}\" / {games} games"
 
 msgid "mykatrain:batch-analyze"
 msgstr "Batch Analyze Folder..."
-
-msgid "mykatrain:training-set"
-msgstr "Training Set Manager..."
-
-msgid "mykatrain:player-profile"
-msgstr "Player Profile..."
-
-msgid "mykatrain:practice-report"
-msgstr "Practice Report..."
 
 msgid "mykatrain:batch:title"
 msgstr "Batch Analyze Folder"
@@ -505,17 +484,9 @@ msgstr "Tsumego Frame"
 msgid "analysis:report"
 msgstr "Performance Report"
 
-#. game filter in performance report
-msgid "Entire Game"
-msgstr "Entire Game"
-
 #. opening of the game filter in performance report
 msgid "Opening"
 msgstr "Opening"
-
-#. middle of the game filter in performance report
-msgid "Midgame"
-msgstr "Midgame"
 
 #. end of the game filter in performance report
 msgid "Endgame"
@@ -683,7 +654,7 @@ msgid "board-pass"
 msgstr "pass"
 
 msgid "board-game-end"
-msgstr ""
+msgstr "End of game"
 
 #. Select mode
 msgid "btn:Play"
@@ -1017,67 +988,6 @@ msgstr "Update Feedback Settings"
 msgid "restarting engine"
 msgstr "Restarting Engine after Settings Change."
 
-#. contribute settings popup
-msgid "contribute settings title"
-msgstr "Contribute To KataGo Distributed Training"
-
-#. title
-msgid "contribute:viewer settings"
-msgstr "Viewer Settings"
-
-#. title
-msgid "contribute:login"
-msgstr "Login Information for katagotraining.org"
-
-#. description for input
-msgid "contribute:maxgames"
-msgstr "Simultaneous Games"
-
-#. hint for max games
-msgid "contribute:maxgames:hint"
-msgstr ""
-"Best equal to your optimal numSearchThreads, around 8 for mid-tier GPUs. Can"
-" set it slightly lower for shorter runs, as half-finished games are not "
-"uploaded."
-
-msgid "contribute:ownership"
-msgstr "Enable Ownership"
-
-#. hint for ownership
-msgid "contribute:ownership:hint"
-msgstr "Slightly slows down training, but allows ownership visualization."
-
-#. description
-msgid "contribute:movespeed"
-msgstr "Move speed"
-
-#. hint for move speed
-msgid "contribute:movespeed:hint"
-msgstr "Move playing delay in seconds/move."
-
-#. description
-msgid "contribute:savesgf"
-msgstr "Save SGFs"
-
-#. hint for save
-msgid "contribute:savesgf:hint"
-msgstr "Save SGF files of games that are finished showing in ./dist_sgf"
-
-msgid "contribute:username"
-msgstr "Username"
-
-msgid "contribute:password"
-msgstr "Password"
-
-msgid "contribute:passwordwarning"
-msgstr "(Stored as plain text, do not re-use this anywhere)"
-
-msgid "contribute:register"
-msgstr "Register"
-
-msgid "contribute:start"
-msgstr "Start Contributing!"
-
 # title
 msgid "general settings title"
 msgstr "General and Engine Settings"
@@ -1229,10 +1139,6 @@ msgstr ""
 "If you are still having difficulties, {link} for an up-to-date "
 "troubleshooting page."
 
-#. as in "click here" to go to this page,
-msgid "link_here"
-msgstr "click here"
-
 #. AI names, help etc
 msgid "strength:kyu"
 msgstr "k"
@@ -1295,10 +1201,6 @@ msgstr "All available binaries already downloaded"
 #. label in little popup for analyzing entire game
 msgid "reanalyze max visits"
 msgstr "Number of visits per move"
-
-#. label in little popup for analyzing entire game
-msgid "reanalyze mistakes only"
-msgstr "Limit analysis to mistakes only"
 
 #. on move tree editing
 msgid "Delete Node"
@@ -1374,16 +1276,6 @@ msgid "finish inserting before navigating"
 msgstr ""
 "Navigation is disabled in insert mode, finish insert mode by pressing 'i'. "
 
-#. menu item
-msgid "menu:distributed"
-msgstr "Distributed Self-play Training"
-
-#. in self-play mode
-msgid "gui-locked"
-msgstr ""
-"Action {action} not allowed in distributed self-play training mode. Restart "
-"KaTrain to exit this mode."
-
 #. distance of wall to existing stones
 msgid "tsumego:walldistance"
 msgstr "Distance of wall"
@@ -1392,35 +1284,8 @@ msgstr "Distance of wall"
 msgid "tsumego:ko"
 msgstr "Ko allowed?"
 
-msgid "Unknown move"
-msgstr "Unknown move"
-
 msgid "Pass"
 msgstr "Pass"
-
-msgid "Correct!"
-msgstr "Correct!"
-
-msgid "Incorrect"
-msgstr "Incorrect"
-
-msgid "Best move: {move}"
-msgstr "Best move: {move}"
-
-msgid "Selected move loss: {loss_text}"
-msgstr "Selected move loss: {loss_text}"
-
-msgid "Played move {move} loss: {loss_text}"
-msgstr "Played move {move} loss: {loss_text}"
-
-msgid "Delta vs played: {delta:+.1f} points"
-msgstr "Delta vs played: {delta:+.1f} points"
-
-msgid "Question {idx}/{total}: Move {move} ({player})"
-msgstr "Question {idx}/{total}: Move {move} ({player})"
-
-msgid "Generate quiz (beta)"
-msgstr "Generate quiz (beta)"
 
 # Quiz popup
 msgid "Close"
@@ -1435,33 +1300,11 @@ msgstr ""
 "Showing up to {limit} moves with loss > {loss:.1f} points.\n"
 "Click a row to jump to the position before the move."
 
-msgid ""
-"No moves with loss greater than {loss:.1f} points were found on the main "
-"line."
-msgstr ""
-"No moves with loss greater than {loss:.1f} points were found on the main "
-"line."
-
-msgid "Start quiz"
-msgstr "Start quiz"
-
-msgid "Quiz mode (beta)"
-msgstr "Quiz mode (beta)"
-
-msgid "No quiz items to show."
-msgstr "No quiz items to show."
-
-msgid "No analysis data for this position."
-msgstr "No analysis data for this position."
-
 msgid "Prev"
 msgstr "Prev"
 
 msgid "Next"
 msgstr "Next"
-
-msgid "Points lost unknown"
-msgstr "Points lost unknown"
 
 msgid "{loss:.1f} points lost"
 msgstr "{loss:.1f} points lost"
@@ -1487,27 +1330,6 @@ msgstr "KataGo"
 
 msgid "mykatrain:settings:engine_save_error"
 msgstr "Failed to save analysis engine setting."
-
-msgid "mykatrain:settings:skill_preset"
-msgstr "Skill Preset:"
-
-msgid "mykatrain:settings:skill_relaxed"
-msgstr "Relaxed"
-
-msgid "mykatrain:settings:skill_beginner"
-msgstr "Beginner"
-
-msgid "mykatrain:settings:skill_standard"
-msgstr "Standard"
-
-msgid "mykatrain:settings:skill_advanced"
-msgstr "Advanced"
-
-msgid "mykatrain:settings:skill_pro"
-msgstr "Pro"
-
-msgid "mykatrain:settings:skill_auto"
-msgstr "Auto"
 
 # Phase 229: replaced the skill_preset radio group with a single rank
 # input.  The auto-derived preset name is shown as a label below it.
@@ -1580,9 +1402,6 @@ msgstr ""
 msgid "beginner_hint:self_atari:title"
 msgstr "Dangerous Move"
 
-msgid "beginner_hint:self_atari:body"
-msgstr "Playing here puts your group in atari."
-
 msgid "beginner_hint:ignore_atari:title"
 msgstr "Atari Ignored"
 
@@ -1600,9 +1419,6 @@ msgstr "Cut Risk"
 
 msgid "beginner_hint:cut_risk:body"
 msgstr "Your groups could be cut apart here."
-
-msgid "beginner_hint:self_atari:why"
-msgstr "A move that puts your own stones in atari can be captured next."
 
 msgid "beginner_hint:ignore_atari:why"
 msgstr "Ignoring atari will lose your stones."
@@ -3112,3 +2928,9 @@ msgstr "Mistake played (sound disabled)"
 
 msgid "Summary exported"
 msgstr "Summary exported"
+
+msgid "beginner_hint:self_atari:body"
+msgstr "Playing here puts your group in atari."
+
+msgid "beginner_hint:self_atari:why"
+msgstr "A move that puts your own stones in atari can be captured next."

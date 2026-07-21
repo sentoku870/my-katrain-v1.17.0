@@ -1,17 +1,19 @@
 # myKatrain コード構造
 
-> **最終更新**: 2026-07-17（Phase 225: LLM Coach GUI 統合）
+> **最終更新**: 2026-07-21（Phase 285: project audit cleanup）
 > Phase 171 で Leela エンジン完全削除。Phase 187-192 で Architecture Review Follow-up 完了。
 > Phase 225 で MyKatrain メニューに LLM コーチ（手動貼付）を追加。
+> Phase 272 で `KaTrainGui.__init__` を 3 ヘルパー分割。Phase 277 で KivyMD 0.104.1 → 1.2.0 移行。
+> Phase 280 で AI 戦略 17→2 スリム化 + 「局面を生成」タブ削除。
 > 完了 Phase の詳細は [`docs/archive/specs-implemented/phase*.md`](./archive/specs-implemented/) を参照。
 
 ---
 
-## 1. ディレクトリ構造（2026-07-16 時点 = Phase 192）
+## 1. ディレクトリ構造（2026-07-21 時点 = Phase 285）
 
 ```
 katrain/
-├── __main__.py              # アプリ起動、KaTrainGui クラス（Phase 172 で 995 → 878 行）
+├── __main__.py              # アプリ起動、KaTrainGui クラス（Phase 272-C で __init__ を 3 ヘルパー分割、本体 947 行）
 │
 ├── common/                  # 共有定数（循環依存解消用、Kivy非依存）
 │   ├── platform.py          # get_platform()（Kivy非依存OS判定）
@@ -42,7 +44,7 @@ katrain/
 │   │   └── insert_mode.py         # InsertModeController
 │   │
 │   ├── ai_strategies_base.py     # AI戦略基底クラス・register_strategy
-│   ├── ai_strategies/            # AI戦略実装（Phase 158 で分割: basic, pick, policy, score, human）
+│   ├── ai_strategies/            # AI戦略実装（Phase 280 で 17→2 スリム化、現在は basic.py のみ: DefaultStrategy / HandicapStrategy）
 │   │
 │   ├── analysis/             # 解析基盤パッケージ
 │   │   ├── models/                # Enum, Dataclass, 定数（models/ パッケージに分割）
@@ -68,7 +70,13 @@ katrain/
 │   │       └── _lcb_gap.py             # LCB 差分
 │   │
 │   ├── batch/                # バッチ処理パッケージ（Phase 158-B で 10 モジュール分割）
-│   │   ├── orchestration.py    # run_batch()
+│   │   ├── orchestration/     # Phase 158-B でさらに 6 サブモジュール分割
+│   │   │   ├── _context.py
+│   │   │   ├── _curator.py
+│   │   │   ├── _handle.py
+│   │   │   ├── _process.py
+│   │   │   ├── _setup.py
+│   │   │   └── _summary.py
 │   │   ├── analysis.py
 │   │   ├── discovery.py        # collect_sgf_files
 │   │   ├── engine_polling.py
@@ -81,10 +89,21 @@ katrain/
 │   │   ├── sgf_io.py
 │   │   ├── visits.py
 │   │   └── stats/              # stats/ パッケージ
+│   │       ├── aggregation.py
+│   │       ├── extraction.py
+│   │       ├── formatting.py
+│   │       ├── models.py
+│   │       └── pattern_miner.py
 │   │
 │   ├── beginner/             # 初級者向けヒント（Phase 179-187 で大幅拡張）
-│   │   ├── hints.py           # Hint priority chain（Phase 187 で 16.5% → 97% カバレッジ）
+│   │   ├── hints/             # Phase 194 で hints.py サブパッケージ化
+│   │   │   ├── api.py
+│   │   │   ├── _cache.py
+│   │   │   ├── _dispatch.py
+│   │   │   ├── _extract.py
+│   │   │   └── _gate.py
 │   │   ├── models.py          # HintCategory enum（23 カテゴリ）
+│   │   ├── detector.py        # Phase 248 で priority chain 統合
 │   │   ├── detector_mistake.py
 │   │   ├── detector_freedom.py
 │   │   ├── detector_difficulty.py
@@ -187,10 +206,10 @@ katrain/
 
 ---
 
-## 2. 主要クラスの関係（Phase 172 時点）
+## 2. 主要クラスの関係（Phase 285 時点）
 
 ```
-KaTrainGui (Screen, KaTrainBase) — Phase 172 で 995 → 878 行
+KaTrainGui (Screen, KaTrainBase) — Phase 172 で 995 → 878 行、Phase 272-C で __init__ を 3 ヘルパー分割（本体 947 行）
 ├── self.game      → Game（対局状態、Phase 141 で 4 分割）
 ├── self.engines   → dict[str, KataGoEngine]（KataGo 専用、Phase 171 で Leela 削除）
 ├── self.controls  → ControlsPanel（右パネル）
@@ -375,6 +394,7 @@ uv run python i18n.py -todo
 
 > 直近 3 ヶ月の主要 Phase のみ記載。詳細は `AGENTS.md` セクション 10 を参照。
 
+- 2026-07-21: **Phase 285 — project audit cleanup** — 本ドキュメントの Phase 192 時点ツリーを Phase 285 時点に更新（`ai_strategies/` スリム化、batch/beginner サブパッケージ、KaTrainGui 行数訂正）
 - 2026-07-16: **Documentation cleanup** — 旧 addendum を本ファイルにマージ、Phase 171-192 の構造反映
 - 2026-07-16: Phase 192 — `core/analysis/difficulty/` サブパッケージ新設（6 モジュール + 後方互換シム）
 - 2026-07-15: Phase 191 — `core/_engine_types.py` 新設（engine subsystem TYPE_CHECKING 循環解消）
