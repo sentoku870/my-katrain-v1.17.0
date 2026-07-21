@@ -1,7 +1,8 @@
 # i18n Workflow - myKatrain Translation Guide
 
 > **Single Source of Truth for i18n in myKatrain**
-> Last updated: 2026-01-03
+> Last updated: 2026-07-21（Phase 284 完了時点 / i18n カウンタ整合）
+> 現在の .po エントリ数: jp/en それぞれ **844 entries**（Phase 286 ドキュメント整合性回復時点、`polib.pofile()` で実測）
 
 ---
 

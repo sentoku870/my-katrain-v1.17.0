@@ -1,6 +1,7 @@
 # myKatrain 使い方ガイド
 
 > このガイドは myKatrain の基本的な使い方と、LLM（生成AI）との連携方法を説明します。
+> 最終更新: 2026-07-21（Phase 284 完了時点）
 
 ---
 
@@ -178,21 +179,44 @@ myKatrain は2種類のカルテを出力できます。
 
 ---
 
-## 7. 次のステップ
+## 7. 次のステップ（2026-07-21 時点 = Phase 284）
 
-### Phase 6（現在）
-- ✅ 複数局サマリー（summary.md）出力
-- ✅ プレイヤーフィルタ
-- ✅ ハンディ別カテゴリ分け
+> 本セクションは Phase 6 ベース（2025-12）の古い記述です。最新の完了 Phase は **Phase 284** に到達しており、以下に主要マイルストーンを整理します。
 
-### Phase 7（予定）
-- 構造解析（グループ・呼吸点・連絡点・切断点）
-- 初心者向けコーチングヒント
-- 手の自由度（freedom）実装
+### 完了済み主要 Phase（2026-07-04 〜 2026-07-21）
 
-### Phase 8（予定）
-- 棋力判定システム（Tier1-5）
-- レーダー5軸（Opening/Fighting/Endgame/Stability/Awareness）
+| Phase | 内容 | 状態 |
+|-------|------|:----:|
+| 171 | Leela エンジン完全削除（KataGo 専用化） | ✅ |
+| 172 | `commands/DISPATCH_TABLE` への明示的ディスパッチ移行 | ✅ |
+| 177 | 棋譜並べ（kifunarabe）機能 | ✅ |
+| 225 | LLM Coach GUI 統合（手動貼付ワークフロー） | ✅ |
+| 227 | LLM Coach 複数局対応（B 案フル実装） | ✅ |
+| 228 | LLM Coach 実シェーマ適応 | ✅ |
+| 230 | MyKatrain メニュー整理（8→4 項目）+ Leela 残滓削除 | ✅ |
+| 242 | LLM Coach 品質改善統合改修（5 サブフェーズ） | ✅ |
+| 246 | 候補手フィルター（PV Filter）包括改善 | ✅ |
+| 250 | 重要局面 UI リファクタリング（タブ化 + 4 ボタン分割 + popup 廃止） | ✅ |
+| 269 | AYAKA 完全削除 + voice 統一（TOMOKO） | ✅ |
+| 270 | 複数カルテ集約 + サマリプロンプト v3.5 拡張 | ✅ |
+| 272 / 272-E | `KaTrainGui.__init__` 3 ヘルパー分割 + LLM Coach popup メソッド分割 | ✅ |
+| 273-276 | 依存更新 / CI 更新 / mypy 2.x / chardet 7 | ✅ |
+| 277 | KivyMD 0.104.1 → 1.2.0 移行（Material Design 3） | ✅ |
+| 280 | AI 戦略 17→2 スリム化 + 局面を生成タブ削除 | ✅ |
+| 281 | 日本語フォント tofu fix | ✅ |
+| 282 | アーキテクチャレビュー P1+P2 着手 | ✅ |
+| 283 | サイドパネル文字サイズ + 新規対局 popup ボタン空白 fix | ✅ |
+| 284 | PyInstaller frozen binary の `tabbedpanel` / `checkbox` 欠落 fix | ✅ |
+
+### 直近の作業候補（Phase 286+）
+
+- **OpenAI 互換エンドポイント連携**（Phase 224 で将来再検討予定）
+- **Candidate Filter composite sort UI スライダー**（M3、Phase 247 で deferred）
+- **重要局面機能 残課題**（Phase 248 の D1/D2 完了、E1 残）
+- **複数カルテ集約 GUI 統合**（Phase 270 で deferred、popup の複数カルテ選択 UI）
+- **CLI `aggregate` サブコマンド**（Phase 270 で deferred）
+
+各 Phase の詳細は [`docs/01-roadmap.md`](./01-roadmap.md) §4 を参照。
 
 ---
 

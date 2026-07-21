@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-18（Phase 248-γ D1/D2/E1 完了, 9 PR マージ #406-#415, γ D1 popup + D2 prev/next ヘルパー + E1 Curator weak-tag boost）
+> 最終更新: 2026-07-21（Phase 284 完了 / ドキュメント整合性回復）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -15,6 +15,9 @@
 > Phase 156 (2026-06-28 完了): 動的フェーズ分割（scoreStdev ベース）。詳細下記。
 > Phase 171 (2026-07-04 完了): **Leela エンジン完全削除**。KataGo 専用化。詳細下記。
 > Phase 172-192 (2026-07-11〜16): CI 安定化、KaTrainGui ラッパー削除、kifunarabe、Hints 拡張、Curator 統合、Architecture Review Follow-up。各スペックは [./archive/specs-implemented/phase*.md](./archive/specs-implemented/) 参照。
+> Phase 193-202 (2026-07-17): ドキュメントクリーンアップ、MagicMock 汚染除去、互換シム棚卸し、`beginner/hints.py` / `batch/orchestration.py` サブパッケージ化、KaTrainGui AppContext 集約基盤。
+> Phase 225-228 (2026-07-15〜16): **LLM Coach GUI 統合 + 複数局対応 (B 案)**。Phase 225 で GUI 統合、Phase 227 で複数局対応、Phase 228 で実シェーマ適応。詳細 §4 参照。
+> Phase 269-284 (2026-07-18〜21): AYAKA 完全削除 + voice 統一、複数カルテ集約、UI 整理、KivyMD 1.2.0 移行、日本語フォント tofu fix、AI 戦略スリム化、アーキテクチャ follow-up、PyInstaller fix。詳細 §4 参照。
 
 ---
 
@@ -1312,11 +1315,198 @@ ext_important DISPATCH キー（後方互換）
 
 ---
 
+### Phase 269: AYAKA 完全削除 + voice 統一（2026-07-18）
+
+ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」を受けて、BEGINNER/INTERMEDIATE/DAN/ADVANCED を TOMOKO に統一、EXPERT を TOMOKO_STRICT に分離。LLM Coach のキャラ揺れを恒久解消。
+
+- `ToneVoice.AYAKA` enum 値削除
+- `_KANSAI_DICTIONARY` / `_KANSAI_NORMALISATION_PAIRS` / `_AYAKA_MARKERS` 全削除
+- `has_kansai_markers` / `is_kansai_marker` / `apply_kansai_normalisation` 削除
+- `ToneConfig.kansai_dictionary` フィールド削除
+- `llm_validator.py` / `summary_validator.py` の tone 整合性チェック削除
+- 弱点抽出整合性修正（C 案）: Shape B の `phase="all"` を `phase="(全phase)"` にレンダリング + SYSTEM_INSTRUCTION に `pct` 併記指示
+
+詳細: [phase269-ayaka-removal-and-summary-phase-fix.md](archive/specs-implemented/phase269-ayaka-removal-and-summary-phase-fix.md)
+
+---
+
+### Phase 270: 複数カルテ集約 + サマリプロンプト v3.5 拡張（2026-07-18）
+
+ユーザー報告「単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる」への対応。
+
+- `katrain/core/coach/karte_aggregator.py` 新設 + 6 集約関数
+  - `aggregate_reason_tags_by_color` / `aggregate_area_difficulty` / `detect_loss_spike_windows`
+  - `group_representative_moves_by_tag` / `aggregate_data_quality` / `build_meaning_tag_label_map`
+- `SummaryPromptConfig.kartes` でオプトイン的に組み込み
+- Schema 3.4 → 3.5 への条件付きバンプ（既存 3.4 経路は完全後方互換）
+- 52 unit tests 追加、合計 5,667 件テスト合格
+
+詳細: [phase270-karte-aggregator.md](archive/specs-implemented/phase270-karte-aggregator.md)
+
+---
+
+### Phase 271-A: 設定 UI 不要項目削除 + 盤面 watermark 撤去（2026-07-18）
+
+- 設定ポップアップ「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」の 2 行を削除（ユーザー報告「ユーザに触らせる必要がない」）
+- 盤面左下の「B (次手損失)」watermark を完全削除（「邪魔」と報告）
+- i18n 3 msgid 削除（jp/en 923 → 920 entries）
+- `tests/test_pv_filter_perspective_watermark.py` 削除
+
+---
+
+### Phase 272 / 272-E: プロジェクト全体 リファクタリング（2026-07-18）
+
+**Phase 272（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）**
+
+- **272-A**: デバッグ `print()` 残置調査 → 全件正当な用途（debug gate / fallback / CLI / docstring）のためスキップ
+- **272-B**: i18n 漏れ 7 件の解消 — "Copied!" / "Copy Info" / "Summary exported" / "Mistake played (sound disabled)" 等の新規追加
+- **272-C**: `KaTrainGui.__init__` (228行) を 3 ヘルパー分割 — `_init_managers_core` (104行) / `_init_managers_state` (50行) / `_init_managers_loops` (41行)。本体 61行（73% 削減）
+- **272-D**: `LLMCoachPopupContent` (28メソッド) のメソッドグルーピング — クラス docstring に 8 グループ明示
+
+**Phase 272-E（Lv2、`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行 の orchestrator 化）**
+
+- 各メソッドを orchestrator 化（48行 / 47行）+ 9 ヘルパーに分割
+- API/挙動すべて不変
+
+---
+
+### Phase 273-deps: 依存更新（OSV 解消最優先 / 上限追跡 / KivyMD 据え置き、2026-07-20）
+
+- `pyproject.toml` の urllib3 を `>=2.5.0,<3`、pytest を `>=8.3.2,<10` に更新
+- `uv lock --upgrade` で 25 パッケージを最新版へ（urllib3 2.7.0 / Pillow 12.3.0 / requests 2.34.2 / pytest 9.1.1 / mypy 2.3.0 / ruff 0.15.22 など）
+- KivyMD 0.104.1 固定維持（Phase 277 で更新予定）
+- OSV 既知の脆弱警告はすべて解消
+
+---
+
+### Phase 274-ci: GitHub Actions major 更新 + CI matrix に Python 3.13 追加（2026-07-20）
+
+- `actions/checkout v4→v7` / `actions/setup-python v5→v6` / `actions/cache v4→v6`
+- `astral-sh/setup-uv v5→v8.3.2`（uv 0.7.8→0.11.29）
+- `actions/upload-artifact v4→v7` / `actions/download-artifact v4→v8`
+- `softprops/action-gh-release v2→v3` / `actions/stale v8→v10`
+- test job の matrix を `["3.11","3.12"]` → `["3.11","3.12","3.13"]` に拡張
+- ラベル `dependencies` / `ci` / `python` を作成（Dependabot groups 用）
+
+---
+
+### Phase 275-mypy2: mypy 2.x 完全移行（2026-07-20）
+
+- `[tool.mypy]` に `warn_unused_ignores=true` / `enable_error_code=["deprecated","redundant-cast","unused-awaitable"]` を追加
+- `kivy_garden.*` は `ignore_missing_imports` のみ（コードから未参照のため `ignore_errors` 不要）
+- `tests.*` は明示の `ignore_errors = true`
+- 16 ファイルから 22 件の未使用 `# type: ignore` を撤去
+- mypy katrain 0 issues（319 files）
+
+---
+
+### Phase 276-chardet7: chardet 5 → 7 移行（2026-07-20）
+
+- `pyproject.toml` の `chardet>=5.2.0,<6` を `>=7` に更新、`uv lock --upgrade` で 7.4.3 に
+- `core/sgf_parser.py:505` の GBK フォールバックを `("Windows-1252","Windows-1253","GB2312","GB18030")` に拡張
+- `tests/test_parser.py` に `test_chardet7_compat_fallback_to_gbk` 追加
+
+---
+
+### Phase 277-kivymd-1.2.0-migration: KivyMD 0.104.1 → 1.2.0 移行（2026-07-20）
+
+- 4 年以上前の KivyMD 0.104.1 (2020-04-27) を使い続けていたため、Material Design 3 / Material You 対応、`BaseButton` 統合、`color_active`/`color_inactive` 新 API への移行
+- `pyproject.toml` の `kivymd==0.104.1` → `==1.2.0`、`materialyoucolor>=1.0.0` を追加
+- `katrain/gui/_kivymd_kv_loader.py` 新設 — KivyMD 1.2.0 の sdist に同梱されない 36 個の `.kv` ファイルを runtime 補完
+- ボタン系 MRO 整理: 1.0.0 で削除された `BaseFlatButton` / `BasePressedButton` を `BaseButton` 単一基底に置換
+- KV ファイル修正 4 件（`main_layout.kv`: `NavigationLayout` → `MDNavigationLayout` 等）
+- `spec/hook-kivymd.py` を 36 widget 全対応に拡張
+- `spec/KaTrain.spec` に `hiddenimports` (`katrain.gui.lang_bridge`) 追加
+- mypy katrain 0 issues（320 files）/ pytest 5963 PASS + 3 SKIP / PyInstaller Linux bundle 起動成功
+
+詳細: [phase277-kivymd-1.2.0-migration.md](archive/specs-implemented/phase277-kivymd-1.2.0-migration.md)
+
+---
+
+### Phase 280-ai-setup-slimdown: AI 戦略 17→2 スリム化 + 局面を生成タブ削除（2026-07-21）
+
+- AI 戦略スリム化: `DefaultStrategy`（`ai:default` = 手加減なし）と `HandicapStrategy`（`ai:handicap` = Kata置碁）の 2 戦略のみ残し、他 14 戦略を削除
+- `core/ai_strategies/` を 13 ファイル → 1 ファイル（`basic.py`）に縮小
+- 局面を生成タブ削除: `game_popups.kv` の `NewGameModeButton` 3 → 2 個化（`setupposition` 削除）
+- 37 ファイル変更 / +6,345 / -10,214 行（純減約 3,940 行）
+- mypy katrain 0 issues（310 files）/ pytest 5805 PASS + 3 SKIP
+
+---
+
+### Phase 281-jp-font-tofu-fix: 日本語フォント 豆腐修正 包括対策（2026-07-21）
+
+- 真因: Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → 豆腐化
+- 修正:
+  1. `katrain/gui/widgets/factory.py`: `_sync_font_to_hint_labels` / `_schedule_hint_label_sync` ヘルパー新設
+  2. `katrain/gui/_kivymd_kv_loader.py`: TextfieldLabel/MDTextField ルールの Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更
+  3. `katrain/gui/popups/_base.py`: `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加
+  4. `katrain/__main__.py`: `resource_find()` の None 戻り値検出時に警告ログ追加
+- 15 件 unit tests 追加（KV 静的解析 + AST レベル + MagicMock ベース動作確認）
+- mypy katrain 0 issues（310 files）/ pytest 5862 PASS + 3 SKIP
+
+詳細: [phase281-jp-font-tofu-fix.md](archive/specs-implemented/phase281-jp-font-tofu-fix.md)
+
+---
+
+### Phase 282-architecture-followup: アーキテクチャレビュー P1+P2 着手（2026-07-21）
+
+アーキテクチャレビューに基づく P1+P2 着手（Lv2、8 ファイル新規 + 1 ファイル更新 / 351 行削減 / 312 新規テスト）。
+
+- **P1-A**: `tests/conftest.py` 死蔵コード除去 851 → 500 行（-41%）。Phase 280 で 14 AI 戦略削除後も残っていた `MockKaTrainWithAI` クラス（103 行）+ 14 個の孤児関数を削除
+- **P1-B**: 5 大ファイルのスモークテスト追加（合計 197 unit tests）
+  - `tests/test_curator_scoring.py` (43 tests)
+  - `tests/test_engine_io.py` (11 tests)
+  - `tests/test_summary_pattern.py` (53 tests)
+  - `tests/test_batch_ui_widgets.py` (35 tests)
+  - `tests/test_diagnostics_popup.py` (55 tests)
+- **P1-C**: `gui/widgets/filebrowser.py` minimum tests (32 tests)
+- **P2-A**: `core/reports/summary_json_export.py` `_build_*` 14 関数 unit tests (58 tests)
+- **P2-B**: `katrain/__main__.py` defensive `try/except` 経路 smoke tests (19 tests)
+- **P2-C**: AGENTS.md i18n カウンタ整合（894 entries）
+- mypy katrain 0 issues / pytest 6118 PASS + 3 SKIP
+
+詳細: [phase282-architecture-followup.md](archive/specs-implemented/phase282-architecture-followup.md)
+
+---
+
+### Phase 283-side-panel-fonts-quick-buttons: サイドパネル文字サイズ縮小 fix + 新規対局 popup ボタン空白 fix（2026-07-21）
+
+- **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
+- **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で invisible
+- **真因（2 段バグ）**:
+  - (a) Phase 277 で `SizedButton` の基底が `BaseButton`（AnchorLayout 継承）になり、デフォルト padding `[dp(16), dp(8), dp(16), dp(8)]` が `<QuickInputButton>` の 36×36 sp Label を `4×20 px` に潰した
+  - (b) KV 内の `MDBoxLayout(adaptive_size=True)` が `size_hint=(1,1)` の子を `minimum_size` 計算に含めないため、各ボタンを `0×0` に潰していた
+- **修正**:
+  1. `katrain/gui/kv/panels.kv`: Phase 277.1 の 3 つの `min(sp(N), …)` キャップを解除
+  2. `katrain/gui/kv/widgets.kv`: `<SizedButton>:` に `padding: 0, 0, 0, 0` を追加
+  3. `katrain/gui/kv/popup_widgets.kv`: `<QuickInputButton>` に `size_hint: None, None` を追加（二次バグ追補、commit `7b8bdb17`）
+- 15 件の unit tests 追加（`test_panels_kv_fonts.py` 6件 + `test_sized_button_padding.py` 8件 + 既存 1件）
+- mypy katrain 0 issues / pytest 6183 PASS + 3 SKIP
+
+詳細: [phase283-side-panel-fonts-quick-buttons.md](archive/specs-implemented/phase283-side-panel-fonts-quick-buttons.md)
+
+---
+
+### Phase 284-pyinstaller-legacy-widgets: PyInstaller frozen binary の ModuleNotFoundError fix（2026-07-21）
+
+- **問題**: Phase 283 マージ後、ユーザーが myKatrain 設定 / batch analyze popup を開くと `ModuleNotFoundError: No module named 'kivy.uix.tabbedpanel'` / `kivy.uix.checkbox` が発生
+- **原因**: 上記 2 モジュールは Clock-scheduled lazy import 経由でしか参照されないため、PyInstaller の static analyser がシンボルを見つけられず frozen bundle から脱落
+- **修正**: `spec/KaTrain.spec` の hiddenimports に `kivy.uix.tabbedpanel` / `kivy.uix.checkbox` を明示追加（Phase 277 の `lang_bridge` と同パターン）
+- **回帰防止テスト 8 件追加**: `tests/test_katrain_spec_hiddenimports.py`
+- **ユーザー側の追加対応（環境依存）**: 報告のあったエラーは frozen binary とは別原因の可能性あり（`.venv/Lib/site-packages/kivy/uix/` 自体が欠落）。`uv pip install --force-reinstall kivy` で修復
+- mypy katrain 0 issues / pytest 6191 PASS + 3 SKIP
+
+詳細: [phase284-pyinstaller-legacy-widgets.md](archive/specs-implemented/phase284-pyinstaller-legacy-widgets.md)
+
+---
+
 ## 累計サマリ
 
 | 指標 | 値 |
 |---|---:|
-| テスト合格 | 4307 passed, 5 skipped, 0 xfailed |
-| 累積コード削減 | 約 1,500 行 |
-| 新ファイル | 4 (orchestration/, hints/, app_context.py, test_extractors.py) |
-| 追加テスト | 29 件 (26 test_extractors + 3 TestDeprecatedShimIsolation) |
+| テスト合格 | 6191 passed, 3 skipped, 0 xfailed（Phase 284 baseline） |
+| 累積コード削減 | 約 8,500 行（Phase 280 単独で約 3,940 行） |
+| 完了 Phase | 1 - 286（Phase 285 = project audit cleanup 既存、Phase 286 = 本ドキュメント整合性回復） |
+| i18n エントリ数 | jp/en .po 844 ずつ（Phase 286 ドキュメント整合性回復時点、`polib.pofile()` で実測） |
+| mypy katrain | 0 issues（310 source files） |
+| ruff check / format | clean |

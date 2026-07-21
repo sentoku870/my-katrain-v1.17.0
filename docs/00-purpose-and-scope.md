@@ -1,6 +1,6 @@
 # myKatrain（PC版）目的とスコープ
 
-> 最終更新: 2025-12-30
+> 最終更新: 2026-07-21
 > このドキュメントは **変更しにくい「固定ルール」** を定義します。
 > フェーズ計画は `01-roadmap.md` を参照してください。
 
@@ -84,6 +84,22 @@
 
 ### 6.3 LLMの幻覚を起こしにくい入出力
 - "添付のみを根拠にする"運用・テンプレを前提に設計する
+- **Phase 213 / 269 反映**: 30 症状（master doc §2-0）× KataGo 数値マッピング、自動検出可能 22 + LLM 委ね 11 の分類、3 層防御（構造化メタデータ / Lexicon 注入 / HTML コメント式 System Instruction）、TOMOKO 統一（Phase 269 で AYAKA 削除）
+
+### 6.4 コア層を Kivy から隔離する
+- `katrain/core/` 配下は Kivy 非依存を維持（`tests/conftest.py` の Kivy headless 環境変数で CI 検証）
+- `katrain/gui/` 配下のみ Kivy / KivyMD に依存
+- **Phase 192 / 196 / 197 反映**: `analysis/difficulty/` / `beginner/hints/` / `batch/orchestration/` のサブパッケージ化
+- **Phase 198 反映**: `KaTrainGui AppContext` で 19 Manager/Controller を集約
+
+### 6.5 KataGo 専用（Leela 削除済み）
+- Phase 171 で Leela エンジン完全削除（`core/leela/` 1459 行 / i18n 132 msgid / テスト 25 ファイル削除）
+- `EngineType.LEELA` / `LeelaConfig` / `LeelaEngine` / `MixedEngineSnapshotError` 等は存在しない
+
+### 6.6 KivyMD 1.2.0 ベース（Phase 277 以降）
+- 旧 `selected_color` / `unselected_color` / `helper_text_mode: "none"` 等の削除 API は使用しない
+- `BaseButton` 単一基底（`BaseFlatButton` / `BasePressedButton` は廃止済み）
+- PyInstaller ビルドでは `spec/KaTrain.spec` の hiddenimports に必要な lazy import モジュールを明示（Phase 284 で `kivy.uix.tabbedpanel` / `kivy.uix.checkbox` 追加）
 
 ---
 
@@ -98,5 +114,7 @@
 
 ## 8. 変更履歴
 
-- 2025-12-30: v1.1 Claude Code移行対応で整理
-- 2025-12-26: v0.1 作成
+- 2026-07-21: v1.3 — Phase 277 KivyMD 1.2.0 / Phase 280 AI スリム化 / Phase 269 AYAKA 削除 / Phase 284 PyInstaller 注意点 / Phase 213 LLM Coach 3 層防御を §6 に追加、最終更新日更新
+- 2026-06-26: v1.2 — Phase 171 Leela 削除 / Phase 192-198 サブパッケージ化 / Phase 198 AppContext の言及追加
+- 2025-12-30: v1.1 — Claude Code移行対応で整理
+- 2025-12-26: v0.1 — 作成
