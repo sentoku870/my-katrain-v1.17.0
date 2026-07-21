@@ -173,6 +173,28 @@ class TestQuickInputButtonContract:
             "reset depends on this fixed 36×36 sp size for visibility regression to surface."
         )
 
+    def test_quick_input_button_rule_uses_size_hint_none(self):
+        """Phase 283 root-cause fix: the SizedButton padding reset alone was
+        insufficient. With default ``size_hint=(1, 1)`` the parent
+        ``MDBoxLayout(adaptive_size=True)`` does NOT include each child's
+        explicit ``size:`` in its ``minimum_width`` / ``minimum_height``
+        calculation (BoxLayout only counts children with ``size_hint_*=None``).
+        Result: MDBoxLayout collapses to a 12×0 minimum rectangle and the
+        three 36×36 sp buttons are rendered at 0×0 px. Setting
+        ``size_hint: None, None`` makes MDBoxLayout respect the explicit
+        ``size:`` and report a correct 120×36 minimum_size.
+
+        Without this line the buttons are entirely invisible in the
+        New Game popup — only an empty third column of each row.
+        """
+        kv = POPUP_WIDGETS_KV.read_text(encoding="utf-8")
+        rule = _extract_kv_rule(kv, "<QuickInputButton@SizedRectangleButton>")
+        assert "size_hint: None, None" in rule, (
+            "<QuickInputButton@SizedRectangleButton> must declare size_hint: None, None "
+            "so that MDBoxLayout(adaptive_size=True) includes each button's explicit "
+            "size in its minimum dimensions. Without this the buttons render at 0x0 px."
+        )
+
     def test_quick_input_button_uses_target_text_binding(self):
         """The on_left_press handler must still copy self.text into target.text."""
         kv = POPUP_WIDGETS_KV.read_text(encoding="utf-8")

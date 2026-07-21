@@ -26,6 +26,8 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **修正**:
       1. `katrain/gui/kv/panels.kv`: Phase 277.1 の 3 つの `min(sp(N), …)` キャップを解除して upstream v1.18.1 と完全一致（player_type / subtype_label / StatsLabel desc）
       2. `katrain/gui/kv/widgets.kv`: `<SizedButton>:` ルールに `padding: 0, 0, 0, 0` を追加（KivyMD BaseButton → AnchorLayout のデフォルト padding をリセット）
+      3. `katrain/gui/kv/popup_widgets.kv`: `<QuickInputButton@SizedRectangleButton>` に `size_hint: None, None` を追加（root cause 追補 — SizedButton padding リセットだけでは不十分で、parent の `MDBoxLayout(adaptive_size=True)` が子の `size_hint=(1,1)` で子の `size:` 36×36 を minimum_width/height 計算に含めず、0×0 に潰れる二次バグを fix）
+    - **二次バグの経緯**: PR #450 初回提出時に `<SizedButton>: padding: 0` 修正のみで 14 件テスト全 pass していたが、ユーザーが「ボタンが見えない」と再報告。ヘッドレス Kivy で実 popup を再現したところ、`<QuickInputButton>` の `size: 36, 36` 自体は正しく保持される一方、parent `MDBoxLayout(adaptive_size=True)` の `minimum_size` が `padding + spacing` のみで計算され `(12, 0)` に。各ボタンが `0×0` に潰れて不可視。`BoxLayout.do_layout` の仕様（`size_hint_*=None` の子のみ minimum_size に算入）に基づく修正
     - **回帰防止テスト 14 件追加**:
       - `tests/test_panels_kv_fonts.py` (6 tests): フォント式が `0.8 * self.height` / `self.height * 0.7` であることを静的ガード + AI ブランチの短縮式保持 + `min(sp(…))` 再混入をファイル全体 grep で防止
       - `tests/test_sized_button_padding.py` (8 tests): `<SizedButton>:` の `padding: 0` 存在 / 16dp 再注入禁止 / Phase 283 コメント存在 / 9 QuickInputButton のテキストと出現回数 / QuickInputButton サイズ不変 / `target.text = self.text` 不変 / SizedButton padding が Python あるいは KV いずれかでリセット
@@ -452,13 +454,15 @@ docs/
   - **解決策**: (1) `factory.py` に `_sync_font_to_hint_labels` ヘルパー新設（Label/Button/Popup ラッパーで自動呼出）、(2) `_kivymd_kv_loader.py` の TextfieldLabel/MDTextField ルールで Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更、(3) `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加、(4) `__main__.py` の `resource_find()` None 戻り値検出で警告ログ追加
   - **再発防止**: 15 件の unit tests（KV ルール静的解析 + AST レベル + MagicMock ベース動作確認）で「Roboto フォールバック復活」「ヘルパー削除」「on_kv_post 削除」を CI で自動検出
   - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP（Phase 280 baseline 5805 → 57 件増）**
-- 2026-07-21: **Phase 283-side-panel-fonts-quick-buttons — サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix**（Lv2、4 ファイル変更 / 2 ファイル新規 / +約 320 行 / +14 unit tests、全 6,182 件テスト合格）
+- 2026-07-21: **Phase 283-side-panel-fonts-quick-buttons — サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix**（Lv2、5 ファイル変更 / 2 ファイル新規 / +約 350 行 / +15 unit tests、全 6,183 件テスト合格）
   - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
-  - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で `<QuickInputButton>` の inner Label が `padding=[dp(16), dp(8), dp(16), dp(8)]` に潰され空白化（背景の BackgroundMixin 枠だけ点で見える）
-  - **解決策**: (1) `panels.kv` の Phase 277.1 が追加した 3 つの `min(sp(N), …)` キャップを解除して upstream v1.18.1 と完全一致、(2) `<SizedButton>:` ルールに `padding: 0, 0, 0, 0` を追加して KivyMD BaseButton → AnchorLayout のデフォルト padding をリセット
+  - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で invisible（背景の BackgroundMixin 枠だけ表示、内部テキストは空白）
+  - **真因（2 段バグ）**: (a) Phase 277 で `SizedButton` の基底が `BaseButton`（AnchorLayout 継承）になり、デフォルト padding `[dp(16), dp(8), dp(16), dp(8)]` が `<QuickInputButton>` の 36×36 sp Label を `4×20 px` に潰した、(b) KV 内の `MDBoxLayout(adaptive_size=True)` が `size_hint=(1,1)` の子を `minimum_size` 計算に含めないため、各ボタンを `0×0` に潰していた
+  - **解決策**: (1) `panels.kv` の `min(sp(N), …)` キャップ 3 箇所を解除して upstream v1.18.1 と完全一致、(2) `widgets.kv` `<SizedButton>:` に `padding: 0, 0, 0, 0` を追加して (a) を修正、(3) `popup_widgets.kv` `<QuickInputButton>` に `size_hint: None, None` を追加して (b) を修正
+  - **初回提出の見落とし**: PR #450 初回では (1)+(2) のみ。14 件テスト全 pass していたが MDBoxLayout の size_hint 計算ルール（`size_hint_*=None` の子のみ minimum_size 算入）を見落としていた。ユーザー再報告を受けてヘッドレス Kivy で popup を完全再現し二次バグを修正
   - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
-  - **再発防止**: 14 件の unit tests（KV 静的解析：フォント式 + Phase 283 コメント + 9 QuickInputButton テキスト + 16dp padding 再注入禁止 + Python/KV いずれかで padding リセット）で「キャップ復活」「padding 削除」を CI で自動検出
-  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6182 PASS + 3 SKIP（Phase 282 baseline 6118 → +64 件、うち +14 新規 + 既存 50 件経由）**
+  - **再発防止**: 15 件の unit tests（KV 静的解析：フォント式 + Phase 283 コメント + 9 QuickInputButton テキスト + 16dp padding 再注入禁止 + Python/KV いずれかで padding リセット + QuickInputButton に size_hint: None, None）で「キャップ復活」「padding 削除」「サイズヒント復活」を CI で自動検出
+  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6183 PASS + 3 SKIP（Phase 282 baseline 6118 → +65 件、うち +15 新規 + 既存 50 件経由）**
 - 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
   - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
   - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元
