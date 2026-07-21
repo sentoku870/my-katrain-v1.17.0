@@ -18,9 +18,16 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + 282-architecture-followup + **283-side-panel-fonts-quick-buttons**
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + 282-architecture-followup + **283-side-panel-fonts-quick-buttons** + **284-pyinstaller-legacy-widgets**
 - **直近のマイルストーン**:
   - **Phase 283-side-panel-fonts-quick-buttons（2026-07-21）**: サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix（Lv2、4 ファイル変更 / 2 ファイル新規 / +約 320 行 / +14 unit tests）
+    - **二次バグ追補**: MDBoxLayout(adaptive_size=True) が子の `size_hint=(1,1)` で `size: 36×36` を `minimum_size` に算入しない Kivy 仕様により、各ボタンを `0×0` に潰していた二次バグを `<QuickInputButton>` に `size_hint: None, None` 追加で修正（詳細は commit `7b8bdb17` 参照）
+  - **Phase 284-pyinstaller-legacy-widgets（2026-07-21）**: PyInstaller frozen binary で MyKatrain 設定 popup / Batch analyze popup を開くと `ModuleNotFoundError: kivy.uix.tabbedpanel` / `kivy.uix.checkbox` が出る問題（Lv1、1 ファイル変更 / 1 ファイル新規 / +16 行 / +8 unit tests）
+    - **原因**: 上記 2 モジュールは Clock-scheduled lazy import 経由でしか参照されないため、PyInstaller の static analyser がシンボルを見つけられず frozen bundle から脱落
+    - **修正**: `spec/KaTrain.spec` の hiddenimports に `kivy.uix.tabbedpanel` と `kivy.uix.checkbox` を明示追加（Phase 277 の `lang_bridge` と同パターン）
+    - **回帰防止テスト 8 件追加**: `tests/test_katrain_spec_hiddenimports.py` — spec の hiddenimports ブロック存在 / コメント存在 / 重複禁止 / import-site の整合性（settings_popup.py と batch_ui.py にまだ import 文が残っているか）
+    - **ユーザー側の追加対応（環境依存）**: 報告のあったエラーは frozen binary とは別原因の可能性あり（`.venv/Lib/site-packages/kivy/uix/` 自体が欠落）。`uv pip install --force-reinstall kivy` で修復
+    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6191 PASS + 3 SKIP（Phase 283 baseline 6183 → +8 件新規）**
     - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
     - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で `<QuickInputButton>` の inner Label が `padding=[dp(16), dp(8), dp(16), dp(8)]` に潰され空白化（背景の BackgroundMixin 枠だけ点で見える）
     - **修正**:
@@ -463,6 +470,12 @@ docs/
   - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
   - **再発防止**: 15 件の unit tests（KV 静的解析：フォント式 + Phase 283 コメント + 9 QuickInputButton テキスト + 16dp padding 再注入禁止 + Python/KV いずれかで padding リセット + QuickInputButton に size_hint: None, None）で「キャップ復活」「padding 削除」「サイズヒント復活」を CI で自動検出
   - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6183 PASS + 3 SKIP（Phase 282 baseline 6118 → +65 件、うち +15 新規 + 既存 50 件経由）**
+- 2026-07-21: **Phase 284-pyinstaller-legacy-widgets — PyInstaller frozen binary の MyKatrain 設定 popup / Batch analyze popup ModuleNotFoundError fix**（Lv1、1 ファイル変更 / 1 ファイル新規 / +16 行 / +8 unit tests、全 6,191 件テスト合格）
+  - **問題**: Phase 283 マージ後、ユーザーが myKatrain 設定 / batch analyze popup を開くと `ModuleNotFoundError: No module named 'kivy.uix.tabbedpanel'` / `kivy.uix.checkbox` が発生
+  - **原因**: 上記 2 モジュールは Clock-scheduled lazy import 経由でしか参照されないため、PyInstaller の static analyser がシンボルを見つけられず frozen bundle から脱落。Kivy 2.3.1 には標準で存在するが frozen binary にだけ欠落
+  - **解決策**: `spec/KaTrain.spec` の hiddenimports に `kivy.uix.tabbedpanel` / `kivy.uix.checkbox` を明示追加（Phase 277 の `lang_bridge` と同パターン）
+  - **ユーザー側の追加対応（環境依存）**: 報告のあったエラーは frozen binary とは別原因の可能性あり（`.venv/Lib/site-packages/kivy/uix/` 自体が欠落）。`uv pip install --force-reinstall kivy` で修復
+  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6191 PASS + 3 SKIP（Phase 283 baseline 6183 → +8 件新規）**
 - 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
   - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
   - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元
