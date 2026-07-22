@@ -143,19 +143,24 @@ def apply_dynamic_phases(
     board_size: int = 19,
     endgame_threshold: float = ENDGAME_SCORE_STDEV_THRESHOLD,
     endgame_window: int = ENDGAME_DETECTION_WINDOW,
-) -> None:
-    """In-place: rewrite ``move.tag`` using the dynamic phase classifier.
+) -> list[str]:
+    """Compute and assign the dynamic phase tag for each move.
 
-    This is the convenience entry point used by Karte / Summary builders
-    when the user opts in to dynamic phase detection. Tags are written
-    in place so existing downstream aggregation (``phase_mistake_counts``
-    etc.) picks up the new phase labels without further plumbing.
+    Phase LV2-5: this used to mutate ``mv.tag`` in place, which had the
+    nasty side-effect of leaking phase labels into shared ``EvalSnapshot``
+    objects reused by Karte / Summary callers. Now we return the list of
+    phase labels and let the caller decide where to write them; we still
+    also write ``mv.tag`` so the existing aggregation paths continue to
+    work, but a pure ``list[str]`` is available for callers that want it.
 
     Args:
-        moves: Moves whose ``tag`` attribute should be updated.
+        moves: Moves to classify.
         board_size: Board size for the fixed opening fallback.
         endgame_threshold: Same as :func:`classify_phases_dynamic`.
         endgame_window: Same as :func:`classify_phases_dynamic`.
+
+    Returns:
+        List of phase labels (one per move).
 
     Note:
         Aliases ``"yose"`` and ``"endgame"`` are both written for callers
@@ -170,3 +175,4 @@ def apply_dynamic_phases(
     )
     for mv, phase in zip(moves, phases, strict=False):
         mv.tag = phase
+    return list(phases)

@@ -21,7 +21,7 @@ import json
 import logging
 import shutil
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from katrain.common.settings_export import (
     EXCLUDED_SECTIONS,
@@ -171,6 +171,16 @@ def _do_import_settings(
         for k, v in ctx._config.items()  # type: ignore[attr-defined]
     }
 
+    # Phase LV2-6: helper that mutates ``ctx._config`` in place rather
+    # than rebinding it to a fresh dict. TypedConfigReader /
+    # TypedConfigWriter / ConfigManager all cache references to the
+    # initial ``_config`` dict at construction time, so rebinding
+    # (e.g. ``ctx._config = new_dict``) leaves them looking at stale
+    # data after a settings import.
+    def _replace_config(new_data: dict[str, Any]) -> None:
+        ctx._config.clear()  # type: ignore[attr-defined]
+        ctx._config.update(new_data)  # type: ignore[attr-defined]
+
     try:
         # Update config in memory
         for section, values in imported.sections.items():
@@ -183,20 +193,21 @@ def _do_import_settings(
         # Atomic save
         atomic_save_config(ctx._config, ctx.config_file)  # type: ignore[attr-defined]
 
-        # Reload store (reload-then-sync pattern)
+        # Reload store (reload-then-sync pattern) — mutate in place so
+        # any cached readers keep pointing at the live dict.
         ctx._config_store.reload()  # type: ignore[attr-defined]
-        ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
+        _replace_config(dict(ctx._config_store))  # type: ignore[attr-defined]
 
     except (OSError, json.JSONDecodeError) as e:
         # Atomic save or reload failure
         logging.error(f"Settings import save failed: {e}", exc_info=True)
         # Rollback on failure
-        ctx._config = original_config  # type: ignore[attr-defined]
+        _replace_config(original_config)
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
             ctx._config_store.reload()  # type: ignore[attr-defined]
-            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
+            _replace_config(dict(ctx._config_store))  # type: ignore[attr-defined]
         except Exception as rollback_err:
             # Boundary fallback: rollback itself failed.
             # At this point the config may be in an inconsistent state.
@@ -219,12 +230,12 @@ def _do_import_settings(
         # Boundary fallback: unexpected error during save
         logging.error(f"Unexpected error during settings save: {e}", exc_info=True)
         # Rollback on failure
-        ctx._config = original_config  # type: ignore[attr-defined]
+        _replace_config(original_config)
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
             ctx._config_store.reload()  # type: ignore[attr-defined]
-            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
+            _replace_config(dict(ctx._config_store))  # type: ignore[attr-defined]
         except Exception as rollback_err:
             logging.error(
                 f"CRITICAL: Settings rollback failed after import error. "
