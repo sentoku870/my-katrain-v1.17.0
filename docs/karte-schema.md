@@ -483,16 +483,9 @@ v2 系の Karte JSON を v3 系のダウンストリーム（LLM Coach, CLI）�
 
 ## 7. 関連ドキュメント
 
-- `docs/01-roadmap.md` — 全体ロードマップ
-- `docs/02-code-structure.md` — コード構造
-- `docs/archive/specs-implemented/phase149-c-*.md` — v3.0 拡張
-- `docs/archive/specs-implemented/phase153-*.md` — フィールド削減
-- `docs/archive/specs-implemented/phase155-*.md` — 対局相手相関
-- `docs/archive/specs-implemented/phase158-*.md` — coverage / hash
-- `docs/archive/specs-implemented/phase221-*.md` — multi-game summary
-- `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md` — Summary プロンプト
-- `docs/archive/specs-implemented/phase228-summary-schema-adapt.md` — Shape A/B 詳細
-- `docs/archive/specs-implemented/phase225-master.md` — LLM Coach GUI 統合
+- [`docs/usage-guide.md`](./usage-guide.md) — Karte / Summary 出力手順
+- [`docs/architecture.md`](./architecture.md) — `core/reports/` パッケージ構成
+- 各 Phase 仕様の詳細は git log を参照
 
 ---
 

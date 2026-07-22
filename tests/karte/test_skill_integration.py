@@ -226,7 +226,7 @@ class TestWeaknessesMetaFor:
     player's non-zero-loss moves landed in a (phase, category) bucket
     that the weakness aggregation surfaced, and how much loss those
     covered moves carry. The output shape is part of the Karte v3.x
-    JSON contract (see ``docs/archive/specs-implemented/karte-schema.md``)
+    JSON contract (see ``docs/karte-schema.md``)
     so the refactor must be a pure speed-up.
     """
 

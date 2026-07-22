@@ -1,231 +1,53 @@
 # AGENTS.md - myKatrain PC版 開発ガイド
 
-> このファイルは **opencode** がプロジェクト開始時に自動ロードする中核ドキュメントです。
-> 細目ルールはスキル（`.opencode/skills/<name>/SKILL.md`）として on-demand で読み込みます。
-> opencode の設定は `opencode.jsonc`、権限もそこで一元管理しています。
+> opencode がプロジェクト開始時に自動ロードする中核ドキュメント。  
+> 細目ルールはスキル（`.opencode/skills/<name>/SKILL.md`）を on-demand で読み込む。  
+> opencode の設定は `opencode.jsonc`、権限もそこで一元管理。
 
 ---
 
 ## 1. プロジェクト概要
 
 ### 1.1 基本情報
+
 - **プロジェクト名**: myKatrain（KaTrain fork）
-- **技術スタック**: Python 3.11+（主開発環境: 3.13）/ Kivy（GUI）/ KataGo（解析エンジン）
+- **技術スタック**: Python 3.11+（主開発環境: 3.13）/ Kivy 2.3.1 + KivyMD 1.2.0（GUI）/ KataGo（解析エンジン）
 - **リポジトリ**: `sentoku870/my-katrain-v1.17.0`
 - **ローカルパス**: `D:\github\katrain-1.17.0`
 
 ### 1.2 目的（1文）
-KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
-### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + 282-architecture-followup + **283-side-panel-fonts-quick-buttons** + **284-pyinstaller-legacy-widgets**
-- **直近のマイルストーン**:
-  - **Phase 283-side-panel-fonts-quick-buttons（2026-07-21）**: サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix（Lv2、4 ファイル変更 / 2 ファイル新規 / +約 320 行 / +14 unit tests）
-    - **二次バグ追補**: MDBoxLayout(adaptive_size=True) が子の `size_hint=(1,1)` で `size: 36×36` を `minimum_size` に算入しない Kivy 仕様により、各ボタンを `0×0` に潰していた二次バグを `<QuickInputButton>` に `size_hint: None, None` 追加で修正（詳細は commit `7b8bdb17` 参照）
-  - **Phase 284-pyinstaller-legacy-widgets（2026-07-21）**: PyInstaller frozen binary で MyKatrain 設定 popup / Batch analyze popup を開くと `ModuleNotFoundError: kivy.uix.tabbedpanel` / `kivy.uix.checkbox` が出る問題（Lv1、1 ファイル変更 / 1 ファイル新規 / +16 行 / +8 unit tests）
-    - **原因**: 上記 2 モジュールは Clock-scheduled lazy import 経由でしか参照されないため、PyInstaller の static analyser がシンボルを見つけられず frozen bundle から脱落
-    - **修正**: `spec/KaTrain.spec` の hiddenimports に `kivy.uix.tabbedpanel` と `kivy.uix.checkbox` を明示追加（Phase 277 の `lang_bridge` と同パターン）
-    - **回帰防止テスト 8 件追加**: `tests/test_katrain_spec_hiddenimports.py` — spec の hiddenimports ブロック存在 / コメント存在 / 重複禁止 / import-site の整合性（settings_popup.py と batch_ui.py にまだ import 文が残っているか）
-    - **ユーザー側の追加対応（環境依存）**: 報告のあったエラーは frozen binary とは別原因の可能性あり（`.venv/Lib/site-packages/kivy/uix/` 自体が欠落）。`uv pip install --force-reinstall kivy` で修復
-    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6191 PASS + 3 SKIP（Phase 283 baseline 6183 → +8 件新規）**
-    - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
-    - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で `<QuickInputButton>` の inner Label が `padding=[dp(16), dp(8), dp(16), dp(8)]` に潰され空白化（背景の BackgroundMixin 枠だけ点で見える）
-    - **修正**:
-      1. `katrain/gui/kv/panels.kv`: Phase 277.1 の 3 つの `min(sp(N), …)` キャップを解除して upstream v1.18.1 と完全一致（player_type / subtype_label / StatsLabel desc）
-      2. `katrain/gui/kv/widgets.kv`: `<SizedButton>:` ルールに `padding: 0, 0, 0, 0` を追加（KivyMD BaseButton → AnchorLayout のデフォルト padding をリセット）
-      3. `katrain/gui/kv/popup_widgets.kv`: `<QuickInputButton@SizedRectangleButton>` に `size_hint: None, None` を追加（root cause 追補 — SizedButton padding リセットだけでは不十分で、parent の `MDBoxLayout(adaptive_size=True)` が子の `size_hint=(1,1)` で子の `size:` 36×36 を minimum_width/height 計算に含めず、0×0 に潰れる二次バグを fix）
-    - **二次バグの経緯**: PR #450 初回提出時に `<SizedButton>: padding: 0` 修正のみで 14 件テスト全 pass していたが、ユーザーが「ボタンが見えない」と再報告。ヘッドレス Kivy で実 popup を再現したところ、`<QuickInputButton>` の `size: 36, 36` 自体は正しく保持される一方、parent `MDBoxLayout(adaptive_size=True)` の `minimum_size` が `padding + spacing` のみで計算され `(12, 0)` に。各ボタンが `0×0` に潰れて不可視。`BoxLayout.do_layout` の仕様（`size_hint_*=None` の子のみ minimum_size に算入）に基づく修正
-    - **回帰防止テスト 14 件追加**:
-      - `tests/test_panels_kv_fonts.py` (6 tests): フォント式が `0.8 * self.height` / `self.height * 0.7` であることを静的ガード + AI ブランチの短縮式保持 + `min(sp(…))` 再混入をファイル全体 grep で防止
-      - `tests/test_sized_button_padding.py` (8 tests): `<SizedButton>:` の `padding: 0` 存在 / 16dp 再注入禁止 / Phase 283 コメント存在 / 9 QuickInputButton のテキストと出現回数 / QuickInputButton サイズ不変 / `target.text = self.text` 不変 / SizedButton padding が Python あるいは KV いずれかでリセット
-    - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
-    - **保持**: Phase 277 / 281 で追加した KivyMD 1.2.0 互換コード / `TabbedPanel` 等の他 SizedButton 派生（NewGameModeButton 等、十分な幅があるため padding 影響なし）/ 既存 i18n / dispatch / menu / popup
-    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6182 PASS + 3 SKIP（Phase 282 baseline 6118 → +64 件、うち +14 新規 + 既存 50 件経由）**
-  - **Phase 282-architecture-followup（2026-07-21）**: アーキテクチャレビューに基づく P1+P2 着手（Lv2、8 ファイル新規 + 1 ファイル更新 / 351 行削減 / 312 新規テスト）
-    - **P1-A**: `tests/conftest.py` 死蔵コード除去 851 → 500 行（-351 行 / -41%）。Phase 280 で 14 AI 戦略削除後も残っていた `MockKaTrainWithAI` クラス（103 行）+ `high/medium/low_confidence_moves` / `sparse_moves` / `mock_katrain_ai` fixture + `make_candidate_move` / `install_node_analysis` / `is_ci_environment` / `normalize_radar_output` / `load_golden_json` / `save_golden_json` / `round_half_up` / `_stabilize_float` / `RADAR_SCHEMA_DEFAULTS` の死蔵関数 14 個を削除
-    - **P1-B**: 5 大ファイルのスモークテスト追加（合計 197 unit tests）
-      - `tests/test_curator_scoring.py` (43 tests): `core/curator/scoring.py` — `_normalize_meaning_tag_key` / `_combine_meaning_tags` / `_extract_user_weak_tags` / `_compute_jaccard_score` / `_round_half_up` / `_wrap_debug_info` / `_compute_volatility` / `_compute_total` / `compute_batch_percentiles` をカバー
-      - `tests/test_engine_io.py` (11 tests): `core/engine_io.py` — `_ensure_str` 7 ケース + 4 thread 関数シグネチャ回帰検知
-      - `tests/test_summary_pattern.py` (53 tests): `gui/features/summary_pattern.py` — `_normalize_board_size` / `_is_valid_player` / `_is_valid_gtp` / `_is_valid_move_number` / `_stable_sort_key` / `_filter_by_board_size` / `_format_game_refs` / `_PatternMoveEval` をカバー
-      - `tests/test_batch_ui_widgets.py` (35 tests): `gui/features/batch_ui.py` — pure logic + AST 構造回帰検知 (Kivy font pipeline 非依存)
-      - `tests/test_diagnostics_popup.py` (55 tests): `gui/features/diagnostics_popup.py` — `_collect_diagnostics` 防御経路 7 ケース + i18n キー 16 個 × 2 .po 整合性
-    - **P1-C**: `gui/widgets/filebrowser.py` minimum tests (32 tests) — `last_modified_first` sort / `_shorten_filenames` 4 分岐 / `get_drives` Linux 分岐 / public API 静的ガード
-    - **P2-A**: `core/reports/summary_json_export.py` `_build_*` 14 関数 unit tests (58 tests) — `_data_status_for` 3-state / `_build_overall_block` / `_build_mistake_distribution` / `_build_phase_distribution` (yose → endgame mapping) / `_build_reason_tags_block` 3-state / `_build_mistake_sequences_block` 3-state / `_build_empty_player_stats_block` / `_derive_basic_reason_tags` / public surface 16 関数シグネチャ
-    - **P2-B**: `katrain/__main__.py` defensive `try/except` 経路 smoke tests (19 tests) — `on_kifunarabe_mode` 防御 / `AppContext` lazy import / `KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` lazy import / `on_request_close` engine.shutdown 失敗時 cleanup 継続 / webbrowser / `is_valid_window_position`
-    - **P2-C**: AGENTS.md i18n カウンタ整合 — 報告の "920 entries" は過去 Phase の累積削除で現状 894 entries まで減少。3 箇所（§1.3 / §10 過去ログ）を「894 ずつ」に統一
-    - **mypy katrain 0 issues / ruff check clean / ruff format clean / pytest tests 6118 PASS + 3 SKIP（Phase 281 baseline 5862 → +256 件）**
-  - Phase 281-jp-font-tofu-fix（2026-07-21）: 日本語フォント豆腐修正 包括対策（Lv3、4 ファイル + 2 テストファイル + 15 unit tests）
-- **直近のマイルストーン**:
-  - Phase 281-jp-font-tofu-fix（2026-07-21）: 日本語フォント豆腐修正 包括対策（Lv3、4 ファイル + 2 テストファイル + 15 unit tests）
-    - **真因**: Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → **hint_text 全てが豆腐に**（KataGo 設定 / 新規対局 popup で user-reported）
-    - **修正**:
-      1. `katrain/gui/widgets/factory.py`: `_sync_font_to_hint_labels` / `_schedule_hint_label_sync` ヘルパー新設、Label/Button/Popup ラッパーで自動呼出
-      2. `katrain/gui/_kivymd_kv_loader.py`: TextfieldLabel/MDTextField ルールの Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更 + `#:import Theme` 追加
-      3. `katrain/gui/popups/_base.py`: `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加（`_sync_font_to_hint_labels(self)` 呼び出し）
-      4. `katrain/__main__.py`: `resource_find()` の None 戻り値検出時に警告ログ追加（PyInstaller bundle 等のフォント欠落早期発見）
-    - **再発防止テスト** (15 件):
-      - `tests/test_kivymd_hint_text_label.py`: KV ルールに Roboto がないことの static check + `LabelledTextInput` の AST 検証
-      - `tests/test_factory_font_sync.py`: ヘルパー動作確認 (MagicMock) + factory.py 構造 static check
-    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP / Phase 280 baseline 5805 → 57 件増（うち新規 15 + 既存 42 経由）**
-    - 詳細: `docs/archive/specs-implemented/phase281-jp-font-tofu-fix.md`
-  - Phase 277-kivymd-1.2.0（2026-07-20）: KivyMD 0.104.1 → 1.2.0 移行（Material Design 3 対応）。`pyproject.toml` の `kivymd==0.104.1` を `==1.2.0` に更新、`materialyoucolor>=1.0.0` を追加。1.0.0 で削除された `BaseFlatButton` / `BasePressedButton` を `BaseButton` 単一基底に置換（`katrain/gui/kivyutils/buttons.py` の `SizedButton` MRO 整理）。KivyMD 1.2.0 の dist に同梱されない 36 個の `.kv` ファイルを補完する `_kivymd_kv_loader.py` 新設（runtime / PyInstaller 両対応）、`tests/conftest.py` からも呼出。KV ファイル修正 4 件（`main_layout.kv`: `NavigationLayout` → `MDNavigationLayout`、`menu.kv`: `selected_color`/`unselected_color` → `color_active`/`color_inactive`、`popup_widgets.kv`: `helper_text_mode: "none"` 削除 + `color_mode` 削除）。`spec/hook-kivymd.py` を 36 widget 全対応に拡張、`spec/KaTrain.spec` に `hiddenimports`（`katrain.gui.lang_bridge`）追加。`mypy katrain` 0 issues（320 files）/ `ruff check` clean / `ruff format` clean / `pytest tests` 5963 PASS + 3 SKIP、PyInstaller Linux ビルド + バイナリ起動 OK
-  - Phase 280-ai-setup-slimdown（2026-07-21）: AI 戦略 spinner 17→2 絞込 + 局面を生成タブ削除（Lv3、37 ファイル変更 / **+6,345 / -10,214 行**、純減約 3,940 行）
-    - **AI 戦略スリム化（17→2）**: `DefaultStrategy`（`ai:default` = 手加減なし）と `HandicapStrategy`（`ai:handicap` = Kata置碁）の 2 戦略のみ残し、他 14 戦略を削除。`core/ai_strategies/` を 13 ファイル → 1 ファイル（`basic.py`）に縮小、`core/ai/constants.py` を 279 → 92 行に縮小（ELO グリッド 7 種・ELO 補間ヘルパ全削除）、`core/ai_strategies_base.py` を 336 → 174 行に縮小（孤児化した `interp1d/2d`・`fmt_moves`・`should_play_top_move`・`generate_influence_territory_weights`・`generate_local_tenuki_weights` を全削除）、`core/ai/__init__.py` を 240 → 164 行に縮小（`ai_rank_estimation` は両戦略とも 9.0 固定返却化）、`config.json` の `ai:` セクション 14 削除、i18n 56 msgid 削除（14 `ai:*` + 14 `aihelp:*` × jp/en）、`tests/ai_strategies/` サブパッケージ消滅 + `tests/test_ai.py` を 2 戦略用に書き直し + `tests/test_do_ai_move.py` を `ai:default` フィクスチャに置換
-    - **局面を生成タブ削除**: `game_popups.kv` の `NewGameModeButton` 3 → 2 個化（`setupposition` 削除）、`setup_game_section` ブロック（26 行）+ `quick_config.py` の setupposition ロジック削除、`game_commands.py` の `do_selfplay_setup` dead code（16 行、`ctx.engine.selfplay_until`/`target_b_advantage` の read 0 件）削除、i18n 5 msgid 削除
-    - **残置**: `analysis_orchestrator.selfplay()`（UI から "最後まで打たせる" 経路で継続使用）、setupposition i18n 文字列は literal status に置換（programmatic caller 用に残置）
-    - **scripts**: `scripts/phase280_i18n_cleanup.py` 新設（polib による ai:* + setup:* msgid 削除 + `.mo` 再コンパイル）
-    - **mypy katrain 0 issues（310 files）/ ruff check katrain tests clean / ruff format clean / pytest tests 5805 PASS + 3 SKIP（Phase 277.1 baseline 5963 から 158 削減＝削除戦略テスト 158 件）**
-  - Phase 276-chardet7（2026-07-20）: chardet 5→7 移行（OSV とは別系統の更新）。`pyproject.toml` の `chardet>=5.2.0,<6` を `>=7` に更新、`uv lock --upgrade` で 7.4.3 に。`core/sgf_parser.py:505` の GBK フォールバックを `("Windows-1252","Windows-1253","GB2312","GB18030")` に拡張（chardet 7 が返す GB18030 / Windows-1253 にも対応）。`tests/test_parser.py` に `test_chardet7_compat_fallback_to_gbk` を追加（短文中国語 GB18030 + Windows-125x 系の chardet 7 互換検証）。`mypy katrain` 0 issues / `ruff check` clean / `ruff format` clean / `pytest tests` 5963 PASS + 3 SKIP
-  - Phase 275-mypy2（2026-07-20）: mypy 2.x 完全移行（per-file 設定整理 + `enable_error_code` 導入）。`[tool.mypy]` に `warn_unused_ignores=true` / `enable_error_code=["deprecated","redundant-cast","unused-awaitable"]` を追加。`kivy_garden.*` は `ignore_missing_imports` のみ（コードから未参照のため `ignore_errors` 不要）、`tests.*` は明示の `ignore_errors = true`。16 ファイルから 22 件の未使用 `# type: ignore` を撤去（うち 1 件 `core/utils.py:89` は契約コメント残置）、`game_commands.py:253` の `move_tree: SGFNode | None` vs `GameNode | None` は構造的差分を文書化の上で `# type: ignore[arg-type]` を保持。`mypy katrain` 0 issues（319 files）/ `ruff check` clean / `ruff format` clean / `pytest tests` 5962 PASS + 3 SKIP
-  - Phase 274-ci（2026-07-20）: GitHub Actions major 更新 + CI matrix に Python 3.13 追加。`actions/checkout v4→v7`、`actions/setup-python v5→v6`、`actions/cache v4→v6`、`astral-sh/setup-uv v5→v8.3.2`（Git tags に `v8` 浮動メジャーがないため minor pin、uv 0.7.8→0.11.29）、`actions/upload-artifact v4→v7`、`actions/download-artifact v4→v8`、`softprops/action-gh-release v2→v3`、`actions/stale v8→v10`。test job の matrix を `["3.11","3.12"]` → `["3.11","3.12","3.13"]` に拡張（`.python-version` / AGENTS.md の主開発環境と整合）。ラベル `dependencies` / `ci` / `python` をリポジトリに作成（Dependabot groups 用）。`mypy katrain` 0 issues / `ruff check` clean / `ruff format` clean / `pytest tests` ローカル 5962 PASS + 3 SKIP、CI 全ジョブ green
-  - Phase 273-deps（2026-07-20）: 依存更新（OSV 解消最優先 / 上限追跡 / KivyMD 据え置き）。`pyproject.toml` の urllib3 を `>=2.5.0,<3`、pytest を `>=8.3.2,<10` に更新し、`uv lock --upgrade` で 25 パッケージを最新版へ（urllib3 2.7.0 / Pillow 12.3.0 / requests 2.34.2 / pytest 9.1.1 / mypy 2.3.0 / ruff 0.15.22 など）。KivyMD 0.104.1 固定維持。OSV 既知の脆弱警告はすべて解消。mypy 2.x 移行に伴う 2 件（`misc [list-item]` / `var-annotated`）を `keyboard_manager.py` と `summary_json_export.py` の型注釈追加で吸収。`mypy katrain` 0 issues / `ruff check` clean / `ruff format` clean / `pytest tests` 5962 PASS + 3 SKIP
-  - Phase 249-hotfix（2026-07-18）: 起動時 AttributeError 修正 + 残存 γ リグレッション復旧（_validate_move_number / _expected_move_gtp 防御化 / is_fog_active & _source_sgf_path 削除）+ 回帰テスト 3 件
-- **直近のマイルストーン**:
-  - Phase 249-hotfix（2026-07-18）: 起動時 AttributeError 修正 + 残存 γ リグレッション復旧（_validate_move_number / _expected_move_gtp 防御化 / is_fog_active & _source_sgf_path 削除）+ 回帰テスト 3 件
-  - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
-  - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
-  - Phase 179 + 179.1 + 179.2（2026-07-14）: Beginner Hints Summary Extension（ミス・自由度・難易度）+ 監査改善
-  - Phase 182（2026-07-14）: Ownership / Policy 派生ヒント
-  - Phase 186（2026-07-14）: Curator 集約統合（棋譜全体の弱点パターンを Hint 化）
-  - Phase 187-192（2026-07-14〜16）: Architecture Review Follow-up（A1-A4 / B1-B2）
-  - Phase 193（2026-07-16）: ドキュメントクリーンアップ
-  - Phase 194-196（2026-07-17）: MagicMock 汚染除去 + 互換シム棚卸し + hints.py サブパッケージ化
-  - Phase 197-202（2026-07-17）: 各種サブパッケージ化 + AppContext + リファクタリング
-  - Phase 203（2026-07-17）: LLM「翻訳特化」導入 調査ドキュメント（D 案: ドキュメント整備のみ）
-  - Phase 207-213（2026-07-17）: `core/coach/` パッケージ完全実装（master_db / lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、合計 243 unit tests、全 4752 件テスト合格）
-  - Phase 214-A（2026-07-17）: LLM coach CLI tool（`core/coach/cli.py`、17 unit tests）
-  - Phase 215（2026-07-17）: Karte-aware symptom detection（`core/coach/karte_detector.py`、30 unit tests）
-  - Phase 216（2026-07-17）: Streak-based symptom detection（`karte_detector.py` 拡張、17 unit tests）
-  - Phase 217（2026-07-17）: Aggregate helpers + CLI `analyze` command（6 unit tests）
-  - Phase 218（2026-07-17）: Calibration fixtures（39 unit tests、golden test cases）
-  - Phase 219（2026-07-17）: Calibrate CLI command（5 unit tests）
-  - Phase 220（2026-07-17）: Trace CLI command（6 unit tests）
-  - Phase 221（2026-07-17）: Multi-game summary support（`json_type.py`、18 unit tests + 2 CLI tests）
-  - Phase 225（2026-07-17）: **LLM Coach GUI 統合（手動貼付ワークフロー）**（Lv3、9 ファイル + 34 unit tests、全 4882 件テスト合格）
-    - `katrain/gui/features/llm_coach.py`: `build_llm_prompt` / `validate_llm_response` / `find_latest_karte` の薄いラッパー
-    - `katrain/gui/popups/llm_coach_popup.py` + `katrain/gui/kv/llm_coach_popup.kv`: MyKatrain メニュー「LLM コーチ（手動貼付）」から開く Popup
-    - DISPATCH_TABLE に `llm_coach_popup` 追加、menu.kv にメニュー項目追加
-    - i18n: `mykatrain:llm-coach:*` 28 個のキー（jp/en .po + .mo 更新済み）
-  - Phase 226-A〜J（2026-07-15）: LLM Coach 品質改善（検証ロジック / GUI 堅牢性 / データ整合 / テスト強化 / 軽微改善）
-  - Phase 227（2026-07-15）: **LLM コーチ複数局対応（B案フル実装）**（Lv3、17 ファイル + 203 unit tests、合計 5,319 件テスト合格）
-    - 227-A: `core/coach/summary_prompt_builder.py` 新規 + CLI `--summary-mode` フラグ
-    - 227-B: `core/coach/summary_validator.py` 新規 + CLI validate 拡張
-    - 227-C: `find_latest_llm_input` (karte/summary 両対応) + `detect_player_info_for_summary`
-    - 227-D: popup 型検出 + 視点セレクタ + 集約サマリボタン
-    - 227-E: i18n 15 キー追加 + summary calibration fixtures 4 個 + マスター仕様書
-    - 詳細: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md`
-  - Phase 228（2026-07-15）: **LLM コーチ複数局対応 - 実シェーマ適応**（Lv3、4 ファイル + 99 unit tests、合計 5,418 件テスト合格）
-    - 228-A: extractor 拡張（`extract_summary_player_mistakes` / `extract_summary_player_phase_losses` 新規、`extract_summary_weakness_patterns` を実シェーマ対応に）
-    - 228-B: prompt builder で Player Mistake Distribution / Player Phase Loss Distribution セクションを描画、system instruction 更新
-    - 228-C: validator で標準 4 カテゴリ + 3 phase を valid reference 化
-    - 228-D: real_shape calibration fixtures 3 個 + E2E 統合テスト + マスター仕様書
-    - 詳細: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md`
-  - Phase 229（2026-07-15）: **棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
-    - 229-A: `katrain/common/rank.py` 新設（共有 `Rank` 型 + `rank_to_skill_preset` 配置、master_db は互換シム化）+ 94 tests
-    - 229-B: `resolve_skill_preset()` 統合（GUI 6 callsite 置換）+ 39 tests
-    - 229-C: 設定 UI 刷新（radio group 廃止 → rank TextInput + 自動推定ラベル表示）+ 4 tests
-    - 229-D: LLM Coach fallback chain に `general/player_rank` 追加 + 17 tests
-    - 229-E: ドキュメント（マスター仕様書、AGENTS / roadmap 更新）
-    - 詳細: `docs/archive/specs-implemented/phase229-rank-preset-unification.md`
-  - Phase 230（2026-07-16）: **MyKatrain UI/UX 整理**（Lv3、23 ファイル + 約 -726 行 / 新規 1 ファイル、全 5,572 件テスト合格継続）
-    - 230-B: Leela 残滓削除（`disable_katago` チェックボックス削除 + `engine-compare:*` i18n 35 キー削除）
-    - 230-C: 棋譜並べタブ途切れ修正（可変高 RowLayout + `text_size` wrap 解除）
-    - 230-D: 診断タブ新設（`diagnostics_tab.py` 新規）+ MyKatrain メニュー「診断情報」削除
-    - 230-E: 棋力入力統合（出力設定の `default_user_rank` 廃止、解析タブの `player_rank` に統合）+ 自動マイグレーション
-    - 230-A: MyKatrain メニュー整理（4 項目に集約、アイコン重複解消、`chat.png` 欠損修正）
-    - 230-A.1: `MyKatrainMenuSectionHeader` クラッシュ修正（`content_width` プロパティ追加）
-    - 230-A.2: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
-  - Phase 241（2026-07-17）: **サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
-    - **問題**: サマリー機能（複数局サマリ / LLM Coach 複数局対応）に複数のバグ・改善余地
-    - **解決策**: 全部で 9 サブ修正を一括で実施
-    - 241-A: weakness pattern から「good」カテゴリ除外（`extract_summary_weakness_patterns` の Shape B 経路フィルタ、`_NON_WEAKNESS_CATEGORIES` 新設）+ 12 unit tests
-    - 241-B: popup の unknown パス早期 return（`llm-coach:unknown-path` i18n キー追加、`on_generate_and_copy` / `on_validate` / `_populate_rank_and_perspective` 全部に guard）+ 3 unit tests
-    - 241-C: loss_progression フォールバック（`_format_loss_progression_block` 新設、dict / legacy list / 空 3 形式対応）+ 6 unit tests
-    - 241-D: `_summary_index_to_internal` sentinel 化（`_SUMMARY_BIRDSEYE_SENTINEL` 新設、bird's-eye と out-of-range を区別）
-    - 241-E: summary_perspective_index race condition 対策（`_summary_perspective_user_set` フラグでユーザ手動選択を保護、`on_path_changed` でリセット）
-    - 241-F: `detect_player_color_for_user` の型キャスト整理（`_SgfInfoLike` + `cast()` 廃止 → `SgfPlayerInfo` 直接構築）
-    - 241-G: `find_latest_karte` 関数完全削除（popup は既に `find_latest_llm_input_for_ctx` を使用）+ 関連テスト削除
-    - 241-H: `tests/conftest.py` に Kivy headless 環境変数追加（CI 環境での popup テスト準備）
-    - 241-I: AGENTS.md / 01-roadmap.md 更新（Phase 239 表記を Phase 241-G に統一、Phase 241 マイルストーン追記）
-  - Phase 250（2026-07-18）: **重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR）
-    - 250-A: タブ「重要局面」追加（panels.kv CollapsablePanel 拡張、旧トグル削除）
-    - 250-B: `GameNavigator` を `color_filter` 対応に拡張（facade 6 メソッド追加）
-    - 250-C: Prev/Next ボタンを 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割
-    - 250-D: 大悪手ライン（mistake_points）削除（graph.py）
-    - 250-E: 重要局面リスト popup 廃止（menu/commands/popup/KV/i18n、3 ファイル削除）
-    - 250-F: 棋譜並べ summary から重要局面 popup 呼び出し削除（no-op 化）
-  - Phase 269（2026-07-18）: **AYAKA 完全削除 + 弱点抽出整合性修正（C 案）+ voice 統一**（Lv3、4 コミット / 1PR、11 ファイル変更）
-    - **C 案-1**: `phase="all"` の表示修正 — `summary_prompt_builder._format_patterns_block` で Shape B 弱点パターンの `phase="all"` メタタグを `phase=`(全phase)``` にレンダリング。LLM が `all` を contract line に echo するのを防止（`phase_label_out_of_set` MEDIUM 警告の恒久解消）
-    - **C 案-2**: SYSTEM_INSTRUCTION の `frequency_ratio` 指示を `pct` 併記に更新 — Shape B 経路では `frequency_ratio` が常に 0 で機能しないので、`pct` フィールドを主軸とする旨を明示
-    - **voice 統一**: `master_db._MODE_TABLE` の BEGINNER/INTERMEDIATE の `voice` を `ToneVoice.AYAKA` → `ToneVoice.TOMOKO` に変更。5k/10k 等の級は AYAKA 関西弁キャラ → TOMOKO 標準語キャラに統一
-    - **AYAKA 完全削除**: `ToneVoice.AYAKA` enum 値、`_TONE_TABLE` の AYAKA エントリ、`_KANSAI_DICTIONARY`、`_KANSAI_NORMALISATION_PAIRS`、`_AYAKA_MARKERS` を全削除。`has_kansai_markers` / `is_kansai_marker` / `apply_kansai_normalisation` 関数を削除。`ToneConfig.kansai_dictionary` フィールド削除。`voice_summary` の AYAKA エントリ削除。`_CONFIRMATION_TEMPLATES` の BEGINNER/INTERMEDIATE 用関西弁調文章を TOMOKO 調 (標準語) に書き換え
-    - **tone 整合性チェック削除**: `llm_validator.py` / `summary_validator.py` の `tone_inconsistency_ayaka` / `tone_inconsistency_tomoko` 警告を削除（AYAKA 削除により「関西弁必須」チェックは無意味、「TOMOKO なのに Kansai」チェックはユーザー「好き嫌い分かれるので統一」要望により削除）
-    - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
-    - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
-    - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
-  - Phase 272-E（2026-07-18）: **LLM Coach popup 巨大メソッド分割 (Phase 272-D deferred)**（Lv2、1 ファイル変更、1271 件テスト合格）
-    - **問題**: Phase 272-D で残課題としていた `LLMCoachPopupContent` の 2 巨大メソッド（`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行）。挙動変更リスク回避のため見送りとしていたが、本 Phase で**純粋メソッド抽出のみ**で実施
-    - **解決策**: 各メソッドを orchestrator 化（48行 / 47行）+ 9 ヘルパーに分割
-      - karrte 側: `_schedule_retry_if_under_limit` (9行) / `_read_player_settings` (22行) / `_dispatch_to_path_handler` (50行) / `_populate_karte_player_info` (33行) / `_apply_karte_rank_fallback` (26行) / `_detect_and_apply_player_color` (26行) / `_update_karte_status_summary` (39行)
-      - summary 側: `_detect_summary_player_info` (20行) / `_build_summary_player_pairs` (14行) / `_update_summary_spinner` (23行) / `_resolve_summary_spinner_index` (22行) / `_update_perspective_value_from_summary_index` (16行) / `_apply_summary_rank_fallback` (29行) / `_update_summary_status` (22行) / `_read_summary_games_count` (10行)
-    - **API/挙動**: orchestrator メソッドのシグネチャ・戻り値・副作用すべて不変。呼び出し元（`on_kv_post` / `on_path_changed` / `on_browse_karte` / `on_summary_perspective_changed`）は orchestrator を呼ぶだけ
-    - **保持された概念**: 既存の Kivy-free helpers (`resolve_rank_fallback_chain` / `resolve_summary_rank` / `resolve_summary_spinner_values` / `_summary_index_to_internal`) は温存、pop_logic 層に既に切り出されていたロジックは再抽出せず
-    - **テスト結果**: 1271 件全 pass (前回 Phase 272 と同一ベースライン)、ruff check + format 両方クリーン
-  - Phase 272（2026-07-18）: **プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
-    - **問題**: Phase 1-271 で機能追加を優先してきた結果、(1) 残存する i18n 漏れ、(2) `KaTrainGui.__init__` の肥大化、(3) `LLMCoachPopupContent` のメソッド乱立が蓄積
-    - **272-A (Lv1)**: デバッグ `print()` 残置調査 → 結果は**全件正当な用途**（debug gate / fallback / CLI / docstring）だったため、**スキップ**。AST ベースの誤検知チェックも追加（`scripts/update_i18n_phase272b.py` とは別）
-    - **272-B (Lv1)**: i18n 漏れ 7 件の解消 — `"Copied!"` / `"Copy Info"` / `"Summary exported"` / `"Mistake played (sound disabled)"` の 4 件を新規追加、既存 3 件を確認。`scripts/update_i18n_phase272b.py` で polib 経由の追加 + .mo 再コンパイル自動化
-    - **272-C (Lv2)**: `KaTrainGui.__init__` (228行) を 3 ヘルパーに分割 — `_init_managers_core` (104行 / SGF/Config/Summary/Keyboard/Dialog/Popup/GameState) / `_init_managers_state` (50行 / UIUpdate/AutoSetup/Analysis/Batch/GUIRefresh/GameStateUpdate) / `_init_managers_loops` (41行 / MessageLoop/Scroll/Kifunarabe/EngineBootstrap)。`__init__` 本体は **61行**（73% 削減）。`self.ctx = ...` 代入は Phase 249-hotfix の回帰テストで本体にあることが要求されるため、本体末尾に残置
-    - **272-D (Lv2)**: `LLMCoachPopupContent` (28メソッド) のメソッドグルーピング — クラス docstring に **8 グループ** (Lifecycle / Karte path bootstrap / Rank & perspective / Summary perspective / User actions / Response handling / Validate actions / Widget helpers) を明示。既存 3 セクション名整理（`Phase 227-D: Summary mode helpers` → `Karte path detection`、`Button handlers` → `User actions (browse / generate / validate)`、`Internal helpers` → `Widget helpers`）。2 つの巨大メソッド (`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行) の分割は**挙動変更リスク回避のため見送り**（今後の Phase で着手）
-    - **テスト結果**: 1,271 件合格 (i18n 18 / architecture 43 / config_imports 16 / coach 全 19 種 1,013 / llm_coach_popup_layout 22 / common_rank 98 / karte_export 25 / diagnostics 28 / internal_params 27 / その他)。`test_main_smoke` / `test_p3_stability` / `test_llm_coach_popup` の 119 件は Kivy headless 起因の既存 fail (本 Phase と無関係、ベースライン確認済)
-    - **保持された概念**: `LLMCoachPopupContent` の API シグネチャ・フィールド名・DISPATCH_TABLE すべて不変、`KaTrainGui` の公開メソッド・属性もすべて不変
-  - Phase 271-A（2026-07-18）: **設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
-    - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」の 2 行が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
-    - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除
-    - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
-  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries → 現 894 entries）
-    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
-    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
-    - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
-    - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
-    - **影響確認**: orchestrator (settings_popup.py) は `widget_refs` の 11 キーのうち kifunarabe 関連 7 キーのみアクセスしており、削除 4 キーはデッドコードだった。`kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
-  - Phase 270（2026-07-18）: **複数カルテ集約 + サマリプロンプト v3.5 拡張**（Lv2、4 ファイル変更 / 1 ファイル新規 / +52 unit tests）
-    - **問題**: 単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる
-    - **解決策**: 6 つの集約関数を `katrain/core/coach/karte_aggregator.py` に新設 + `SummaryPromptConfig.kartes` でオプトイン的に組み込み + Schema 3.5 への条件付きバンプ。既存 3.4 経路は完全後方互換
-    - **6 集約関数**: `aggregate_reason_tags_by_color` / `aggregate_area_difficulty` / `detect_loss_spike_windows` / `group_representative_moves_by_tag` / `aggregate_data_quality` / `build_meaning_tag_label_map`
-    - **数学的注記**: 2-bucket loss_progression では 2.0× multiplier が物理的に発火しない（threshold = spike + other で strict > が成立不能）。テストは 3+ bucket 入力で対応
-    - **後方互換**: `SummaryPromptConfig()` 既存呼び出しは `kartes=None` のまま無改変で動作、Schema 3.4 / 既存 body 維持
-    - **Deferred**: GUI 統合 (popup の複数カルテ選択 UI) / CLI `aggregate` サブコマンド / humanize フォーマット
-    - **動機**: ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」
-    - 250-G: 関連テスト削除（3 ファイル） + color_filter 用テスト 11 件新規
-    - 250-H: AGENTS.md / 01-roadmap.md / specs 更新
+KataGo 解析を元に「カルテ（Karte）」を生成し、LLM 囲碁コーチングで的確な改善提案を引き出す。
 
-  各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
-- **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
+### 1.3 主要機能
 
-全体ロードマップは `docs/01-roadmap.md` を参照。
+| 機能 | 詳細 |
+|------|------|
+| Karte / Summary JSON 出力 | 単局 (v3.3) / 複数局サマリ (v3.4) |
+| LLM Coach GUI 統合 | 手動貼付ワークフロー + 5 ルール検証 |
+| 棋譜並べ (Kifunarabe) | 重要局面反復学習 + 履歴永続化 |
+| Beginner Hints | 9 系統 23 カテゴリ |
+| 重要局面ナビゲーション | サイドパネルタブ + 黒白別 4 ボタン |
+| 候補手フィルター (PV Filter) | AUTO / 4 段階プリセット |
+| 棋力プリセット自動推定 | `general/player_rank` 1 箇所入力 |
 
 ---
 
 ## 2. ユーザー（sentoku870）のスキルと期待
 
 ### 2.1 スキルレベル
+
 | 領域 | レベル | 備考 |
 |------|--------|------|
 | PC操作 | 中〜上級 | 手順があれば複雑な操作も実行可能 |
-| プログラミング | 初心者 | Progate Python基礎程度、コードは読めるが書けない |
+| プログラミング | 初心者 | Progate Python 基礎程度、コードは読めるが書けない |
 | Git/GitHub | 基本操作可 | 手順通りの操作は可能 |
-| 囲碁 | 野狐4-5段 | ドメイン知識は十分 |
+| 囲碁 | 野狐 4-5 段 | ドメイン知識は十分 |
 
-### 2.2 期待する対応
-- **コード変更**: 原則 opencode で実行（手動編集は最小限）
-- **説明**: 専門用語は初出時に1-2文で定義
-- **手順**: コピペで完結する具体的なコマンドを提示
-- **確認**: 動作確認ポイントを明示
+### 2.2 作業の快適さ優先順位
 
-### 2.3 作業の快適さ優先順位
 1. **最優先**: 自分だけで動作ロジック修正をしない
-2. **可能**: LLM指示ありの最小修正（タイポ、数値調整）
+2. **可能**: LLM 指示ありの最小修正（タイポ、数値調整）
 3. **許容**: ファイル全体のコピペ差し替え
 4. **避けたい**: 複数ファイルの整合性判断
 
@@ -233,630 +55,171 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ## 3. 開発ルール（要約）
 
-詳細ルールはスキルとして提供。タスクの種類に応じて以下をロードしてください：
+タスクの種類に応じて以下スキルをロード:
 
-| スキル名 | 用途 | ファイル |
-|---------|------|---------|
-| `correction-levels` | 修正規模（Lv0-5）の判定と回答フォーマット | `.opencode/skills/correction-levels/SKILL.md` |
-| `git-workflow` | ブランチ運用、コミット、PR作成フロー | `.opencode/skills/git-workflow/SKILL.md` |
-| `debug-workflow` | バグ報告の整理、デバッグ7ステップ、KaTrain固有ポイント | `.opencode/skills/debug-workflow/SKILL.md` |
-| `go-domain` | 棋力G0-G4、解説A-D、KataGo用語、カルテ概念 | `.opencode/skills/go-domain/SKILL.md` |
-| `architecture` | レイヤー構造、core層のKivy隔離、代替パターン | `.opencode/skills/architecture/SKILL.md` |
+| スキル | 用途 |
+|--------|------|
+| `correction-levels` | 修正規模（Lv0-5）の判定と回答フォーマット |
+| `git-workflow` | ブランチ運用、コミット、PR 作成フロー |
+| `debug-workflow` | バグ報告の整理、デバッグ 7 ステップ、KaTrain 固有ポイント |
+| `go-domain` | 棋力 G0-G4、解説 A-D、KataGo 用語、カルテ概念 |
+| `architecture` | レイヤー構造、core 層の Kivy 隔離、代替パターン |
 
-### 3.1 基本動作確認
-- **起動確認**: `python -m katrain`
-- **テスト（全体・逐次）**: `uv run pytest tests`
-- **テスト（全体・並列）**: `uv run pytest tests -n auto`（pytest-xdist）
-- **テスト（時間上位表示）**: `uv run pytest tests --durations=20 --durations-min=0.1`
-- **アーキテクチャテスト**: `uv run pytest tests/test_architecture.py -v`
-- **UTF-8強制**（PowerShell）: `$env:PYTHONUTF8 = "1"`
+### 3.1 基本コマンド
+
+```bash
+# 起動
+uv sync
+uv run python -m katrain
+
+# テスト（全体・逐次）
+uv run pytest tests
+
+# テスト（並列）
+uv run pytest tests -n auto
+
+# テスト（時間上位表示）
+uv run pytest tests --durations=20 --durations-min=0.1
+
+# アーキテクチャテスト
+uv run pytest tests/test_architecture.py -v
+
+# UTF-8 強制（PowerShell）
+$env:PYTHONUTF8 = "1"
+
+# 静的解析
+uv run mypy katrain
+uv run ruff check katrain tests
+uv run ruff format --check katrain tests
+
+# 整形
+uv run ruff format katrain tests
+```
 
 ### 3.2 トークン削減ルール
+
 - **Grep → Read パターン**: まず検索で場所を特定、次に範囲読み込み
 - **段階的アプローチ**: 広範囲→狭範囲の順
-- **目標**: 厳格（96%削減）ではなく、**緩め（70-80%削減）**
-- **前後コンテキスト**: 関数定義は前後30-40行を含めて読む
-- **小さなファイル**: 500行未満は全体読みOK
-
-### 3.3 ロック設計ガイドライン（engine.py）
-| ルール | 説明 |
-|--------|------|
-| `*_unlocked()` サフィックス | 呼び出し元がロックを保持している前提 |
-| ロック内でコールバック/停止操作を呼ばない | 例: `stop_pondering()` はロック外で呼ぶ |
-| 長時間操作はロック外 | I/O, sleep, 外部呼び出しをロック内で行わない |
-
-### 3.4 シェル権限ルール（opencode.jsonc）
-`opencode.jsonc` の bash 権限パターン。**設定変更後は opencode の再起動が必要**（起動時 1 回のみ読み込み）。
-
-**運用方針**: 開発に必要なコマンドはほぼ無確認で通し、システム破壊系のみ明示ブロックする **B案（中庸）**。確認ダイアログ（ask）は 0 件、危険コマンドは明示 deny、未指定コマンドは `*: allow` で通過。
-
-#### 自動許可（allow）
-
-| 区分 | パターン例 |
-|------|----------|
-| Python 開発 | `uv *`, `python*`, `python3*`, `pip*`, `pytest*`, `ruff*`, `mypy*`, `coverage*`, `pre-commit*`, `timeout*` |
-| バージョン管理 | `git *`, `gh *` |
-| Node/JS | `node*`, `npm*`, `npx*`, `pnpm*`, `yarn*`, `bun*`, `deno*` |
-| ビルド/コンテナ | `make*`, `cmake*`, `ninja*`, `meson*`, `gcc*`, `g++*`, `docker*`, `docker-compose*`, `podman*` |
-| 読み取り/加工 | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `wc*`, `tree*`, `diff*`, `awk*`, `sed*`, `rg*`, `xargs*`, `jq*`, `yq*`, `xxd*`, `base64*`, `less*`, `more*`, `tee*` |
-| 診断 | `stat*`, `file*`, `which*`, `pwd*`, `env*`, `uname*`, `whoami*`, `id*`, `date*`, `du*`, `df*` |
-| プロセス/システム | `ps*`, `top*`, `htop*`, `kill*`, `killall*`, `pkill*`, `pidof*`, `clear*`, `sleep*` |
-| ネットワーク | `ssh*`, `scp*`, `rsync*`, `ping*`, `ip*`, `netstat*`, `ss*`, `curl*`, `wget*` |
-| ファイル操作（可逆・破壊的）| `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `chown*`, `ln*`, `rm*`, `tar*`, `unzip*`, `zip*`, `gzip*`, `gunzip*` |
-| Bash ビルトイン | `cd*`, `set*`, `unset*`, `export*`, `source*`, `eval*`, `echo*`, `type*`, `command*`, `hash*`, `true*`, `false*`, `test*` |
-
-#### 確認ダイアログ（ask）
-なし。すべてのコマンドは allow または deny のいずれかに分類される。
-
-#### 拒否（deny）— 危険コマンドの明示ブロック
-
-| カテゴリ | 拒否対象 |
-|---------|---------|
-| 権限昇格 | `sudo *`, `su *`, `doas *` |
-| 電源操作 | `shutdown *`, `reboot *`, `halt *`, `poweroff *`, `init *` |
-| ディスク破壊 | `mkfs*`, `fdisk*`, `parted*`, `dd *` |
-| サービス管理 | `systemctl*`, `service *` |
-| 認証情報 | `passwd*`, `chpasswd*`, `visudo*` |
-| ユーザー管理 | `useradd*`, `userdel*`, `usermod*`, `groupadd*`, `groupdel*`, `groupmod*` |
-| ファイアウォール | `iptables*`, `ip6tables*`, `firewalld*`, `ufw *`, `nft *` |
-| マウント | `mount*`, `umount*` |
-| スケジュール | `crontab*`, `at *` |
-| ルーティング | `route *` |
-
-#### フォールバック
-`"*": "allow"` — 未指定のコマンドは許可。**ただし上記 deny に該当するパターンは遮断される**。
-
-> **環境注意**: 本プロジェクトは Linux 環境前提のため PowerShell 系の許可は含めていません。Windows 環境が必要な場合は `opencode.jsonc` に PowerShell パターンを再追加してください。
-
-**運用注意（B案採用により追加）**:
-- `rm*` を allow 化したため、削除操作は自己責任。重要なファイル削除（特に `rm -rf` 系）は事前に確認推奨
-- `chown*` を allow 化したため、オーナー書き換えは慎重に行う
-- `curl*` / `wget*` を allow 化したため、外部送信は意図しないデータ流出に注意。プロキシ・認証情報の取り扱いに注意
-- `*: allow` 化により未指定のコマンドも基本的に通る。deny に該当しない限り許可される
-- deny リスト該当操作は opencode が完全拒否。どうしても必要な場合はターミナルで直接実行
-- 任意コード実行リスクのある `python*`（`-c` 経由）/ `eval*` / `source*` は allow だが使い方に注意
-- 新しいパターンを追加する場合は `opencode.jsonc` 編集 → opencode 再起動
-- 緊急時は `OPENCODE_DISABLE_PROJECT_CONFIG=1` で設定無効化可能
+- **前後コンテキスト**: 関数定義は前後 30-40 行を含めて読む
+- **小さなファイル**: 500 行未満は全体読み OK
 
 ---
 
-## 4. コード構造（概要）
+## 4. コード構造（要約）
 
 ```
 katrain/
 ├── __main__.py            ← アプリ起動、KaTrainGui
-├── common/                ← 共有定数（Kivy非依存）
-│   ├── platform.py        ← get_platform()
-│   ├── config_store.py    ← JsonFileConfigStore
-│   └── lexicon/           ← 囲碁用語辞書
-├── core/                  ← コアロジック（Kivy非依存）
-│   ├── game.py, game_node.py, engine.py
-│   ├── lang.py
-│   ├── analysis/          ← 解析基盤（models/logic/presentation/meaning_tags/）
-│   ├── batch/             ← バッチ処理
-│   ├── curator/           ← 棋譜適合度スコアリング
-│   └── state/             ← StateNotifier（イベント基盤）
+├── common/                ← 共有定数（Kivy 非依存）
+│   └── rank.py            ← Rank dataclass
+├── core/                  ← コアロジック（Kivy 非依存）
+│   ├── game/              ← Game クラス
+│   ├── analysis/          ← 解析基盤
+│   ├── beginner/          ← Beginner Hints
+│   ├── coach/             ← LLM Coach
+│   ├── study/             ← 棋譜並べ
+│   ├── reports/           ← Karte / Summary
+│   └── batch/             ← バッチ処理
 ├── gui/                   ← Kivy GUI
-│   ├── controlspanel.py, badukpan.py, lang_bridge.py
-│   ├── managers/          ← 各種Manager（active_review, summary, quiz, ...）
-│   ├── widgets/
+│   ├── commands/          ← DISPATCH_TABLE（35 エントリ）
+│   ├── popups/            ← ポップアップダイアログ
+│   ├── managers/          ← 19 Manager クラス
 │   └── features/          ← 機能モジュール
-├── gui.kv                 ← Kivy レイアウト
-└── i18n/                  ← 翻訳ファイル
+└── i18n/                  ← 翻訳ファイル（jp / en）
 ```
 
-### データフロー
-```
-KataGo(JSON) → KataGoEngine → GameNode.set_analysis()
-           → KaTrainGui.update_state() → UI更新
-```
-
-詳細は `docs/02-code-structure.md` を参照。
+詳細: [`docs/architecture.md`](docs/architecture.md)
 
 ---
 
-## 5. 囲碁ドメイン（要約）
+## 5. ドキュメント構成
 
-- **棋力レベル**: G0（〜10級）〜 G4（五段相当、ユーザー本人）
-- **解説レベル**: A（方向性）〜 D（KataGo並み、非現実的）
-- **デフォルト**: G1-G2 / 解説=A + 薄いB
-- **カルテ**: 重要局面・弱点仮説・アンカーで構成
-
-詳細: `.opencode/skills/go-domain/SKILL.md`
-
----
-
-## 6. 技術選定の判断基準（4軸）
-
-| 軸 | A | B | C |
-|----|---|---|---|
-| 対象範囲 | 局所機能 | 画面単位 | アプリ全体 |
-| 継続性 | 実験/一時的 | 中期（数ヶ月） | 長期（標準機能） |
-| 精度要求 | ざっくり | ある程度信頼 | かなり正確 |
-| 自動化 | 手動中心 | 半自動 | ほぼ全自動 |
-
-迷ったら **B案（標準構成）** を採用。
-
----
-
-## 7. やらないこと（non-goals）
-
-- 外部APIへの自動送信（LLM連携は手動添付）
-- フル機能SGFエディタ化
-- 大規模な棋譜管理DB
-- 対局支援（チート用途）
-- 「最善手当てクイズ」を目的化した訓練
-
----
-
-## 8. 出力時の注意
-
-### 8.1 回答フォーマット（推奨）
 ```
-1. 今回やること（1-2文）
+README.md                            ← 入口・クイックスタート・fork 機能
+docs/
+├── usage-guide.md                   ← 操作方法（利用者向け）
+├── architecture.md                  ← コード構造・データフロー（開発者向け）
+├── karte-schema.md                  ← Karte / Summary JSON スキーマ正本
+├── i18n-workflow.md                 ← 翻訳手順
+├── kivy-testing.md                  ← headless Kivy テスト
+└── resources/
+    └── go_lexicon_master_last.yaml  ← 囲碁用語辞書
+```
+
+---
+
+## 6. 出力時の注意
+
+### 6.1 回答フォーマット（推奨）
+
+```
+1. 今回やること（1-2 文）
 2. 修正レベル（Lv0-5）
 3. 変更ファイル
 4. 手順（コマンド付き）
 5. 動作確認ポイント
 ```
 
-### 8.2 記号の使い分け
+### 6.2 記号の使い分け
+
 - 囲碁解説レベル: `解説=A〜D`
-- 技術選定4軸: `軸(対象範囲)=A〜C`
+- 技術選定 4 軸: `軸(対象範囲)=A〜C`
 - 採用案: `案=A案/B案/C案`
 
-### 8.3 スキル読み込みの判断
+### 6.3 スキル読み込みの判断
+
 - 修正前に `correction-levels` スキルでレベル判定
-- レベル3以上の作業では `architecture` スキルを参照
+- レベル 3 以上の作業では `architecture` スキルを参照
 - 囲碁関連機能では `go-domain` スキルを参照
 - バグ修正では `debug-workflow` スキルを参照
-- コミット・PR時は `git-workflow` スキルを参照
+- コミット・PR 時は `git-workflow` スキルを参照
 
 ---
 
-## 9. ドキュメント配置
+## 7. やらないこと（non-goals）
 
-```
-docs/
-├── 00-purpose-and-scope.md
-├── 01-roadmap.md
-├── 02-code-structure.md
-├── 03-llm-validation.md
-├── usage-guide.md
-├── i18n-workflow.md
-├── examples/
-├── resources/
-├── ideas/
-├── future/
-└── archive/                ← 完了済みアーカイブ
-
-.opencode/
-├── skills/                 ← on-demand 細目ルール
-│   ├── correction-levels/SKILL.md
-│   ├── git-workflow/SKILL.md
-│   ├── debug-workflow/SKILL.md
-│   ├── go-domain/SKILL.md
-│   └── architecture/SKILL.md
-└── (agents/, commands/)    ← 必要に応じて追加
-```
+- 外部 API への自動送信（LLM 連携は手動貼付）
+- フル機能 SGF エディタ化
+- 大規模な棋譜管理 DB
+- 対局支援（チート用途）
+- 「最善手当てクイズ」を目的化した訓練
 
 ---
 
-## 10. 変更履歴
+## 8. シェル権限ルール（opencode.jsonc）
 
-> 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
+`opencode.jsonc` の bash 権限パターン。**設定変更後は opencode の再起動が必要**（起動時 1 回のみ読み込み）。
 
-- 2026-07-16: **Phase 230 — MyKatrain UI/UX 整理**（Lv3、23 ファイル + 約 -726 行 / 新規 1 ファイル、全 5,572 件テスト合格継続）
-  - **問題**: メニューに使用頻度の低い項目が混在、Leela 検証用の孤立 UI、棋力入力欄の重複、棋譜並べタブの説明途切れ、診断設定が独立メニュー
-  - **解決策**: メニュー 4 項目への集約、Leela 残滓削除、棋力入力統合、可変高レイアウト修正、診断タブ統合、低頻度機能の完全削除
-  - **230-B**: Leela 残滓削除 — `_build_disable_katago_section` 関数 + `engine/disabled` 設定更新 + `engine-compare:*` i18n 35 キー削除
-  - **230-C**: 棋譜並べタブ途切れ修正 — `_build_display_checkbox` の固定 `dp(36)` 高さ → `text_size=(width, None)` + `texture_size[1]` への row.height バインドで wrap 対応、help セクションも可変化
-  - **230-D**: 診断タブ新設 — `settings_popup_tabs/diagnostics_tab.py` 新規、`diagnostics_popup.py` のロジックを再利用、MyKatrain メニュー「診断情報」を削除してタブ統合
-  - **230-E**: 棋力入力統合 — 出力設定の `default_user_rank` 廃止、解析タブの `player_rank` に統合 + 自動マイグレーション（`migrate_default_user_rank`）+ 5 unit tests
-  - **230-A**: MyKatrain メニュー整理 — 8 項目 → 4 項目（「その他」サブメニュー化 → 後に完全削除）、アイコン重複解消、`chat.png` 欠損修正（`Teaching-Settings.png` に振替）
-  - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
-  - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
-- 2026-07-21: **Phase 281-jp-font-tofu-fix — 日本語フォント 豆腐修正 包括対策**（Lv3、4 ファイル + 2 テストファイル + 15 unit tests、5,862 件テスト合格）
-  - **問題**: KataGo 設定 popup / 新規対局 popup の `MDTextField` 内部 hint_text が全て豆腐（`□□□`）で表示。Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → 豆腐化
-  - **解決策**: (1) `factory.py` に `_sync_font_to_hint_labels` ヘルパー新設（Label/Button/Popup ラッパーで自動呼出）、(2) `_kivymd_kv_loader.py` の TextfieldLabel/MDTextField ルールで Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更、(3) `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加、(4) `__main__.py` の `resource_find()` None 戻り値検出で警告ログ追加
-  - **再発防止**: 15 件の unit tests（KV ルール静的解析 + AST レベル + MagicMock ベース動作確認）で「Roboto フォールバック復活」「ヘルパー削除」「on_kv_post 削除」を CI で自動検出
-  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP（Phase 280 baseline 5805 → 57 件増）**
-- 2026-07-21: **Phase 283-side-panel-fonts-quick-buttons — サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix**（Lv2、5 ファイル変更 / 2 ファイル新規 / +約 350 行 / +15 unit tests、全 6,183 件テスト合格）
-  - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
-  - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で invisible（背景の BackgroundMixin 枠だけ表示、内部テキストは空白）
-  - **真因（2 段バグ）**: (a) Phase 277 で `SizedButton` の基底が `BaseButton`（AnchorLayout 継承）になり、デフォルト padding `[dp(16), dp(8), dp(16), dp(8)]` が `<QuickInputButton>` の 36×36 sp Label を `4×20 px` に潰した、(b) KV 内の `MDBoxLayout(adaptive_size=True)` が `size_hint=(1,1)` の子を `minimum_size` 計算に含めないため、各ボタンを `0×0` に潰していた
-  - **解決策**: (1) `panels.kv` の `min(sp(N), …)` キャップ 3 箇所を解除して upstream v1.18.1 と完全一致、(2) `widgets.kv` `<SizedButton>:` に `padding: 0, 0, 0, 0` を追加して (a) を修正、(3) `popup_widgets.kv` `<QuickInputButton>` に `size_hint: None, None` を追加して (b) を修正
-  - **初回提出の見落とし**: PR #450 初回では (1)+(2) のみ。14 件テスト全 pass していたが MDBoxLayout の size_hint 計算ルール（`size_hint_*=None` の子のみ minimum_size 算入）を見落としていた。ユーザー再報告を受けてヘッドレス Kivy で popup を完全再現し二次バグを修正
-  - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
-  - **再発防止**: 15 件の unit tests（KV 静的解析：フォント式 + Phase 283 コメント + 9 QuickInputButton テキスト + 16dp padding 再注入禁止 + Python/KV いずれかで padding リセット + QuickInputButton に size_hint: None, None）で「キャップ復活」「padding 削除」「サイズヒント復活」を CI で自動検出
-  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6183 PASS + 3 SKIP（Phase 282 baseline 6118 → +65 件、うち +15 新規 + 既存 50 件経由）**
-- 2026-07-21: **Phase 284-pyinstaller-legacy-widgets — PyInstaller frozen binary の MyKatrain 設定 popup / Batch analyze popup ModuleNotFoundError fix**（Lv1、1 ファイル変更 / 1 ファイル新規 / +16 行 / +8 unit tests、全 6,191 件テスト合格）
-  - **問題**: Phase 283 マージ後、ユーザーが myKatrain 設定 / batch analyze popup を開くと `ModuleNotFoundError: No module named 'kivy.uix.tabbedpanel'` / `kivy.uix.checkbox` が発生
-  - **原因**: 上記 2 モジュールは Clock-scheduled lazy import 経由でしか参照されないため、PyInstaller の static analyser がシンボルを見つけられず frozen bundle から脱落。Kivy 2.3.1 には標準で存在するが frozen binary にだけ欠落
-  - **解決策**: `spec/KaTrain.spec` の hiddenimports に `kivy.uix.tabbedpanel` / `kivy.uix.checkbox` を明示追加（Phase 277 の `lang_bridge` と同パターン）
-  - **ユーザー側の追加対応（環境依存）**: 報告のあったエラーは frozen binary とは別原因の可能性あり（`.venv/Lib/site-packages/kivy/uix/` 自体が欠落）。`uv pip install --force-reinstall kivy` で修復
-  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6191 PASS + 3 SKIP（Phase 283 baseline 6183 → +8 件新規）**
-- 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
-  - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
-  - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元
-  - **効果**: 起動経路復活 + 5,612 → 5,615 件テスト合格（Kivy headless 起因の 6 件は元　 fail）
-- 2026-07-17: **Phase 241 — サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
-  - **241-A**: weakness pattern から「good」除外 — `json_type.py` に `_NON_WEAKNESS_CATEGORIES` 定数新設、`extract_summary_weakness_patterns` の Shape B 経路でフィルタ、per-player mistake distribution は full のまま温存
-  - **241-B**: popup の unknown パス早期 return — `llm-coach:unknown-path` i18n キー追加（jp/en）、`_populate_rank_and_perspective` / `on_generate_and_copy` / `on_validate` 全 3 経路に guard 追加
-  - **241-C**: loss_progression フォールバック — `summary_prompt_builder.py` に `_format_loss_progression_block` 新設、dict / legacy flat list / 空 bucket list 3 形式対応、テンプレートに「Loss Progression (per game-type)」セクション追加
-  - **241-D**: `_summary_index_to_internal` sentinel 化 — `_SUMMARY_BIRDSEYE_SENTINEL` 文字列定数新設、bird's-eye（index=0）と out-of-range（バグ状態）を `None` 共通返却から分離
-  - **241-E**: summary_perspective_index race condition 対策 — `_summary_perspective_user_set` フラグでユーザ手動選択を保護、`on_path_changed` でリセット
-  - **241-F**: `detect_player_color_for_user` 型キャスト整理 — `_SgfInfoLike` + `cast(SgfPlayerInfo, pseudo)` 廃止、`SgfPlayerInfo` dataclass を直接構築（実行時型チェック有効化）
-  - **241-G**: `find_latest_karte` 関数完全削除 — Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用、legacy 関数と関連テスト 4 件削除、Phase 239 表記を Phase 241-G に統一
-  - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加 — `KIVY_NO_ARGS` / `KIVY_NO_WINDOW` / `KIVY_HEADLESS` / `SDL_VIDEODRIVER=dummy` 等を conftest ロード時に設定（CI 環境での popup テスト実行準備）
-  - **241-I**: AGENTS.md / 01-roadmap.md 更新 — Phase 241 マイルストーン追記、Phase 239 表記を Phase 241-G に統一
-- 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
-  - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
-  - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
-- 2026-07-18: **Phase 272-E — LLM Coach popup 巨大メソッド分割 (Phase 272-D deferred)**（Lv2、1 ファイル変更、1271 件テスト合格）
-  - **問題**: Phase 272-D で残課題としていた `LLMCoachPopupContent` の 2 巨大メソッド（`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行）。挙動変更リスク回避のため見送りとしていた
-  - **解決策**: 各メソッドを orchestrator 化（48行 / 47行）+ 9 ヘルパーに分割。**純粋メソッド抽出のみ**で API/挙動すべて不変
-    - karrte 側: `_schedule_retry_if_under_limit` (9行) / `_read_player_settings` (22行) / `_dispatch_to_path_handler` (50行) / `_populate_karte_player_info` (33行) / `_apply_karte_rank_fallback` (26行) / `_detect_and_apply_player_color` (26行) / `_update_karte_status_summary` (39行)
-    - summary 側: `_detect_summary_player_info` (20行) / `_build_summary_player_pairs` (14行) / `_update_summary_spinner` (23行) / `_resolve_summary_spinner_index` (22行) / `_update_perspective_value_from_summary_index` (16行) / `_apply_summary_rank_fallback` (29行) / `_update_summary_status` (22行) / `_read_summary_games_count` (10行)
-  - **保持**: orchestrator メソッドのシグネチャ・戻り値・副作用すべて不変、既存 Kivy-free helpers (`resolve_rank_fallback_chain` 等) 温存
-  - **テスト結果**: 1271 件全 pass (前回 Phase 272 と同一ベースライン)、ruff check + format 両方クリーン
-- 2026-07-18: **Phase 272 — プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
-  - **272-A**: `print()` 残置 45 件の AST 調査 → 全件正当な用途（debug gate / fallback / CLI / docstring のサンプル）のため、**変更なし**（誤検知の典型例として記録）
-  - **272-B**: i18n 漏れ 7 件の解消 — 4 件新規追加（"Copied!" / "Copy Info" / "Summary exported" / "Mistake played (sound disabled)"）、3 件既存確認（"Failed to save karte" / "Bug report saved to" / "Failed to generate bug report"）。polib 経由の追加 + .mo 再コンパイルを `scripts/update_i18n_phase272b.py` で自動化
-  - **272-C**: `KaTrainGui.__init__` (228行) を 3 ヘルパーに分割 — `_init_managers_core` (104行) / `_init_managers_state` (50行) / `_init_managers_loops` (41行)。`__init__` 本体は 61行 (73% 削減)。`self.ctx = ...` 代入は Phase 249-hotfix の回帰テスト (test_config_imports.py::TestAppContextAssignedInInit) で本体にあることが要求されるため、本体末尾に残置
-  - **272-D**: `LLMCoachPopupContent` (28メソッド) のメソッドグルーピング — クラス docstring に **8 グループ** (Lifecycle / Karte path bootstrap / Rank & perspective / Summary perspective / User actions / Response handling / Validate actions / Widget helpers) を明示。既存 3 セクション名整理 (Phase 227-D → Karte path detection、Button handlers → User actions、Internal helpers → Widget helpers)。2 つの巨大メソッド (`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行) の分割は挙動変更リスク回避のため**見送り**、今後の Phase で着手
-  - **テスト結果**: 1,271 件合格 (i18n 18 / architecture 43 / config_imports 16 / coach 全 19 種 1,013 / llm_coach_popup_layout 22 / common_rank 98 / karte_export 25 / diagnostics 28 / internal_params 27 / その他)。`test_main_smoke` / `test_p3_stability` / `test_llm_coach_popup` / `test_phase106_subscribe` の 130 件は Kivy headless 起因の既存 fail (本 Phase と無関係、ベースライン確認済)
-  - **保持**: `LLMCoachPopupContent` の API シグネチャ・フィールド名・DISPATCH_TABLE すべて不変、`KaTrainGui` の公開メソッド・属性もすべて不変
-- 2026-07-18: **Phase 271-A — 設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
-  - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
-  - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除。orchestrator (settings_popup.py) はこの 4 キーを参照していなかったため安全
-  - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
-  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries → 現 894 entries）
-    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
-  - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
-  - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
-  - **影響確認**: `kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
-- 2026-07-18: **Phase 269 — AYAKA 完全削除 + 弱点抽出整合性修正 + voice 統一**（Lv3、11 ファイル変更 / 28 新規 unit tests、coach 関連 460+ 件テスト合格）
-  - **C 案**: Shape B 弱点パターン `phase="all"` を `phase=`(全phase)``` に表示変更 + SYSTEM_INSTRUCTION に `pct` 併記指示。LLM Coach 検証で出ていた `phase_label_out_of_set` MEDIUM 警告を恒久解消
-  - **voice 統一**: BEGINNER/INTERMEDIATE/DAN/ADVANCED → TOMOKO 統一、EXPERT → TOMOKO_STRICT。「5k だと関西弁キャラ」問題解消
-  - **AYAKA 完全削除**: enum 値 / Kansai データ / 関西弁変換関数 / `ToneConfig.kansai_dictionary` / tone 整合性チェック (Karte validator + summary validator) を全削除
-  - **動機**: ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」
-  - **250-A**: `panels.kv` の CollapsablePanel を `options: ['score','winrate','important']` に拡張（旧 ToggleButton `important_line_toggle` 削除）
-  - **250-B**: `GameNavigator._compute_important_moves(max_moves, color_filter)` 追加 + `get_important_move_numbers` / `get_next/prev_important_node` / `jump_to_next/prev_important_move` の 6 メソッドを `color_filter` 対応に拡張 + facade 6 委譲メソッド追加
-  - **250-C**: `panels.kv` のボタン行を 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割 + 4 DISPATCH キー (`prev/next_important_black/white`) + 4 内部メソッド追加
-  - **250-D**: `graph.py` から `mistake_points` プロパティと `classify_mistake` import 削除、Canvas 描画も削除（`MistakeCategory` enum は Karte `weaknesses` 分類で残置）
-  - **250-E**: 重要局面リスト popup 完全廃止（`gui/popups/important_moves_popup.py` / `gui/kv/important_moves_popup.kv` / `core/analysis/important_moves_popup.py` 削除）+ menu.kv 項目削除 + DISPATCH_TABLE 整理 + i18n 9 キー削除
-  - **250-F**: 棋譜並べ summary の `on_show_important_moves` を no-op 化（back-compat 用の stub として残置）
-  - **250-G**: `tests/test_important_moves_popup.py` (19件) / `test_important_move_navigation.py` (20件) / `test_phase258_critical_popup_reason.py` (5件推定) 削除 + `test_color_filter_navigation.py` 新規 (11件、color_filter 全パス)
-  - **250-H**: AGENTS.md / 01-roadmap.md 更新 + `docs/archive/specs-implemented/phase250-important-moves-refactor.md` 新規作成
-  - **保持**: `MistakeCategory` enum / `select_critical_moves` / Karte JSON `critical_3` / `critical_3_max_moves` 設定（LLM Coach 用）/ 既存 `prev_important` / `next_important` DISPATCH キー（後方互換）
-- 2026-07-18: **Phase 270 — 複数カルテ集約 + サマリプロンプト v3.5 拡張**（Lv2、4 ファイル変更 / 1 ファイル新規 / +52 unit tests、合計 5,667 件テスト合格）
-  - **問題**: ユーザー報告「単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる。LLM に投げる前にこれらの情報を集約サマリにも乗せたい」
-  - **解決策**: 6 つの集約関数を `katrain/core/coach/karte_aggregator.py` に新設 + `SummaryPromptConfig.kartes` でオプトイン的に組み込み + Schema 3.5 への条件付きバンプ。既存 3.4 経路は完全後方互換
-  - **6 集約関数**: `aggregate_reason_tags_by_color` / `aggregate_area_difficulty` / `detect_loss_spike_windows` / `group_representative_moves_by_tag` / `aggregate_data_quality` / `build_meaning_tag_label_map`
-  - **設計判断**: 2-bucket loss_progression では 2.0× multiplier が物理的に発火しない（数学的現実、テストは 3+ bucket 入力で対応） / `confidence_level` 同点時は常に "medium" を採用（"high"/"low" の信号過大を避ける）
-  - **後方互換**: `SummaryPromptConfig()` 既存呼び出しは `kartes=None` のまま無改変で動作、Schema 3.4 / 既存 body 維持
-  - **Deferred (将来)**: GUI 統合 (popup の複数カルテ選択 UI) / CLI `aggregate` サブコマンド / humanize フォーマット
-- 2026-07-17: **Phase 246 — 候補手フィルター 包括改善**（Lv3、18 ファイル / +1,625 行 / -38 行、PR #404 マージ済み、CI 全 green）
-  - **問題**: 候補手フィルター (PV filter) について監査で見つかった **20 件の課題**を一括改修
-  - **246-A**: 設定 UI 可視化 — `get_effective_pv_filter_info` / `PVFilterDisplayInfo` 追加、AUTO モード時の live ステータス表示、5 ラジオ size_hint_x 等幅化、`.lower().strip()` 拡張、jp/en i18n 3 キー追加 (status_off/auto/explicit)、13 unit tests
-  - **246-B**: 盤面 UX — `draw_perspective_watermark` 追加 (次手 = B/W をキャンバス描画)、解析タブに marker legend 凡例、kifunarabe 中 disable note、jp/en i18n 2 キー追加 (board:perspective / pv_filter_marker_legend)、6 unit tests
-  - **246-C**: 堅牢性強化 — `None` / 欠損値の防御 (H5: TypeError 回避)、`clip_pv_for_animation` 30 手クリップ (M5、Kivy 非依存でテスト可能に)、二次ソートキー (order, pointsLost, -visits) で重複 order を決定論化 (M7)、17 unit tests
-  - **246-D**: ロジック拡張 — 新プリセット `expert` 追加 (M2: pro 用 max_candidates=3, max_points_lost=0.5, max_pv_length=4)、`board_size` 連動 linear scaling (M1: 9路 → 0.47x)、`PVFilterConfig.loss_metric` 切替 (L1: pointsLost / relativePointsLost)、AST ベースの kifunarabe bypass コントラクトテスト (H4)、TODO コメントで composite sort (M3) 残置、18 unit tests
-  - **246-E**: ドキュメント + API 統一 — 統合仕様書 `docs/archive/specs-implemented/phase246-candidate-filter-improvements.md` 新規 (L2)、`docs/usage-guide.md` 7.5 節追加 (L3: 4 段階テーブル + FAQ)、`config.json` の `general.pv_filter_level: auto` 明記 (L4)、`get_pv_filter_config` に `player_rank` 直渡し対応 (L7)、4 unit tests
-  - **Deferred (別フェーズで着手)**: L5 (キャッシュ)、L6 (live preview)、M3 (composite sort)、H3 (position-aware preview)
-  - **CI 修正ラウンド 3 回**: typecheck (Phase 246-A フィールド追加) → lint I001 (import 順序) → ruff format (2 ファイル整形)
-  - **マージ後 main 確認**: 111 unit tests pass
-- 2026-07-17: **Phase 247 — Deferred 候補手フィルター 4 件 着手**（Lv3、PR #405 マージ済み、CI 全 green）
-  - **問題**: Phase 246 で deferred していた L5 / H3 / L6 / M3 の 4 課題
-  - **247-A (L5)**: `resolve_pv_filter_config_cached` を `@functools.lru_cache(maxsize=32)` で実装。`prepare_hint_moves` 内のホットパス最適化、10 unit tests
-  - **247-B (H3)**: `PVFilterPreview` frozen dataclass + `compute_pv_filter_preview(node, config, in_kifu)` ヘルパー追加。`prepare_hint_moves` が `widget.last_pv_filter_preview` に cache。設定 popup の status label 直下に preview label を追加して N → M をライブ表示、10 unit tests
-  - **247-C (L6)**: `panels.kv` に `pv_filter_preview` Label 追加 (status ボックスの直下)。`ControlsPanel.update_evaluation` で毎フレーム更新。H3 と同じ cache を読み取ってコントロールパネル幅に収まる compact 表示、i18n 2 キー追加
-- 2026-07-17: **Phase 248 — 重要局面機能 包括改善**（Lv2-3、6 PR マージ済、累計 11 サブフェーズ / +約 2,500 行 / +約 200 テスト、CI 全 green）
-  - **動機**: 重要局面 (critical_moves) / Beginner Hints / Karte 重要局面抽出機能の監査で 30 件の課題発見 (docs/ideas/phase248-important-moves-audit.md 参照)
-  - **248-α (Lv2, PR #406)**: 内部品質改善 5 項目
-    - A1: `pick_important_moves` 単体テスト 17 件追加 (logic_importance.py カバレッジ 10% → 88%)
-    - A2: classifier.py priority 5-11 補完テスト 12 件追加 (カバレッジ 34% → 98%)
-    - B1: `important_moves_level` 設定 UI (easy/normal/strict ラジオ) 追加
-    - F1: `critical_3_section_for` の KeyError を INFO ログに変更
-    - G2: `compute_complexity_filter_stats()` 新設
-  - **248-β2 (PR #407)**: `critical_3` 件数設定 (1-10 スピナー) 追加
-  - **248-β C4/C5/D4 (PR #408)**: Beginner Hint priority chain 改修 + MISTAKE_GOOD 緩和 + 重みコメント
-    - C4: `compute_beginner_hint(aggregate=True)` 追加 (全ディテクタ実行 → 最高 severity)
-    - C5: MISTAKE_GOOD visits gate 300 → 200 緩和
-    - D4: `MEANING_TAG_WEIGHTS` に詳細コメント追加
-  - **248-β3 (PR #409)**: 内部パラメータ JSON 露出 (`advanced_params`)
-    - 新規 `internal_params.py` + `InternalParams` frozen dataclass + 寛容な resolver
-    - 6 パラメータ露出: threshold_score_stdev_chaos / complexity_discount_factor / diversity_penalty_factor / min_loss_display / beginner_hint_min_visits / katago_uncertain_min_visits
-    - 27 件テスト (default 6 / happy 7 / failure 9 / type 3)
-    - **注**: scoring path への配線は Phase γ-D1 で実施予定
-  - **248-γ1 (PR #411)**: 9路/13路対応 (board_size 連動 endgame 閾値)
-    - `board_size_adjusted_thresholds(board_size)` ヘルパー追加
-    - 9路 → early=38, endgame=71 / 13路 → early=55, endgame=103 / 19路 → early=80, endgame=150
-    - `is_endgame` / `ClassificationContext` に board_size 追加
-    - 17 件テスト
-  - **248-γ3 (PR #410)**: docs/usage-guide.md 7.6 節追加 (重要局面機能全体像 + 5 経路 + advanced_params + FAQ, 140 行)
-  - **248-γ D1/D2/E1 (PR #412)**: 設計ドキュメント + D1 スケルトン
-    - `docs/archive/specs-planned/phase248-important-moves-popup.md` (約 200 行)
-    - `katrain/core/analysis/important_moves_popup.py` (Kivy-free core) + GUI re-export shim
-    - 8 件テスト
-  - **248-γ E1 (PR #413)**: Curator profile → Karte weak-tag boost (chain 配線)
-    - `compute_importance_for_moves` / `pick_important_moves` に `user_weak_tags: dict[str, int] | None` と `weak_tag_boost: float` 追加
-    - boost 公式 `1 + weak_tag_boost * log(N + 1)`、reliability_scale の後に適用 (低 visits 救済しない)
-    - chain 全体に `user_weak_tags` を伝播: `Game.build_karte_json_string` → `builder` → `_impl` → `build_karte_json` → `get_important_move_evals` → `pick_important_moves`
-    - `do_export_karte_ui` で `_resolve_curator_profile_path` + `load_curator_profile` 自動ロード
-    - `tests/test_weak_tag_boost.py` (16件) + `tests/test_curator_integration.py` (25件) = 41件新規ユニットテスト
-    - 全 5756 件 pass (Windows Kivy headless 失敗除く)
-  - **248-γ D1 (PR #414)**: 重要局面リスト popup widget (Kivy layer)
-    - `katrain/gui/popups/important_moves_popup.py` (297行) — `ImportantMovesPopupContent` + `open_important_moves_popup`
-    - `katrain/gui/kv/important_moves_popup.kv` 新規 (170行) — スクロール可能リスト + jump/copy/close ボタン
-    - スクロール可能リスト (黒 → 白、critical_score desc) + 複雑局面で割引注記 `(複雑)`
-    - jump: `game.set_current_node()` 呼び出し + popup 自動 close
-    - copy: Markdown summary をクリップボードへ
-    - メニュー: Phase 230 の 4 項目 → 5 項目に増加 (`export-karte` と `llm-coach` の間に配置)
-    - i18n 9 キー追加 (title/subtitle/count/jump/copy/close/empty/complexity/menu-label)
-    - `tests/test_important_moves_popup.py` (19件) — Kivy widget ソース検査 (AST ベース、importlib を経由せず) + DISPATCH_TABLE 検証 + menu.kv 検証 + KV ファイル存在 + i18n キー存在 (jp/en)
-    - 全 124 件 (関連テスト) pass
-  - **248-γ D2 (PR #415)**: prev/next 重要局面 ヘルパー追加 (critical_3 ベース)
-    - `katrain/core/analysis/important_moves_popup.py` に `find_prev_important_move` / `find_next_important_move` 追加
-    - 両方とも `select_critical_moves` を 2 回 (B/W) 呼び出し、move_number を deduplication して `current_node.depth` と比較
-    - 端では `None` を返し、既存 UI (panels.kv の「前の重要局面」「次の重要局面」ボタン) はそのまま維持
-    - `tests/test_important_move_navigation.py` (20件) — None game / no current node / no candidates / largest-before-depth / 対称性 / 異常系 / DISPATCH_TABLE / i18n
-    - 全 144 件 (関連テスト) pass
-  - **累計**: 6 PR マージ / 11 サブフェーズ / 約 2,500 行追加 / 5,800+ テスト
-  - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
-  - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク
-  - **累計**: 4 コミット / +860 行、28 新規 unit tests、全 140 件 pass
-- 2026-07-17: **Phase 242 — LLM Coach 品質改善 統合改修**（Lv3、11 ファイル新規/修正 + 約 +350 行 / -120 行、計 926 件テスト合格）
-  - **問題**: `docs/ideas/phase242-llm-coach-audit.md` の調査で LLM Coach 機能に 40 件以上の問題・改善余地を発見。優先度高の 5 件を統合改修
-  - **242-A**: Kansai 辞書 3 系統同期 (`_KANSAI_DICTIONARY` ↔ `_KANSAI_NORMALISATION_PAIRS` ↔ `_AYAKA_MARKERS`) — 〜-prefixed パターンを NORM に展開、`ほんまに` を markers に追加、6 ファイル + 6 unit tests
-  - **242-B**: popup UI 改善 — `_PERSPECTIVE_AUTO_INTERNAL` 定数化（`""` 暗黙 sentinel 撤廃）、検証 truncate 時の status_label 警告、`response_input` 100k 文字制限、type_label に schema_version 表示、3 ファイル + 6 unit tests
-  - **242-C**: 9 LLM-required 症状への Lexicon 紐付け — `docs/resources/go_lexicon_master_last.yaml` に 5 新規エントリ (time_management / ai_overload / post_game_review / tilt_recovery / mental_state) 追加、symptom_index.py で 9 症状の `related_lexicon_ids` 設定、3 ファイル + 8 unit tests
-  - **242-D**: 検証レンダラ統合 — `core/coach/llm_report_renderer.py` 新設、`gui/features/llm_coach.py` の重複 2 関数を薄いラッパーに置換、3 ファイル + 14 unit tests
-  - **242-E**: popup Pure ロジック抽出 — `core/coach/popup_logic.py` 新設、spinner/perspective/type_label/truncation/paste の判定ロジックを Kivy 非依存に移植、popup は薄いラッパーに、4 ファイル + 58 unit tests (headless CI で全合格)
-- 2026-07-15: **Phase 229 — 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
-  - **問題**: myKatrain には解析側 `skill_preset` と LLM 側 `CoachMode` の 2 つの棋力管理体系があり、同じ rank 文字列を二重管理していた
-  - **解決策**: `general/player_rank` を 1 つの入力として集約、両システムへ自動反映
-  - **229-A**: `katrain/common/rank.py` 新設（`Rank` dataclass + parse logic + `RANK_TO_PRESET_DEFAULT` テーブル）+ `master_db.py` 互換シム化 + 94 unit tests
-  - **229-B**: `resolve_skill_preset()` ヘルパー新設、GUI 6 callsite 置換（board_analysis / karte_export / batch_core / summary_formatter / summary_stats / active_review_controller）+ 39 tests
-  - **229-C**: 設定 UI から skill_preset ラジオグループを撤去、rank TextInput + 自動推定ラベル表示に置換 + i18n 4 キー追加 + 4 tests
-  - **229-D**: LLM Coach の fallback chain に `general/player_rank` 追加（Karte/SGF → player_rank → default_user_rank の順）+ `resolve_rank_fallback_chain` ヘルパー + 17 tests
-  - **229-E**: ドキュメント整備（`docs/archive/specs-implemented/phase229-rank-preset-unification.md`）
-  - **後方互換**: 既存 `skill_preset` config はそのまま動作、`auto` 文字列も config レベルで読み込み継続（UI からのみ消滅）
-- 2026-07-15: **fix: settings_popup.py の `MagicMock` NameError を修正**
-  - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
-  - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
-  - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
-- 2026-07-15: **Phase 228-D — LLM コーチ複数局対応 - 実シェーマ適応 (real_shape calibration fixtures + E2E 統合テスト + ドキュメント)**（Lv2、3 ファイル + 26 unit tests、全 5418 件テスト合格）
-  - **real_shape calibration fixtures**: `real_summary_blunder_focused` / `real_summary_good_player` / `real_summary_multi_player` の 3 フィクスチャ追加。実 `summary_json_export.py` の出力シェーマ (`players.<name>.mistakes` + `players.<name>.phases`) を使用。合計 15 fixture (8 karte + 4 Shape A summary + 3 Shape B summary)。
-  - **E2E 統合テスト**: `TestRealShapeFixturePatterns` / `TestRealShapeFixturePromptRendering` / `TestRealShapeFixtureValidatorE2E` の 3 テストクラス追加。build → render → validate の全フローを実シェーマで検証 (Player Mistake Distribution / Player Phase Loss Distribution が populated される、validator が standard 4 カテゴリを受け入れる、hallucinated category は依然フラグ)。
-  - **ドキュメント**: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md` 新規作成（サブフェーズ索引 + Shape A/B 比較 + アーキテクチャ図 + E2E 動作例 + テスト数推移）。
-  - **AGENTS.md / 01-roadmap.md / specs README 更新**: Phase 228 マイルストーンを §1.3 に追加、Phase 228 をチェックリストに記録。
-- 2026-07-15: **Phase 228-C — LLM コーチ複数局対応 - 実シェーマ適応 (validator を実シェーマに対応)**（Lv3、2 ファイル + 19 unit tests、全 5212 件テスト合格）
-  - **問題**: Phase 228-B で prompt body が実 JSON シェーマを描画するようになったが、validator は Shape A (top-level weaknesses) のみを想定していた。LLM が「blunder」「mistake」等の標準カテゴリを書くと誤って HIGH 警告が出ていた。
-  - **修正**: `summary_validator.py` の `_summary_available_categories` / `_summary_available_phases` を Shape B 対応に拡張。`_STANDARD_MISTAKE_CATEGORIES` (good/inaccuracy/mistake/blunder の 4 つ) と `_STANDARD_PHASE_LABELS` (opening/middle/endgame の 3 つ) を新モジュールの定数として定義。Shape B 使用時に自動追加。
-  - **設計判断**: 標準カテゴリ/phase は Shape B の一部として常に valid とする (Phase 228-B の Player Mistake Distribution / Phase Loss Distribution ブロックが常にこれらのラベルを使うため)。LLM が hallucinated category (例: fantasy_category) を書けば依然 HIGH 警告が出る。
-  - **E2E 動作確認**: 実 JSON + LLM 回答 `[blunder, mistake, inaccuracy]` で `is_clean = True` (HIGH 0 / MEDIUM 0 / LOW 0) で通過。
-- 2026-07-15: **Phase 228-B — LLM コーチ複数局対応 - 実シェーマ適応 (prompt builder を実シェーマに対応)**（Lv3、4 ファイル + 24 unit tests、全 5193 件テスト合格）
-  - **問題**: Phase 228-A で extractor は実 JSON シェーマ (`players.<name>.mistakes` / `phases`) に対応したが、prompt body は依然として空ブロックを生成していた (LLM に「データなし」と嘘をついていた状態)。
-  - **修正**: `summary_prompt_builder.py` に 3 つのヘルパー追加 + テンプレート拡張。
-    - `_resolve_focused_player`: configured_player が players にマッチすればその名前、None/不一致 → None (全体俯瞰用)。
-    - `_format_player_mistakes_block`: focused 時は 4 カテゴリを severity 順、birdseye 時は各プレイヤーの top カテゴリのみ。
-    - `_format_player_phases_block`: focused 時は 3 phase を total_loss 降順 (worst first)、birdseye 時は各プレイヤーの worst phase のみ。
-  - **テンプレート**: Player Mistake Distribution / Player Phase Loss Distribution セクションを追加。focused_player or 全体俯瞰 ラベル付き。
-  - **副作用修正**: `_format_patterns_block` で Shape B パターンの `frequency_ratio` は misleading (count は per-move、games で割ると無意味) なので、代わりに `pct` フィールドを「全体に占める割合=X.X%」として表示。
-  - **system instruction 更新**: weakness pattern のソースに Player Mistake Distribution ブロック (good/inaccuracy/mistake/blunder の 4 カテゴリ) を追加。
-  - **設計変更**: `_resolve_focused_player` の auto-pick 動作を削除 (LLM を誤解させるため)。`None` を返して birdseye 表示を促す。
-- 2026-07-15: **Phase 228-A — LLM コーチ複数局対応 - 実シェーマ適応 (extractors を実シェーマに対応)**（Lv3、3 ファイル + 30 unit tests、全 5169 件テスト合格）
-  - **問題**: Phase 227-A が想定した summary シェーマ (top-level `weaknesses` / `phase_x_mistake`) は `summary_json_export.py` が実際に出力するシェーマ (`players.<name>.mistakes` / `players.<name>.phases`) とズレていた。prompt body が空ブロックになる問題。
-  - **修正**: `json_type.py` に新規 extractor 2 つ追加。
-    - `extract_summary_player_mistakes(data)` → `{player_name: [{category, count, pct, avg_loss, total_loss, denominator}, ...], ...}`。severity 順 (blunder → mistake → inaccuracy → good) で返す。`total_loss` が JSON に無い場合は `avg_loss * count` で再構成。
-    - `extract_summary_player_phase_losses(data)` → `{player_name: {phase: {moves, total_loss, avg_loss}, ...}, ...}`。時系列順 (opening → middle → endgame) で返す。
-  - **`extract_summary_weakness_patterns` 拡張**: top-level `weaknesses` がない場合、`players.<name>.mistakes` から (player, mistake_category) 単位のパターンを合成。Shape A がある場合は Shape A を優先 (より精密な total_loss)。
-  - **新定数**: `_PLAYER_MISTAKE_CATEGORIES` (severity 順) と `_PLAYER_PHASE_LABELS` (時系列順)。`_format_patterns_block` などのレンダラーが順序を保証。
-- 2026-07-15: **Phase 227-E — LLM コーチ複数局対応 (i18n 完了 + summary calibration fixtures + ドキュメント)**（Lv2、5 ファイル + 16 unit tests、全 5319 件テスト合格）
-  - **summary calibration fixtures**: `summary_clean` / `summary_blunder_dominant` / `summary_empty_weaknesses` / `summary_handicapped_mix` の 4 フィクスチャ追加。`karte` フィールドは multi-game Summary JSON を保持。CLI `calibrate` は summary フィクスチャを `⏭️ skip` として扱い、per-move 症状検出器の代わりにパターン抽出を実行
-  - **CLI calibrate 拡張**: `if detect_json_type(fix.karte) == "summary" → skip + extract_summary_weakness_patterns` 分岐追加。symptom-level テストは karte 投影後の誤動作を避けるため summary では skip
-  - **i18n 完了**: 15 個の新規キーが jp/en .po + .mo に同期。`polib` で .mo 再コンパイル
-  - **ドキュメント**: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md` 新規作成（サブフェーズ索引 + アーキテクチャ図 + UX フロー + 検証ルール表 + Calibration fixture 一覧 + テスト数推移）
-- 2026-07-15: **Phase 227-D — LLM コーチ複数局対応 (popup タブ化 + 集約サマリボタン + 視点セレクタ)**（Lv3、4 ファイル + 47 unit tests、合計 5286 件テスト合格）
-  - **popup 型検出 + ディスパッチ**: `_detect_path_type(path)` が `core.coach.detect_json_type()` を呼び出し `self.path_type` を更新。`on_generate_and_copy()` / `on_validate()` が path_type に応じて karte / summary ビルダーに振り分け
-  - **集約サマリプロンプトボタン**: generate ボタンのテキストが「集約サマリプロンプト」に動的変化（karte モードでは既存表示）。`_on_generate_summary()` が `build_summary_llm_prompt` を呼び出し、player_name を spinner index から解決
-  - **summary 視点セレクタ**: `_populate_summary_perspective()` が spinner を「全体俯瞰 (idx 0) + 各プレイヤー (idx 1..N)」で再構築。default_user マッチなら該当プレイヤーを default 選択
-  - **KV レイアウト拡張**: `type_label` ウィジェット追加（path の下）、「単局カルテ」/「複数局サマリ (N局)」/「(未確定)」表示。`karte_path_input.on_text_validate` バインディングで Enter 押下時の再検出
-  - **i18n 14 個の新規キー**: type-label-single/multi/unknown, summary-perspective-label/birdseye/summary, summary-build-button, summary-build-failed, summary-copy-success, summary-report-meta, summary-referenced-{categories,phases,moves,game-ids}
-  - **新ヘルパー関数**: `_summary_index_to_internal(idx, players)` (spinner index → player name / None)
-- 2026-07-15: **Phase 227-C — LLM コーチ複数局対応 (find_latest_llm_input + detect_player_info_for_summary)**（Lv2、2 ファイル + 30 unit tests、合計 5239 件テスト合格）
-  - **`find_latest_llm_input(output_dir)`**: `get_latest_report` のラッパー。`llm_package_*.zip` 等の非JSON bundle を除外して karte/summary のみ返す。latest mtime 優先
-  - **`find_latest_llm_input_for_ctx(ctx)`**: 設定ディレクトリ解決の薄いラッパー
-  - **`detect_player_info_for_summary(summary_path, default_user_name)`**: summary JSON の `players.<name>.overall.rank` ブロックからプレイヤー情報抽出。selection priority は default_user → アルファベット順先頭。rank 抽出は direct / overall / stats の 3 系統フォールバック
-- 2026-07-15: **Phase 227-B — LLM コーチ複数局対応 (summary validator + CLI --summary-mode)**（Lv3、2 ファイル + 63 unit tests、合計 5209 件テスト合格）
-  - **`core/coach/summary_validator.py` 新規**: `SummaryValidationReport` + `validate_summary_llm_output()` 関数。6 種類の検証ルール (HIGH: unknown_pattern_category / forbidden_move_number、MEDIUM: too_many_patterns / phase_label_out_of_set、LOW: specific_game_id_referenced / tone_inconsistency)
-  - **新規 regex**: `_PATTERN_LIST_LINE_RE` (抽出した弱点パターン: [...]) / `_PHASE_LIST_LINE_RE` / `_GAME_ID_RE` (g1, game_3 等) / `_extract_phases_from_prose` (テキスト順抽出)
-  - **CLI validate 拡張**: `--summary-mode` フラグ追加。デフォルトで `detect_json_type` 自動振り分け。`--summary-mode` 明示時に karte を渡すと exit 2 で拒否
-- 2026-07-15: **Phase 227-A — LLM コーチ複数局対応 (summary prompt builder + CLI --summary-mode)**（Lv3、4 ファイル + 47 unit tests、合計 5146 件テスト合格）
-  - **`core/coach/summary_prompt_builder.py` 新規**: `SummaryPromptConfig` + `SummaryPrompt` + `build_summary_weakness_prompt()` 関数。「N局の弱点パターン抽出」ユースケース向け system instruction と body
-  - **`json_type.py` 拡張**: `extract_summary_weakness_patterns(data, top_n=0)` 追加。summary の weaknesses を (color, phase, category) ごとに集計、total_loss desc / count desc / category asc でソート。frequency_ratio (count/games_analyzed) 自動計算
-  - **CLI build 拡張**: `--summary-mode` / `--player` フラグ追加。`detect_json_type` で summary 以外なら exit 2
-- 2026-07-15: **Phase 226-J — voice-symptoms 整合性 + Symptom ↔ Lexicon 関連付け**（Lv3、3 ファイル + 17 unit tests）
-  - **J.1 voice-symptoms 整合性チェック**: `validate_prompt_config(config)` を新規追加。`PromptConfig.voice` と `mode` の組み合わせが `modes_for_voice` に含まれない場合、または各 detected_symptom が `difficulty_range` の外側にある場合、日本語の警告文字列リストを返す。`build_translation_prompt` 内では `_LOG.warning` でログのみ（abort しない）。GUI / CLI 呼び出し側は `validate_prompt_config` を直接呼んで警告をユーザーに表示可能
-  - **J.2 Symptom ↔ Lexicon 関連付けの充実**: `auto_detected=True` だが `related_lexicon_ids=()` の Symptom 5 件（TOO_MANY_CHOICES / ENDGAME_PRECISION / SAME_MISTAKE_LOOP / STAGNATION_LOOP / LOCAL_OPTIMUM）に Lexicon ID を割り当て
-    - TOO_MANY_CHOICES: priority, triage_priority
-    - ENDGAME_PRECISION: yose, counting, endgame_sente_value
-    - SAME_MISTAKE_LOOP: urgent_vs_big, direction_of_play, priority
-    - STAGNATION_LOOP: whole_board_balance, counting, urgent_vs_big
-    - LOCAL_OPTIMUM: urgent_vs_big, direction_of_play, whole_board_balance
-  - **今回スコープ外**:
-    - **Lexicon YAML 拡張**（AGENTS.md マーカーで「owned by 外部資料」と明記されているため、慎重を要する。TILT 系など YAML にマッチしない用語は将来タスクとして残す）
-    - `voice_summary` のロジック変更
-  - **新規 export**: `validate_prompt_config` を `katrain.core.coach.__init__` に追加
-  - 17 件 unit tests 追加（validate_prompt_config 6 件 + Symptom-Lexicon 関連 11 件）
-- 2026-07-15: **Phase 226-I — LLM コーチ prompt 品質改善（GUI 自動取得フィードバック）**（Lv2、3 ファイル + 4 unit tests）
-  - **問題**: ユーザーが LLM Coach popup で「棋力が手動入力」「白黒自動判定が機能しない」と報告。`detect_player_color_for_user` が silent に失敗し、ユーザーに状況を伝える仕組みがない
-  - **原因**: `_populate_rank_and_perspective` で `default_user_name` が空の場合、何の警告も出さずに silent 通過。視点も `color=None` で確定せず、perspective_hint にフォールバック表示のみ
-  - **修正**: 
-    - `default_user_name` が空の場合、status label に「視点自動判定不可: mykatrain 設定の『デフォルトユーザー名』が未設定です」と明示（`auto-detect-no-default-user` i18nキー追加）
-    - 既存の `auto-detect-summary` 経路（`default_user_name` 有り）はそのまま動作
-  - **今回スコープ外**: 
-    - Lexicon YAML 拡張（AGENTS.md マーカーにより慎重に扱うべき、別タスク）
-    - voice-summary / symptoms のレベル整合性強化（Phase 226-J として分離予定）
-    - Symptom-Lexicon 関連の更なる充実（auto_detected=False の Symptom は現状関連付けのみ、注入経路には乗らない）
-  - 4 件 unit tests 追加（default_user 空時警告、有り時サマリ、rank 自動取得ソース、default_user_rank フォールバック）
-- 2026-07-15: **Phase 226-H — MeaningTagId を symptom_id ground truth に追加**（Lv2、2 ファイル + 10 unit tests）
-  - **問題**: ユーザー報告で LLM 出力の HIGH 警告が誤検知。`life_death_error`, `reading_failure`, `connection_miss`, `overplay`, `endgame_slip` が SymptomId に存在しないという警告だが、これらは **MeaningTagId enum の値**で Karte JSON に正しく書かれている
-  - **原因**: validator は SymptomId (30 種類) のみを ground truth としており、MeaningTagId (12 種類) を受け付けなかった。LLM は SymptomId と MeaningTagId を区別せず両方使うので誤検知が頻発
-  - **修正**: `_karte_symptom_ids()` で MeaningTagId enum の全値を ground truth に追加。今後 LLM が MeaningTagId 値を書いても HIGH 警告は出ない
-  - **注**: LOW 警告（Lexicon 言及）は Lexicon YAML に存在しない用語を書いた場合の挙動として妥当。Lexicon 拡充は別タスク（`docs/resources/go_lexicon_master_last.yaml` の更新）
-  - 10 件テスト追加（8 値の parametrize + all-values + 真正 unknown 検証）
-- 2026-07-15: **Phase 226-F (F-A) — SymptomContext に current_phase フィールド追加**（Lv3、2 ファイル + 11 unit tests）
-  - **問題**: `build_symptom_context_from_karte` が `move_number=None` をハードコード → 5つの phase-gated 症状（FIRST_MOVE_CONFUSION / TOO_MANY_CHOICES / OVERCONCENTRATION / POST_JOSEKI_DIRECTION / ATTACK_WITH_PURPOSE）の `ctx_is_phase()` が常に False → karte 経由で**絶対発火しない**
-  - **修正**: `SymptomContext` に `current_phase` フィールド（デフォルト `"unknown"`）を追加、`_infer_current_phase()` ヘルパーで karte の important_moves の move_number 分布から dominant phase を導出、`is_phase()` が `move_number=None` の場合に `current_phase` にフォールバック
-  - **影響範囲**: 5症状の detector が karte 経由でも発火可能になる「前提条件」を整える。detector 個別の閾値調整は F-B（Phase 226-G として分離予定）
-  - 11 件テスト追加（opening/middle/endgame 推定、board_size スケーリング、`is_phase()` フォールバック、move_number 優先順位）
-- 2026-07-15: **Phase 226-E — 軽微な品質改善**（Lv2、6 ファイル + 0 unit tests、全 5116 件テスト合格）
-  - **E1 クラス名タイポ修正**: `LLMCcoachPopupContent` → `LLMCoachPopupContent`（3 ファイル 7 箇所: popup.py / KV / test_llm_coach_popup.py）
-  - **E2 デッドコード削除**: `_COPY_FEEDBACK_SECONDS` は Phase 226-B 内で既に削除済み（本 Phase で再確認・スキップ）
-  - **E3 avg_points_lost 意図省略の明示**: GUI 入力欄は Phase 226 スコープ外（CLI の override ノブはある）。`on_generate_and_copy` の docstring に「Karte の summary.avg_points_lost に委譲」と明記
-  - **E4 関西弁定義の同期契約**: 3 系統の AYAKA データ構造（`master_db._KANSAI_DICTIONARY` / `tones._KANSAI_NORMALISATION_PAIRS` / `tones._AYAKA_MARKERS`）間の同期契約を `tones.py` の docstring に明記
-  - **E5 rank-auto msgstr 更新**: Phase 225.6 で「SGF から自動取得」だったのを Phase 225.8 で Karte/SGF/設定の 3 ソースに対応した msgstr に更新（jp/en .po + .mo）
-  - **E6 仕様書整備**: `docs/archive/specs-implemented/phase225-master.md` 新規作成。Phase 225.1〜225.8 + 226-A〜E の索引として機能
-- 2026-07-15: **Phase 226-D — テスト強化・CI 整備**（Lv2、3 ファイル + 6 unit tests、全 5116 件テスト合格）
-  - **D1 CI skip 解消**: `test_llm_coach_popup.py` の `pytestmark` を CI 環境変数ベースから「Kivy import 可否」に変更。Kivy がある環境では popup ロジックテスト ~50 件が CI でも実行可能に
-  - **D2 validator 境界値テスト追加**: `total_moves` 境界（200 OK / 201 NG）、`ceiling` 境界（7.55 OK / 7.6 NG）の境界値テストを追加
-  - **D3 settings_export フィクスチャ更新**: `mock_package_defaults` に `default_user_rank: ""` を追加、`TestTabResetKeys` に `default_user_rank` が export タブに含まれることを検証するテストを追加
-- 2026-07-15: **Phase 226-C — LLM コーチ データ・設定不整合の解消**（Lv3、4 ファイル + 6 unit tests、全 5110 件テスト合格）
-  - **C1 `_RANK_ALIASES` デッドコード解消**: `_canonical_rank_key` が `_normalise_rank_str` 適用前に alias lookup するようルート変更。`"10段"` が `"10d"` → 存在しない → `None` だった経路を、`"10段"` → alias → `"9d"` → EXPERT で救済
-  - **C2 `config.json` に `default_user_rank` 追加**: `mykatrain_settings` のデフォルト値に `default_user_rank: ""` を追加。新規インストール時の一貫性確保
-  - **C3 `estimate_mode_from_loss` docstring 修正**: シグナル全不在でも `INTERMEDIATE` を返す実装と、docstring の "None if no signal available" の不一致を解消
-  - **C4 `detect_json_type` の精緻化**: karte-shaped 判定（`weaknesses` + 非空 `important_moves`）を summary 判定より優先。`meta.game_count: 1` の single-game karte が誤って summary 判定される問題を修正
-  - **C5 `json_type.py` docstring 更新**: C4 の新しい判定順序を反映、3段階ロジック（karte優先 → game_count/games_analyzed → players → phase_x_mistake フォールバック）を明記
-  - 累計 6 件回帰テスト追加（rank aliases +2, json_type +4）、合計 5110 件テスト合格
-- 2026-07-15: **Phase 226-B — LLM コーチ GUI 堅牢性・バグ修正**（Lv3、3 ファイル + 8 unit tests、全 5104 件テスト合格）
-  - **B1 無限再試行ループの解消**: `_populate_rank_and_perspective` が karte_path 空時に `Clock.schedule_once` で無限再試行していた問題を修正。最大再試行回数（5回）を追加し、`on_dismiss` で保留中 Clock イベントをキャンセルする `cancel_pending_clocks` 機構を導入
-  - **B2 ハードコード日本語の i18n 化**: `auto-detect-summary` メッセージ内の `"黒 (B)" / "白 (W)"` を i18n キー（`perspective-black` / `perspective-white`）に置き換え。en ロケールで日本語が混入する問題を解消
-  - **B3 Spinner 安定内部値の導入**: Spinner の `text`（ローカライズ文字列）を表示専用とし、内部値（`"auto"/"B"/"W"`）を `perspective_value` で保持。`startswith("黒")` 判定を廃止し、`_spinner_text_to_internal` ヘルパーで逆マッピング
-  - **B4 detect_player_info のキャッシュ化**: `detect_player_color_for_user` が `player_info` 引数を受け取り、同一 JSON の2回読み込みを解消
-  - **B5 例外表示の統一**: `detect_player_color_for_user` の例外を黙殺せず、`auto-detect-failed` ステータスで表示するよう統一
-  - デッドコード `_COPY_FEEDBACK_SECONDS` 削除
-- 2026-07-15: **Phase 226-A — LLM コーチ機能 検証ロジック強化**（Lv3、2 ファイル + 26 unit tests、全 5096 件テスト合格）
-  - **A1 Lexicon 検証の実働化**: `_extract_lexicon_mentions` が英 ID と日本語語句の不整合で常に空を返していた問題を修正。`lexicon.build_id_to_ja_term_map()` ヘルパーで id→ja_term 逆引きを構築し、注入 lexicon 外の「」語句を `lexicon_mention_not_injected` (LOW) で警告生成
-  - **A2 症状 ID 抽出の 3 段階フォールバック**: 従来の行末 `参照した症状ID: [...]` (tier 1) に加え、インライン `症状: / Symptoms:` (tier 2) と全文 grep セーフティネット (tier 3) を追加。LLM が指示形式を無視しても捕捉可能
-  - **A3 着手番号正規表現の厳格化**: prefix/suffix 両 optional で任意整数にマッチしていた問題を修正。`#50` / `move 50` / `50手目` のみ捕捉し、`5段` / `30級` / `2026年` / `7月` / `50%` を除外
-  - **A4 pointsLost 正規表現の拡張**: `目` suffix 必須から、`損失` / `ロス` / `points lost` / `loss` にも対応
-  - **A5 player_color 整合性検証（Phase 225.7 仕様）**: `config.player_color` 設定時、相手色の症状 ID 参照を HIGH → MEDIUM に降格（`symptom_id_belongs_to_opponent` kind）
-  - **A6 tolerance パラメータ活用**: デッドパラメータだった `tolerance: float = 0.05` を `ceiling + tolerance` 比較に適用し、境界値での偽陽性を防止
-  - `_injected_lexicon_ids` デッドコード削除、未使用 `SymptomId` import 削除
-- 2026-07-17: **Phase 225.8 — 漢字段級サポート + mykatrain settings に default_user_rank 追加**
-  - **挙動バグ**: SGF BR/WR から取得した「4段」漢字段級が `estimate_mode_from_rank` で None 扱い → LOSE フォールバックで BEGINNER モード。`_RANK_ALIASES` テーブルと `_normalise_rank_str` ヘルパーで全角数字・漢字 suffix (段/級) 対応
-  - **新機能**: mykatrain settings に `default_user_rank` フィールド追加、デフォルトユーザー名の直下に配置。LLM Coach が Karte/SGF からランク取得できない時のフォールバック
-  - 49 件回帰テスト追加（rank aliases 44 件 + default_user_rank 4 件 + settings savers 1 件）、累計 5070 件テスト合格
-- 2026-07-17: **Phase 225.7 — Popup 幅拡大 + 自動判定タイミング修正 + LLM 応答はみ出し修正**
-  - **UI バグ (Phase 225.6 対策不完全)**: `_populate_rank_and_perspective` が Clock.schedule_once(0) で karte_path 設定前に走っていた → 0.2s 遅延 + karte_path 空時のリトライ機構
-  - **UI バグ**: ポップアップ幅が狭く LLM 応答がはみ出す / ボタンと重なる → 900x720 に拡大 + response_input を ScrollView で囲み、折り返しではなくスクロール
-  - **UX 改善**: status_label に「デフォルトユーザー '{user}' / 黒:{black} 白:{white} → {color}」サマリ表示 → 自動判定がどちらの色にマッチしたか可視化
-  - 4 件回帰テスト追加、累計 5021 件テスト合格
-- 2026-07-17: **Phase 225.6 — LLM Coach 視点自動判定 + SGF 棋力自動取得**
-  - **新機能**: SGF BR/WR を抽出する `sgf_player_info.py` 追加（17 テスト）
-  - **新機能**: Karte JSON meta に `player_info.{black,white}.{name,rank}` 追加（schema 後方互換、golden 3 件更新）
-  - **新機能**: `PromptConfig.player_color` 追加、`build_translation_prompt` が SystemInstruction に `PlayerColor: black/white/unknown` を出力（10 テスト）
-  - **新機能**: LLM Coach GUI に視点スピナー（Auto/黒/白）+ 棋力自動表示（18 テスト）
-  - **新機能**: `default_user_name` からプレイヤー色を自動判定する `detect_player_color_for_user` ヘルパー
-  - i18n 7 キー追加 (jp/en): rank-auto、perspective-{label,auto,black,white,auto-detected,auto-fallback}
-  - 累計 5017 passed (4968 baseline + 49 件新規)
-- 2026-07-17: **Phase 225.5 — LLM Coach status/result stale ref 修正 + 検証サマリ件数表示 + 参照ダイアログ必ず閉じる**
-  - **挙動バグ**: Phase 225.3 で `_read_text` を ids 経由に変更したが `_set_status` / `_set_result` は旧 `self.status_label` / `self.result_label` を直接参照 → Kivy ObjectProperty の stale reference で ScrollView 内の result_label.text が反映されず「検証結果コピー」ボタンが常に「コピーできる検証結果がありません」になる
-  - **挙動バグ**: `_on_success` で chosen 空のとき `picker.dismiss()` を呼ばず早期 return → ユーザーがブラウザ選択なしで OK を押すとダイアログが閉じず「押しても反応しない」
-  - **UX 改善**: 検証実行時に status_label に **件数サマリ**を表示（スクロール不要で高/中/低 件数を把握）
-  - 修正: 全 setter を `self.ids` 経由に統一 / picker.dismiss() を全パスで呼ぶ
-  - 7 件テスト追加（stale property での ids 上書き / dismiss 確実性 / 件数カウント）、累計 4968 件テスト合格
-- 2026-07-17: **Phase 225.4 — LLM Coach ボタン幅完全固定 + 使い方ヒント表示**
-  - **UI バグ (Phase 225.3 対策不完全)**: `AutoSizedRoundedRectangleButton` の `width: root.label.texture_size[0]` バインディングが size_hint_x を上書き → `SizedRoundedRectangleButton` (Auto なし) に変更で完全固定
-  - **UX 改善**: 「検証実行」「検証結果をコピー」の使い方を説明する workflow-hint Label を Popup 上部に追加（jp/en）
-  - 3 件回帰テスト追加（AutoSized 禁止契約 + 5 ボタン全部 Sized + hint 存在）、累計 4961 件テスト合格
-- 2026-07-17: **Phase 225.3 — LLM Coach ボタン整列 + ids 経由テキスト読み出し**
-  - **UI バグ**: `AutoSizedRoundedRectangleButton` がテキスト幅で自動サイズ調整されボタンが不揃い → KV レイアウト再設計（75/25, 50/50 比率、`size_hint_x: 0.5` 統一）+ 結果ラベルを `ScrollView` 化
-  - **クリック無反応バグ**: `self.karte_path_input.text` が KivyMD の ObjectProperty バインド遅延で空文字を返す稀ケース → `_read_text(widget_id)` ヘルパーで `self.ids` 経由の堅牢な参照に変更
-  - 16 件回帰テスト追加（KV 静的解析 + ids fallback）、累計 4958 件テスト合格
-- 2026-07-17: **Phase 225.2 — `karte_export.copy_path` Clock NameError + LLM Coach 「参照」ボタン修正**
-  - **既存バグ**: Phase 173 の `do_export_karte_ui` lazy-import から `Clock` が漏れていたため、エクスポート成功 popup の「コピー」ボタンクリックで `NameError: 'Clock' is not defined`
-  - **Phase 225 自バグ**: LLM Coach の「参照」ボタンのハンドラが `I18NFileBrowser` の `on_submit`（ダブルクリックイベント）にしかバインドされておらず、OK ボタンを押しても反応しなかった
-  - 修正: lazy-import に `Clock` 追加 / `on_success` と `on_submit` の両方にハンドラをバインド
-  - 5 件回帰テスト追加（Clock 検証 + browse ボタン両イベント bind + OK 経由のパス反映）、累計 4942 件テスト合格
-- 2026-07-17: **Phase 225.1 — `do_export_karte` Phase 172 引数抜け TypeError 修正**
-- 2026-07-17: **Phase 225 — LLM Coach GUI 統合（手動貼付ワークフロー）**（Lv3、9 ファイル + 34 unit tests、累計 4882 件テスト合格）
-- 2026-07-16: **Phase 193 — Documentation cleanup**
-  - Leela 関連スペック 2 ファイル削除（`leela-estimated-loss.md` / `leela-output-format.md`、Phase 171 で実装削除済）
-  - `AGENTS.md §3.4 / §3.5`（Phase 36/37 の Leela フォールバック / 混合エンジン検出）削除
-  - `AGENTS.md §1.3` を Phase 1-192 主要マイルストーン簡潔化、`§10` を 3 ヶ月に圧縮
-  - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
-  - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
-  - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
-- 2026-07-17: **Phase 221 — Multi-game summary support**（Lv2）
-  - `katrain/core/coach/json_type.py`: `detect_json_type()` で karte/summary 自動判別
-  - `normalize_summary_to_karte_shape()`: summary JSON を karte shape に投影
-  - CLI コマンドが summary を自動検出して処理
-  - 18 件単体テスト + 2 件 CLI 統合テスト、累計 4855 件テスト合格
-- 2026-07-17: **Phase 220 — Trace CLI command**（Lv1）
-  - CLI `trace <karte.json>` 新コマンド（検出器パイプラインをソース別に可視化）
-  - per_move / weakness_category / streak / aggregate の 4 系列を表示
-  - 各 SymptomId がどの source で発火したかを表示（debug 用）
-  - 6 件 CLI テスト追加、累計 4837 件テスト合格
-- 2026-07-17: **Phase 219 — Calibrate CLI command**（Lv1）
-  - CLI `calibrate [--fixture <name>] [--out <path>]` 新コマンド
-  - Phase 218 fixtures を実行して pass/fail レポート（CI 親和、exit code 0/1）
-  - 5 件 CLI テスト追加、累計 4831 件テスト合格
-- 2026-07-17: **Phase 218 — Calibration fixtures**（Lv2）
-  - `katrain/core/coach/calibration_fixtures.py`: 8 個の GoldenFixture
-  - 各 fixture は 1 症状のみ発火するよう独立化（テスト安定性）
-  - 39 件新規テスト、検出器挙動を pin する regression suite
-  - Phase 219+ での閾値チューニングの基礎
-- 2026-07-17: **Phase 217 — Aggregate helpers + CLI analyze**（Lv2）
-  - `extract_winrate_scorelead_correlation(karte)` — Pearson r ヘルパー
-  - `extract_winrate_scorelead_pairs(karte)` — 生 (w, p) ペア抽出
-  - CLI `analyze <karte.json>` 新コマンド追加（Meta / Metrics / Streak / Correlation / Symptoms を出力）
-  - POSITION_EVALUATION 自動検出は相関閾値不安定のため placeholder（ゴールデン棋譜検証を要する）
-  - 6 件 CLI テスト追加、累計 4822 件テスト合格
-- 2026-07-17: **Phase 216 — Streak-based symptom detection**（Lv2）
-  - `katrain/core/coach/karte_detector.py` 拡張: 5 個の streak aggregator helper
-  - `detect_symptoms_from_karte` を 3 系統統合に拡張（per-move + weakness + streak）
-  - 4 つの「新規」症状（OVERFIGHT / SMALL_MOVE_ADDICTION / TILT_CHAIN / TILT_DISCOURAGEMENT）を自動検出可能化
-  - 17 件ユニットテスト追加、全 4816 件テスト合格
-- 2026-07-17: **Phase 215 — Karte-aware symptom detection**（Lv2）
-  - `katrain/core/coach/karte_detector.py`: Karte JSON → SymptomContext 自動構築
-  - 11 個の aggregator helper（avg_points_lost, max_score_stdev, weakness_concentration 等）
-  - `detect_symptoms_from_karte`: SymptomContext 検出 + weakness カテゴリ union
-  - 30 件ユニットテスト合格、CLI プロンプト品質向上
-- 2026-07-17: **Phase 214-A — LLM coach CLI tool**（Lv2）
-  - `katrain/core/coach/cli.py`: 4 サブコマンド（build / validate / symptoms / lexicon）
-  - 17 件ユニットテスト、Kivy 非依存（ターミナルから直接起動可能）
-  - ワークフロー: GUI で Karte JSON 書き出し → CLI で LLM プロンプト生成 → LLM に貼付 → CLI で検証
-- 2026-07-17: **Phase 213 — LLM「翻訳特化」導入 完全実装**
-  - Phase 207 `master_db.py` + Phase 208 `lexicon.py` + Phase 209 `symptom_index.py` + Phase 210 `tones.py` + Phase 211 `prompt_builder.py` (Lv3) + Phase 212 `llm_validator.py` を `katrain/core/coach/` に完全実装
-  - Phase 213 `test_coach_e2e.py`: 6 モジュールを end-to-end で結線する mock LLM テスト 9 件
-  - 累計 243 件新規ユニットテスト、全 4752 件テスト合格（5 skip）
-  - ハルシネーション抑制 3 層防御（構造化メタデータ / Lexicon 注入 / HTML コメント式 System Instruction）を実装
-  - LLM 出力検証 5 種類（症状 ID 不在 / 着手番号範囲外 / pointsLost 外れ値 / トーン不一致）を警告表示で実装
-- 2026-07-17: **Phase 203 — LLM「翻訳特化」導入 調査ドキュメント**
-  - `docs/archive/specs-planned/` を新設（計画中スペック用ディレクトリ、初エントリ）
-  - `docs/archive/specs-planned/phase203-llm-translator.md` 作成（約 600 行、D 案: ドキュメント整備のみ）
-  - 30 症状（master doc §2-0）× KataGo 数値マッピング表、自動検出可能 22 / LLM 委ね 11 の分類を提示
-  - ハルシネーション抑制 3 層防御設計、レベル判定（BR/WR + 負け基準補正）、LLM 出力検証（警告表示のみ）設計
-- 2026-07-17: **Phase 207 — `core/coach/master_db.py`**（Lv2、Phase 208-213 と同時に main にマージ済み）
-  - 統合マスター §0 + §1 を `katrain/core/coach/master_db.py` に構造化
-  - `CoachMode` 5 モード + `ToneVoice` 3 ボイス、`estimate_mode_from_rank` / `estimate_mode_from_loss` 実装
-  - 41 件ユニットテスト合格
-- 2026-07-16: Phase 192 — Position Difficulty サブパッケージ化（`core/analysis/difficulty/` 6 モジュール化、後方互換シム維持）
-- 2026-07-15: Phase 191 — Engine Subsystem TYPE_CHECKING 循環解消（`core/_engine_types.py` に集約）
-- 2026-07-15: Phase 190 — `core/engine.py` カバレッジ 48.3% → 83%（59 件追加）
-- 2026-07-15: Phase 189 — `core/auto_setup.py` カバレッジ 9.8% → 97%（53 件追加）
-- 2026-07-14: Phase 188 — Kifunarabe Controller God Class 分割（4 mixin + facade、800→180 行、24 テスト追加）
-- 2026-07-14: Phase 187 — Beginner Hints Main Pipeline カバレッジ 16.5% → 97%（137 件追加）
-- 2026-07-14: Phase 186.1 — KataGo 起動直後の TypeError 修正（`get_root_visits` の None-safety、20 件追加）
-- 2026-07-14: Phase 186 — Curator 集約統合（棋譜全体の弱点パターンを Hint に統合、`HintCategory` 23 カテゴリ）
-- 2026-07-14: Phase 182 — Ownership / Policy 派生ヒント 3 カテゴリ追加
-- 2026-07-14: Phase 179 + 179.1 + 179.2 — Beginner Hints Summary Extension（ミス・自由度・難易度、9 カテゴリ + 監査改善）
-- 2026-07-13: Phase 178 — kifunarabe ドキュメント整備 + Root 解析堅牢化 + 終了経路統一
-- 2026-07-11: Phase 173 — CI exit-102 修正（部分）: kivy 遅延 import で FileExistsError 解消
-- 2026-07-11: Phase 172 — KaTrainGui ラッパーメソッド全削除（DISPATCH_TABLE への明示的ディスパッチ）
-- 2026-07-04: Phase 171 — **Leela エンジン完全削除**（`core/leela/` 1459 行削除、KataGo 専用化、i18n 70 msgid・テスト 25 ファイル削除）
-- 2026-06-26: AGENTS.md として再構成（旧 CLAUDE.md から移行、スキルを on-demand 化）
+**運用方針**: 開発に必要なコマンドはほぼ無確認で通し、システム破壊系のみ明示ブロックする **B 案（中庸）**。確認ダイアログ（ask）は 0 件、危険コマンドは明示 deny、未指定コマンドは `*: allow` で通過。
+
+### 自動許可（allow）
+
+| 区分 | パターン例 |
+|------|----------|
+| Python 開発 | `uv *`, `python*`, `pytest*`, `ruff*`, `mypy*`, `coverage*` |
+| バージョン管理 | `git *`, `gh *` |
+| ビルド/コンテナ | `make*`, `docker*` |
+| 読み取り/加工 | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*` |
+| 診断 | `stat*`, `which*`, `pwd*`, `env*` |
+| ファイル操作 | `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `rm*` |
+
+### 拒否（deny）— 危険コマンド
+
+| カテゴリ | 拒否対象 |
+|---------|---------|
+| 権限昇格 | `sudo *`, `su *` |
+| 電源操作 | `shutdown *`, `reboot *`, `halt *` |
+| ディスク破壊 | `mkfs*`, `fdisk*`, `dd *` |
+| サービス管理 | `systemctl*`, `service *` |
+| 認証情報 | `passwd*` |
+| ユーザー管理 | `useradd*`, `userdel*` |
+| ファイアウォール | `iptables*`, `ufw *` |
+| マウント | `mount*`, `umount*` |
+
+**運用注意**:
+- `rm*` を allow 化したため、削除操作は自己責任
+- `chown*` を allow 化したため、オーナー書き換えは慎重に
+- `curl*` / `wget*` を allow 化したため、外部送信は意図しないデータ流出に注意
+- 緊急時は `OPENCODE_DISABLE_PROJECT_CONFIG=1` で設定無効化可能
+
+詳細は [`opencode.jsonc`](opencode.jsonc) を参照。
