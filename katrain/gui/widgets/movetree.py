@@ -312,7 +312,7 @@ Builder.load_string(
     katrain: app.gui
     MoveTreeDropdownItem:
         text: i18n._("Delete Node")
-        icon: 'delete.png'
+        icon: 'delete'
         shortcut: 'Ctr+Del'
         on_action: root.katrain.controls.move_tree.delete_selected_node()
         -background_color: Theme.LIGHTER_BACKGROUND_COLOR
@@ -320,7 +320,7 @@ Builder.load_string(
         -width_margin: 1.6
     MoveTreeDropdownItem:
         text: i18n._("Make Main Branch")
-        icon: 'Branch.png'
+        icon: 'source-branch'
         shortcut: 'PgUp'
         on_action: root.katrain.controls.move_tree.make_selected_node_main_branch()
         -background_color: Theme.LIGHTER_BACKGROUND_COLOR
@@ -328,7 +328,7 @@ Builder.load_string(
         -width_margin: 1.6
     MoveTreeDropdownItem:
         text: i18n._("Toggle Collapse Branch")
-        icon: 'Collapse.png'
+        icon: 'unfold-less-horizontal'
         shortcut: 'c'
         on_action: root.katrain.controls.move_tree.toggle_selected_node_collapse()
         -background_color: Theme.LIGHTER_BACKGROUND_COLOR
@@ -336,7 +336,7 @@ Builder.load_string(
         -width_margin: 1.6
     MoveTreeDropdownItem:
         text: i18n._("Prune Branch")
-        icon: 'Prune.png'
+        icon: 'source-branch-remove'
         on_action: root.katrain.controls.move_tree.prune_branch()
         -background_color: Theme.LIGHTER_BACKGROUND_COLOR
         -height: dp(45)

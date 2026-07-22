@@ -16,7 +16,7 @@
 # because the bottom-bar cells are sized for icon-only icons; adding
 # a text caption squeezed both the icon and the caption into an
 # unreadable stub. Use the bare NavIconButton (icon + tooltip only).
-<NavIconButton@TransparentIconButton+TooltipMixin>:
+<NavIconButton@MaterialIconButton+TooltipMixin>:
     size_hint: 0.06, 0.4
     icon_size: [min(self.size[0],self.height),min(self.size[0],self.height)]
     pos_hint: {'center_y': 0.5}
@@ -59,20 +59,20 @@
         Label:
             size_hint: 0.075, 0.5
         NavIconButton:
-            icon: 'Previous-Mistake.png'
+            icon: 'arrow-left-circle'
             color: Theme.MISTAKE_BUTTON_COLOR
             tooltip_text: i18n._('ui:tooltip:prev-mistake')
             on_press: root.katrain('find-mistake','undo')
         NavIconButton:
-            icon: 'Previous-End.png'
+            icon: 'page-first'
             tooltip_text: i18n._('ui:tooltip:first-move')
             on_press: root.katrain('undo',9999)
         NavIconButton:
-            icon: 'Previous-5.png'
+            icon: 'rewind-10'
             tooltip_text: i18n._('ui:tooltip:prev-10')
             on_press: root.katrain('undo',10)
         NavIconButton:
-            icon: 'Previous.png'
+            icon: 'chevron-left'
             tooltip_text: i18n._('ui:tooltip:prev-1')
             on_press: root.katrain('undo')
         MDFloatLayout:
@@ -91,24 +91,24 @@
                 player: 'W'
                 text: ''
         NavIconButton:
-            icon: 'Next.png'
+            icon: 'chevron-right'
             tooltip_text: i18n._('ui:tooltip:next-1')
             on_press: root.katrain('redo')
         NavIconButton:
-            icon: 'Next-5.png'
+            icon: 'fast-forward-10'
             tooltip_text: i18n._('ui:tooltip:next-10')
             on_press: root.katrain('redo',10)
         NavIconButton:
-            icon: 'Next-End.png'
+            icon: 'page-last'
             tooltip_text: i18n._('ui:tooltip:last-move')
             on_press: root.katrain('redo',9999)
         NavIconButton:
-            icon: 'Next-Mistake.png'
+            icon: 'arrow-right-circle'
             color: Theme.MISTAKE_BUTTON_COLOR
             tooltip_text: i18n._('ui:tooltip:next-mistake')
             on_press: root.katrain('find-mistake','redo')
         NavIconButton:
-            icon: 'Rotate.png'
+            icon: 'rotate-right'
             tooltip_text: i18n._('ui:tooltip:rotate')
             on_press: root.katrain('rotate')
     ClickableLabel:

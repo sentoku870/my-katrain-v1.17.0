@@ -137,6 +137,24 @@
         mipmap: True
         color: [1,1,1,0.4] if root.disabled else root.color
 
+# Phase 287-G: Material Design Icons 版ボタン。内部で MDI 名 → PNG ファイル
+# に解決 (``MaterialIconButton._resolved_source``) し、``Image`` 子で描画する。
+# Kivy Label ベースのレンダリングは KivyMD 1.2.0 stub との相互作用で表示が
+# 不安定だったため、既存の ``TransparentIconButton`` と同じ proven な
+# ``Image`` 描画パスに戻す。アイコン名 (``menu`` 等の MDI 名) と既存の
+# PNG ファイル名の両方を受け付ける。
+<MaterialIconButton>:
+    background_normal: ''
+    background_color: (0,0,0,0)
+    image: image
+    Image:
+        id: image
+        size: root.icon_size
+        pos: [root.pos[i] + (root.size[i] - root.icon_size[i])/2 for i in [0,1]]
+        source: root._resolved_source() if hasattr(root, '_resolved_source') else ''
+        mipmap: True
+        color: [1,1,1,0.4] if root.disabled else root.color
+
 <I18NSpinnerOption@SpinnerOption>:
     background_color: Theme.LIGHTER_BACKGROUND_COLOR
     background_normal: ''
