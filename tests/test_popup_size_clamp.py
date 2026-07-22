@@ -23,7 +23,8 @@ def _clamp_popup_size(requested, max_ratio=0.9):
 
     - return a fresh list (never the caller's list);
     - clamp each dimension independently to ``max_ratio * window_dim``;
-    - leave the dimension unchanged when no window is known.
+    - leave the dimension unchanged when no window is known;
+    - return int values (Kivy Popup size takes int).
 
     Phase 287-E: keeps the popup within the window on small displays.
     """
@@ -38,7 +39,7 @@ def _clamp_popup_size(requested, max_ratio=0.9):
             width = min(width, win_w * max_ratio)
         if win_h and win_h > 0:
             height = min(height, win_h * max_ratio)
-    return [width, height]
+    return [int(round(width)), int(round(height))]
 
 
 def _install_fake_window(width, height):
@@ -59,6 +60,8 @@ class TestClampPopupSizeContract:
         out = _clamp_popup_size([800, 600])
         assert isinstance(out, list)
         assert out == [800, 600]
+        # Phase 287-E follow-up: return ints (Kivy Popup signature is int).
+        assert all(isinstance(v, int) for v in out)
 
     def test_returns_fresh_list(self):
         """Kivy mutates the size list internally, so the helper must

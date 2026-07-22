@@ -1031,7 +1031,17 @@ class TestPhase2257PopupSize:
         from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
 
         ctx = MagicMock()
-        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls:
+        # Phase 287-E follow-up: clamp_popup_size shrinks the popup on
+        # small windows (CI's headless backend reports 800x600). Patch
+        # Window via the ``clamp_popup_size`` lookup path. The helper
+        # does ``getattr(Window, "width", None)`` at call time, so we
+        # patch ``kivy.core.window`` rather than the symbol.
+        fake_window = type("FakeWindow", (), {"width": 1920, "height": 1080})()
+        fake_module = type("M", (), {"Window": fake_window})()
+        with (
+            patch.dict("sys.modules", {"kivy.core.window": fake_module}),
+            patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls,
+        ):
             mock_picker = MagicMock()
             mock_popup_cls.return_value.__self__ = mock_picker
             open_llm_coach_popup(ctx)

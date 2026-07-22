@@ -45,7 +45,7 @@ def _get_app_gui() -> Any:
     return getattr(app, "gui", None)
 
 
-def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[float]:
+def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[int]:
     """Clamp a popup size to ``max_ratio`` of the current app window.
 
     Phase 287-E: the popup dialogs previously used fixed ``dp(W)`` /
@@ -64,7 +64,7 @@ def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[flo
 
     Returns:
         A fresh ``[width, height]`` list with each dimension clamped
-        independently.
+        independently and rounded to int (Kivy Popup size takes int).
     """
     from kivy.core.window import Window
 
@@ -76,7 +76,7 @@ def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[flo
         width = min(width, win_w * max_ratio)
     if win_h and win_h > 0:
         height = min(height, win_h * max_ratio)
-    return [width, height]
+    return [int(round(width)), int(round(height))]
 
 
 class I18NPopup(Popup):

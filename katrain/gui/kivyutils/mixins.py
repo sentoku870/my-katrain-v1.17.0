@@ -35,7 +35,7 @@ class LeftButtonBehavior(ButtonBehavior):  # stops buttons etc activating on rig
             self.dispatch("on_left_release")
         return super().on_release()
 
-    def on_press(self) -> None:
+    def on_press(self) -> Any:
         if not self.last_touch or "button" not in self.last_touch.profile or self.last_touch.button == "left":
             self.dispatch("on_left_press")
         return super().on_press()
