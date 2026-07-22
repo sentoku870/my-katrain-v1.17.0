@@ -338,7 +338,7 @@ def analysis_read_thread(widget: KataGoEngine) -> None:
                 # Phase LV1-8: rate-limit the verbose JSON dump to at most
                 # once per second so debug runs don't bottleneck on disk I/O.
                 now = time.time()
-                if now - getattr(widget, "_last_extra_debug_log_time", 0.0) > 1.0:
+                if now - widget._last_extra_debug_log_time > 1.0:
                     widget._last_extra_debug_log_time = now
                     widget.katrain.log(json_truncate_arrays(analysis), OUTPUT_EXTRA_DEBUG)
                 try:
