@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import time
 from typing import Any
 
 from kivy.clock import Clock
@@ -65,8 +66,12 @@ class BadukPanWidget(Widget):
         self.animating_pv_index: Any = None
         self._animate_interval: Any = None  # ClockEvent reference for PV animation (lazy init)
         self.last_mouse_pos: tuple[float, float] = (0, 0)
-        self._mouse_pos_trigger = Clock.create_trigger(self.on_mouse_pos, 0.02)
-        Window.bind(mouse_pos=self._mouse_pos_trigger)
+        # Phase LV1-5: throttle the mouse-move callback to ~50 Hz in the
+        # callback itself (rather than via Clock.create_trigger) because
+        # the latter wraps the args with a leading ``dt`` and breaks the
+        # ``(window, pos)`` signature expected here.
+        self._last_mouse_process_time: float = 0.0
+        Window.bind(mouse_pos=self.on_mouse_pos)
         self.redraw_board_contents_trigger = Clock.create_trigger(self.draw_board_contents, 0.05)
         self.redraw_trigger = Clock.create_trigger(self.redraw, 0.05)
         self.redraw_hover_contents_trigger = Clock.create_trigger(self.draw_hover_contents, 0.01)
@@ -180,7 +185,23 @@ class BadukPanWidget(Widget):
             self.check_next_move_ghost(touch)
 
     def on_mouse_pos(self, *args: Any) -> None:  # https://gist.github.com/opqopq/15c707dc4cffc2b6455f
+        # Always remember the latest position so ``last_mouse_pos`` stays
+        # accurate even when the heavy processing below is throttled.
+        if len(args) >= 2 and isinstance(args[1], (tuple, list)):
+            self.last_mouse_pos = tuple(args[1])
+
+        # Phase LV1-5: throttle the heavy processing to ~50 Hz to keep
+        # high-DPI mice from starving the main thread. The latest position
+        # is still captured above.
+        now = time.time()
+        if now - self._last_mouse_process_time < 0.02:
+            return
+        self._last_mouse_process_time = now
+
         if self.get_root_window():  # don't proceed if I'm not displayed <=> If have no parent
+            # Window.bind(mouse_pos=...) calls back as ``(window, pos)``.
+            if len(args) < 2:
+                return
             pos = args[1]
             rel_pos = self.to_widget(*pos)  # compensate for relative layout
             inside = self.collide_point(*rel_pos)
@@ -202,7 +223,6 @@ class BadukPanWidget(Widget):
                 d_sq = (pos[0] - self.animating_pv[3][0]) ** 2 + (pos[1] - self.animating_pv[3][1]) ** 2
                 if d_sq > 2 * self.stone_size**2:  # move too far from where it was activated
                     self.set_animating_pv(None, None)  # any click kills PV from label/move
-            self.last_mouse_pos = pos
 
     def on_touch_up(self, touch: Any) -> Any:
         if ("button" in touch.profile and touch.button != "left") or not self.initial_gridpos_x:
@@ -614,7 +634,7 @@ class BadukPanWidget(Widget):
         multiple times safely.
         """
         with contextlib.suppress(Exception):
-            Window.unbind(mouse_pos=self._mouse_pos_trigger)
+            Window.unbind(mouse_pos=self.on_mouse_pos)
         if self._animate_interval is not None:
             with contextlib.suppress(Exception):
                 self._animate_interval.cancel()
