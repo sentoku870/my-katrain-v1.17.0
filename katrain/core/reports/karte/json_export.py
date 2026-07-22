@@ -105,9 +105,12 @@ def build_karte_json(
     moves = list(snapshot.moves)
     board_x, board_y = game.board_size
 
-    # Phase 156: Opt-in dynamic phase detection (overrides move.tag)
+    # Phase 156: Opt-in dynamic phase detection. Phase LV4-2: apply the
+    # returned phases onto ``mv.tag`` here so the snapshot is not
+    # mutated in the callee (it stays pure).
     if dynamic_phase_detection:
-        apply_dynamic_phases(moves, board_size=board_x)
+        for mv, phase in zip(moves, apply_dynamic_phases(moves, board_size=board_x), strict=False):
+            mv.tag = phase
 
     # Get effective preset and thresholds
     effective_preset = skill_preset

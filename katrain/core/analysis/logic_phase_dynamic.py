@@ -144,17 +144,20 @@ def apply_dynamic_phases(
     endgame_threshold: float = ENDGAME_SCORE_STDEV_THRESHOLD,
     endgame_window: int = ENDGAME_DETECTION_WINDOW,
 ) -> list[str]:
-    """Compute and assign the dynamic phase tag for each move.
+    """Compute and return the dynamic phase label for each move.
 
-    Phase LV2-5: this used to mutate ``mv.tag`` in place, which had the
-    nasty side-effect of leaking phase labels into shared ``EvalSnapshot``
-    objects reused by Karte / Summary callers. Now we return the list of
-    phase labels and let the caller decide where to write them; we still
-    also write ``mv.tag`` so the existing aggregation paths continue to
-    work, but a pure ``list[str]`` is available for callers that want it.
+    Phase LV4-2: this is now a pure function. The previous LV2-5 version
+    still wrote ``mv.tag`` in place which leaked phase labels into
+    shared ``EvalSnapshot`` objects when Karte and Summary were built
+    in the same process. Callers that need ``mv.tag`` set should do so
+    explicitly, e.g.::
+
+        phases = apply_dynamic_phases(moves, board_size=board_x)
+        for mv, phase in zip(moves, phases, strict=False):
+            mv.tag = phase
 
     Args:
-        moves: Moves to classify.
+        moves: Moves to classify. Not mutated.
         board_size: Board size for the fixed opening fallback.
         endgame_threshold: Same as :func:`classify_phases_dynamic`.
         endgame_window: Same as :func:`classify_phases_dynamic`.
@@ -163,16 +166,14 @@ def apply_dynamic_phases(
         List of phase labels (one per move).
 
     Note:
-        Aliases ``"yose"`` and ``"endgame"`` are both written for callers
-        that hard-code one of the two spellings; downstream aggregators
-        normalize via :data:`katrain.core.reports.definitions.PHASE_ALIASES`.
+        Aliases ``"yose"`` and ``"endgame"`` are both returned for
+        callers that hard-code one of the two spellings; downstream
+        aggregators normalize via
+        :data:`katrain.core.reports.definitions.PHASE_ALIASES`.
     """
-    phases = classify_phases_dynamic(
+    return classify_phases_dynamic(
         moves,
         board_size=board_size,
         endgame_threshold=endgame_threshold,
         endgame_window=endgame_window,
     )
-    for mv, phase in zip(moves, phases, strict=False):
-        mv.tag = phase
-    return list(phases)

@@ -626,11 +626,15 @@ def build_summary_json(
     ``players[...].win_loss_analysis``.
     """
 
-    # Phase 156: opt-in dynamic phase detection (rewrites move.tag)
+    # Phase 156: opt-in dynamic phase detection. Phase LV4-2: write the
+    # returned phases onto ``mv.tag`` here (the snapshot is not mutated
+    # in the callee, which is now pure).
     if dynamic_phase_detection:
         for gd in game_data_list:
             board_size = gd.board_size[0] if isinstance(gd.board_size, tuple) else int(gd.board_size or 19)
-            apply_dynamic_phases(list(gd.snapshot.moves), board_size=board_size)
+            moves = list(gd.snapshot.moves)
+            for mv, phase in zip(moves, apply_dynamic_phases(moves, board_size=board_size), strict=False):
+                mv.tag = phase
 
     # Initialize Logic Analyzer
     analyzer = SummaryAnalyzer(game_data_list, focus_player)
