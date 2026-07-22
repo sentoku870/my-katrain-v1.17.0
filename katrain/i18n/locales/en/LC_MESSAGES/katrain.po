@@ -1973,6 +1973,37 @@ msgstr "Search settings..."
 msgid "mykatrain:settings:search_clear"
 msgstr "Clear"
 
+# Phase 287-D: replace fixed English strings in the file browser /
+# settings popup with i18n keys.
+msgid "ui:restoresize_label"
+msgstr "Restore window size on startup"
+
+msgid "ui:filebrowser:locations"
+msgstr "Locations"
+
+msgid "ui:filebrowser:favorites"
+msgstr "Favorites"
+
+msgid "ui:filebrowser:libraries"
+msgstr "Libraries"
+
+msgid "ui:filebrowser:computer"
+msgstr "Computer"
+
+msgid "ui:filebrowser:select_folder_title"
+msgstr "Select folder - Navigate into target folder, then click 'Select This Folder'"
+
+msgid "ui:filebrowser:select_this_folder"
+msgstr "Select This Folder"
+
+msgid "ui:kifunarabe:history:format"
+msgstr ""
+"  total {total}, correct {correct}, wrong {wrong}, auto {auto}, skip {skipped}\n"
+"  correct rate {correct_rate}{crit_text}"
+
+msgid "ui:kifunarabe:history:critical3"
+msgstr "  critical_3 {correct}/{total} ({rate:.1f}%)"
+
 msgid "mykatrain:diagnostics"
 msgstr "Diagnostics"
 

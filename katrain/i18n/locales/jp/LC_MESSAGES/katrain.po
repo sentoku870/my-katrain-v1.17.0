@@ -1916,6 +1916,37 @@ msgstr "設定を検索..."
 msgid "mykatrain:settings:search_clear"
 msgstr "クリア"
 
+# Phase 287-D: replace fixed English strings in the file browser /
+# settings popup with i18n keys.
+msgid "ui:restoresize_label"
+msgstr "起動時にウィンドウサイズを復元"
+
+msgid "ui:filebrowser:locations"
+msgstr "場所"
+
+msgid "ui:filebrowser:favorites"
+msgstr "お気に入り"
+
+msgid "ui:filebrowser:libraries"
+msgstr "ライブラリ"
+
+msgid "ui:filebrowser:computer"
+msgstr "コンピュータ"
+
+msgid "ui:filebrowser:select_folder_title"
+msgstr "フォルダ選択 — 対象フォルダに移動して「このフォルダを選択」をクリック"
+
+msgid "ui:filebrowser:select_this_folder"
+msgstr "このフォルダを選択"
+
+msgid "ui:kifunarabe:history:format"
+msgstr ""
+"  総数 {total}、正解 {correct}、不正解 {wrong}、自動 {auto}、スキップ {skipped}\n"
+"  正解率 {correct_rate}{crit_text}"
+
+msgid "ui:kifunarabe:history:critical3"
+msgstr "  critical_3 {correct}/{total} ({rate:.1f}%)"
+
 msgid "mykatrain:diagnostics"
 msgstr "診断情報"
 

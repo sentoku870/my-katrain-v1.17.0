@@ -339,7 +339,7 @@ def do_mykatrain_settings_popup(
     def browse_output(*_args: Any) -> None:
         _open_browse_dialog(
             ctx=ctx,
-            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            title=i18n._("ui:filebrowser:select_folder_title"),
             initial_path=widget_refs["output_input"].text,
             target_text_input=widget_refs["output_input"],
             dirselect=True,
@@ -348,7 +348,7 @@ def do_mykatrain_settings_popup(
     def browse_input(*_args: Any) -> None:
         _open_browse_dialog(
             ctx=ctx,
-            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            title=i18n._("ui:filebrowser:select_folder_title"),
             initial_path=widget_refs["input_input"].text,
             target_text_input=widget_refs["input_input"],
             dirselect=True,
@@ -358,7 +358,7 @@ def do_mykatrain_settings_popup(
     def browse_kifunarabe(*_args: Any) -> None:
         _open_browse_dialog(
             ctx=ctx,
-            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            title=i18n._("ui:filebrowser:select_folder_title"),
             initial_path=widget_refs["sgf_load_input"].text,
             target_text_input=widget_refs["sgf_load_input"],
             dirselect=True,
@@ -493,8 +493,11 @@ def _open_browse_dialog(
     target_text_input: Any,
     dirselect: bool = True,
     file_filter: list[str] | None = None,
-    select_string: str = "Select This Folder",
+    select_string: str | None = None,
 ) -> None:
+    # Phase 287-D: default to i18n string so callers can omit the param.
+    if select_string is None:
+        select_string = i18n._("ui:filebrowser:select_this_folder")
     """Open a file/directory browse dialog and update the target text input on selection.
 
     Phase 145-D: Unified the nearly-identical browse_output / browse_input

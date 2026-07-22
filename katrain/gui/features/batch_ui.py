@@ -57,7 +57,7 @@ def create_browse_callback(
 
         browse_popup_content = LoadSGFPopup(katrain_gui)
         browse_popup_content.filesel.dirselect = True
-        browse_popup_content.filesel.select_string = "Select This Folder"
+        browse_popup_content.filesel.select_string = i18n._("ui:filebrowser:select_this_folder")
 
         current_path = text_input_widget.text.strip()
         if current_path and os.path.isdir(current_path):
