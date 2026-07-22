@@ -12,48 +12,14 @@
 # Phase 287-F: NavIconButton mixes in TooltipMixin so the tooltip_text
 # property turns into a 500ms long-press popup. The TooltipMixin lives
 # in katrain.gui.kivyutils.mixins and is re-exported via __init__.
+# Phase 287-H (revert): the Phase 287-F caption overlay was abandoned
+# because the bottom-bar cells are sized for icon-only icons; adding
+# a text caption squeezed both the icon and the caption into an
+# unreadable stub. Use the bare NavIconButton (icon + tooltip only).
 <NavIconButton@TransparentIconButton+TooltipMixin>:
     size_hint: 0.06, 0.4
     icon_size: [min(self.size[0],self.height),min(self.size[0],self.height)]
     pos_hint: {'center_y': 0.5}
-
-# Phase 287-F: a small vertical layout that pairs a NavIconButton with
-# a short text caption underneath. The class is defined in Python
-# (katrain.gui.widgets.nav_icon_caption) so Kivy can resolve
-# root.caption_text / root.tooltip_text / root.icon / root.color via
-# the Kivy property bindings declared there. The wrapper keeps the
-# same size_hint_x as the bare icon button so the 8-cell row layout
-# below still aligns. The icon button carries a tooltip_text that the
-# TooltipMixin turns into a long-press popup.
-<NavIconButtonWithCaption>:
-    orientation: 'vertical'
-    spacing: 2
-    padding: 0
-    NavIconButton:
-        id: icon_btn
-        icon: root.icon
-        color: root.color
-        size_hint_y: 0.6
-        tooltip_text: root.tooltip_text
-        on_press: root.dispatch('on_press')
-    Label:
-        id: caption_label
-        text: root.caption_text
-        size_hint_y: 0.4
-        # Phase 287-G (this fix): sp(10) + shorten/1-line on a 2500x1440
-        # display collapses JP captions like 「前のミス」「10手戻る」into
-        # unreadable stubs. Bump the font, give the label more vertical
-        # room, and let the text wrap to two lines so it always shows
-        # the full caption. Pin the font to Theme.DEFAULT_FONT so it
-        # doesn't fall back to Roboto (which lacks JP glyphs and
-        # renders blank on the user-facing language).
-        font_size: sp(11)
-        font_name: Theme.DEFAULT_FONT
-        color: Theme.TEXT_COLOR
-        halign: 'center'
-        valign: 'middle'
-        shorten: True
-        max_lines: 2
 
 <BadukPanControls>:
     katrain: app.gui
@@ -92,25 +58,21 @@
         pos_hint: {'center_x': 0.5,'center_y':0.5}
         Label:
             size_hint: 0.075, 0.5
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Previous-Mistake.png'
             color: Theme.MISTAKE_BUTTON_COLOR
-            caption_text: i18n._('ui:caption:prev-mistake')
             tooltip_text: i18n._('ui:tooltip:prev-mistake')
             on_press: root.katrain('find-mistake','undo')
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Previous-End.png'
-            caption_text: i18n._('ui:caption:first')
             tooltip_text: i18n._('ui:tooltip:first-move')
             on_press: root.katrain('undo',9999)
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Previous-5.png'
-            caption_text: i18n._('ui:caption:prev-10')
             tooltip_text: i18n._('ui:tooltip:prev-10')
             on_press: root.katrain('undo',10)
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Previous.png'
-            caption_text: i18n._('ui:caption:prev-1')
             tooltip_text: i18n._('ui:tooltip:prev-1')
             on_press: root.katrain('undo')
         MDFloatLayout:
@@ -128,30 +90,25 @@
                 id: white_circle
                 player: 'W'
                 text: ''
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Next.png'
-            caption_text: i18n._('ui:caption:next-1')
             tooltip_text: i18n._('ui:tooltip:next-1')
             on_press: root.katrain('redo')
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Next-5.png'
-            caption_text: i18n._('ui:caption:next-10')
             tooltip_text: i18n._('ui:tooltip:next-10')
             on_press: root.katrain('redo',10)
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Next-End.png'
-            caption_text: i18n._('ui:caption:last')
             tooltip_text: i18n._('ui:tooltip:last-move')
             on_press: root.katrain('redo',9999)
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Next-Mistake.png'
             color: Theme.MISTAKE_BUTTON_COLOR
-            caption_text: i18n._('ui:caption:next-mistake')
             tooltip_text: i18n._('ui:tooltip:next-mistake')
             on_press: root.katrain('find-mistake','redo')
-        NavIconButtonWithCaption:
+        NavIconButton:
             icon: 'Rotate.png'
-            caption_text: i18n._('ui:caption:rotate')
             tooltip_text: i18n._('ui:tooltip:rotate')
             on_press: root.katrain('rotate')
     ClickableLabel:

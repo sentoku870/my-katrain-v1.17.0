@@ -129,7 +129,9 @@ from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.sound import play_sound
 from katrain.gui.theme import Theme
 from katrain.gui.widgets import I18NFileBrowser, MoveTree, ScoreGraph, SelectionSlider  # noqa F401
-from katrain.gui.widgets.nav_icon_caption import NavIconButtonWithCaption  # noqa F401 (KV template)
+
+# Phase 287-H (revert): NavIconButtonWithCaption was abandoned in favour
+# of bare NavIconButton (icon + tooltip only). The Python class is gone.
 
 
 class KaTrainGui(Screen, KaTrainBase):
