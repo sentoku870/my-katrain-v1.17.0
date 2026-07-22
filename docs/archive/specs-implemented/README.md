@@ -1,8 +1,8 @@
 # 設計仕様書 (Design Specifications)
 
-このフォルダにはmyKaTrainの機能設計仕様書を格納しています。
+このフォルダには myKatrain の機能設計仕様書（実装済み Phase）を格納しています。
 
-> **最終更新**: 2026-07-21（Phase 284 完了、Phase 270 / 277 / 281-284 のスペック索引追加）
+> **最終更新**: 2026-07-21（Phase 284 完了、Phase 271-284 のスペック索引を追加）  
 > Phase 171 で Leela エンジン / 関連スペックを完全削除。KataGo 専用の構成に整理。
 
 ---
@@ -12,19 +12,19 @@
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
 | [idea1-meaning-tags.md](idea1-meaning-tags.md) | Phase 46-47 | MeaningTags: ミスの「意味」自動タグ付け |
-| [idea2-radar-tier.md](idea2-radar-tier.md) | Phase 48-49, 51 | 5軸レーダーチャートとTier判定 |
+| [idea2-radar-tier.md](idea2-radar-tier.md) | Phase 48-49, 51 | 5軸レーダーチャートと Tier 判定 |
 | [idea4-critical3-focused-review.md](idea4-critical3-focused-review.md) | Phase 50 | Critical 3: 一点集中レビューモード |
-| [lexicon-integration.md](lexicon-integration.md) | Phase 45 | go_lexicon_master_last.yaml活用設計 |
-| [summary-improvements.md](summary-improvements.md) | Phase 47, 49 | Summary改善案（5軸レーダー、意味的診断） |
-| [karte-improvements.md](karte-improvements.md) | Phase 47, 50 | Karte改善案（信頼度ゲート、敗着特定） |
-| [common-improvements.md](common-improvements.md) | Phase 47-50 | カルテ・サマリー共通改善（動的閾値、LLMプロンプト埋め込み） |
+| [lexicon-integration.md](lexicon-integration.md) | Phase 45 | go_lexicon_master_last.yaml 活用設計 |
+| [summary-improvements.md](summary-improvements.md) | Phase 47, 49 | Summary 改善案（5軸レーダー、意味的診断） |
+| [karte-improvements.md](karte-improvements.md) | Phase 47, 50 | Karte 改善案（信頼度ゲート、敗着特定） |
+| [common-improvements.md](common-improvements.md) | Phase 47-50 | カルテ・サマリー共通改善（動的閾値、LLM プロンプト埋め込み） |
 
-## 延期された仕様（Post-52）
+## 延期された仕様
 
 | ファイル | 内容 |
 |----------|------|
-| [idea3-ownership-overlay-DEFERRED.md](idea3-ownership-overlay-DEFERRED.md) | Ownership Volatility Overlay（危険度可視化） |
-| [idea5-style-quiz-DEFERRED.md](idea5-style-quiz-DEFERRED.md) | Style Matching Quiz（スタイル一致クイズ） |
+| [idea3-ownership-overlay.md](../../future/idea3-ownership-overlay.md) | Ownership Volatility Overlay（危険度可視化）— `docs/future/` 参照 |
+| [idea5-style-quiz.md](../../future/idea5-style-quiz.md) | Style Matching Quiz（スタイル一致クイズ）— `docs/future/` 参照 |
 
 ## その他の初期仕様書
 
@@ -48,7 +48,7 @@
 
 ### Phase 80-94 で部分実装のみ（Future 参照）
 
-- **Phase 82**: `docs/future/phase82-context-filler.md` — Critical 3 コンテキスト自動生成（`situation_type` 分類器の GUI 統合が残作業）
+- **Phase 82**: [`docs/future/phase82-context-filler.md`](../../future/phase82-context-filler.md) — Critical 3 コンテキスト自動生成（`situation_type` 分類器の GUI 統合が残作業）
 
 ## Phase 177-195-A 完了済みスペック（2026-07）
 
@@ -65,23 +65,22 @@
 
 ### Phase 194 / 195-A（直近）
 
-- **Phase 194**（MagicMock 汚染除去）: `katrain/core/reports/extractors.py` から `unittest.mock.MagicMock` の production import を排除、`tests/test_extractors.py` を新規 26 件追加。コミット前に仕様書ファイルは未作成（本表も Phase 201 で更新）。
+- **Phase 194**（MagicMock 汚染除去）: `katrain/core/reports/extractors.py` から `unittest.mock.MagicMock` の production import を排除、`tests/test_extractors.py` を新規 26 件追加。仕様書ファイルは未作成（Phase 201 整理のため省略）。
 - **Phase 195-A**（互換シム棚卸し）: `logic_difficulty.py` / `karte_report.py` の deprecated シム参照を production code から脱却。Architecture テスト `TestDeprecatedShimIsolation` を 3 件追加。eval_metrics / batch_analyze_sgf シムは Phase 195-C まで保持。
 
-## Phase 225-228 完了済みスペック（2026-07）
+## Phase 225-270 完了済みスペック（2026-07）
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
 | [phase225-llm-coach-gui.md](phase225-llm-coach-gui.md) | Phase 225 | LLM Coach GUI 統合（手動貼付ワークフロー） |
 | [phase225-master.md](phase225-master.md) | Phase 225 + 225.1-225.8 | LLM Coach 統合マスター索引 |
-| [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
+| [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B 案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
 | [phase228-summary-schema-adapt.md](phase228-summary-schema-adapt.md) | Phase 228-A〜D | LLM コーチ複数局対応 - 実シェーマ適応（extractors / prompt builder / validator / real_shape fixtures） |
 | [phase229-rank-preset-unification.md](phase229-rank-preset-unification.md) | Phase 229 | 棋力プリセット / LLM コーチ 統合（`common/rank.py` 新設 + `resolve_skill_preset()` 統合 + 設定 UI 刷新） |
 | [phase230-ui-ux-cleanup.md](phase230-ui-ux-cleanup.md) | Phase 230 | MyKatrain UI/UX 整理（メニュー 8→4 項目 + Leela 残滓削除 + 診断タブ統合 + 棋力入力統合） |
 | [phase241-summary-quality-improvements.md](phase241-summary-quality-improvements.md) | Phase 241 | サマリー機能 品質改善（A-I の 9 サブフェーズ） |
 | [phase246-candidate-filter-improvements.md](phase246-candidate-filter-improvements.md) | Phase 246 | 候補手フィルター（PV Filter）包括改善（5 サブフェーズ） |
-| [phase249-alpha-kifunarabe-bugfix.md](phase249-alpha-kifunarabe-bugfix.md) | Phase 249-α | 棋譜並べ バグ修正 + デッドコード削除 + テスト 23 件 |
-| [phase249-beta-kifunarabe-history.md](phase249-beta-kifunarabe-history.md) | Phase 249-β | 棋譜並べ 永続履歴 (KifunarabeHistoryStore) + 設定タブ + 履歴ポップアップ + テスト 12 件 |
+| [phase249-beta-kifunarabe-history.md](phase249-beta-kifunarabe-history.md) | Phase 249-β | 棋譜並べ 永続履歴（KifunarabeHistoryStore）+ 設定タブ + 履歴ポップアップ + テスト 12 件 |
 | [phase249-gamma-kifunarabe-integration.md](phase249-gamma-kifunarabe-integration.md) | Phase 249-γ | 棋譜並べ 重要局面リスト統合 + 弱点自動 export |
 | [phase249-delta-kifunarabe-minor.md](phase249-delta-kifunarabe-minor.md) | Phase 249-δ | 棋譜並べ メニューアイコン重複解消 + panels.kv Kivy 違反修正 |
 | [phase249-hotfix-startup-attrerror.md](phase249-hotfix-startup-attrerror.md) | Phase 249-hotfix | 起動時 AttributeError + 残存 γ リグレッション復旧 |
@@ -89,16 +88,20 @@
 | [phase269-ayaka-removal-and-summary-phase-fix.md](phase269-ayaka-removal-and-summary-phase-fix.md) | Phase 269 | AYAKA 完全削除 + voice 統一（TOMOKO）+ 弱点抽出整合性修正 |
 | [phase270-karte-aggregator.md](phase270-karte-aggregator.md) | Phase 270 | 複数カルテ集約 + サマリプロンプト v3.5 拡張 |
 
+> **Phase 249-α 仕様書**: 同名のスペックファイルは未作成（Phase 249-β が α の成果を内包）。α 単独サマリーは [`docs/01-roadmap.md`](../../01-roadmap.md) §4 および AGENTS.md §1.3 を参照してください。
+
 ## Phase 231-237 カルテ刷新（2026-07）
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
 | [karte-schema.md](karte-schema.md) | Phase 231-237 | 単局カルテ（v3.3）/ 複数局サマリ（v3.4）の **JSON スキーマ正本ドキュメント**。型判別ロジック / Shape A vs Shape B / 全フィールド仕様 / バージョン履歴 |
 
-## Phase 277-284 移行・統合・修正（2026-07）
+## Phase 271-284 完了済みスペック（2026-07）
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
+| [phase269-ayaka-removal-and-summary-phase-fix.md](phase269-ayaka-removal-and-summary-phase-fix.md) | Phase 269 | AYAKA 完全削除 + voice 統一（TOMOKO）+ 弱点抽出整合性修正 |
+| [phase270-karte-aggregator.md](phase270-karte-aggregator.md) | Phase 270 | 複数カルテ集約 + サマリプロンプト v3.5 拡張 |
 | [phase277-kivymd-1.2.0-migration.md](phase277-kivymd-1.2.0-migration.md) | Phase 277 | KivyMD 0.104.1 → 1.2.0 移行（Material Design 3 対応 + 欠落 `.kv` ファイル runtime hook） |
 | [phase281-jp-font-tofu-fix.md](phase281-jp-font-tofu-fix.md) | Phase 281 | 日本語フォント 豆腐修正 包括対策（`_sync_font_to_hint_labels` ヘルパー + `_kivymd_kv_loader.py` Roboto フォールバック撤廃） |
 | [phase282-architecture-followup.md](phase282-architecture-followup.md) | Phase 282 | アーキテクチャレビュー P1+P2 着手（conftest.py 死蔵コード除去 851→500 行 + 5 大ファイルスモークテスト 312 件） |
@@ -107,9 +110,9 @@
 
 ## Phase 171 で削除されたスペック
 
-以下のスペックは Phase 171（Leela エンジン完全削除）で実装と共に削除されました。git log で参照可能：
+以下のスペックは Phase 171（Leela エンジン完全削除）で実装と共に削除されました。git log で参照可能:
 
-- `leela-estimated-loss.md`（Phase 14.0-14.7）— Leela推定損失
+- `leela-estimated-loss.md`（Phase 14.0-14.7）— Leela 推定損失
 - `leela-output-format.md`（Phase 14.0）— Leela Zero lz-analyze 出力フォーマット
 
 ---
@@ -118,13 +121,15 @@
 
 | 決定事項 | 解決 |
 |----------|------|
-| **Lexiconデータソース** | `go_lexicon_master_last.yaml` が正本 |
-| **Lexicon言語** | EN/JP のみ（既存YAMLフィールド） |
-| **Radar軸** | `opening`, `fighting`, `endgame`, `stability`, `awareness` |
-| **Radarスコア** | 内部: 0.0–1.0、表示: 1.0–5.0 |
-| **Tier名** | Tier 1-5（入門/初級/中級/上級/高段） |
-| **MeaningTag↔Lexicon** | `lexicon_anchor_id: Optional[str]` でYAML参照 |
-| **Critical 3コンテキスト** | 構造化フィールドのみ（盤面シリアライズなし） |
+| **Lexicon データソース** | `go_lexicon_master_last.yaml` が正本 |
+| **Lexicon 言語** | EN/JP のみ（既存 YAML フィールド） |
+| **Radar 軸** | `opening`, `fighting`, `endgame`, `stability`, `awareness` |
+| **Radar スコア** | 内部: 0.0–1.0、表示: 1.0–5.0 |
+| **Tier 名** | Tier 1-5（入門/初級/中級/上級/高段） |
+| **MeaningTag ↔ Lexicon** | `lexicon_anchor_id: Optional[str]` で YAML 参照 |
+| **Critical 3 コンテキスト** | 構造化フィールドのみ（盤面シリアライズなし） |
 | **Karte 出力形式** | `.json`（Phase 148 で `.md` → `.json` に完全移行） |
+| **AI 戦略** | Phase 280 で `ai:default` / `ai:handicap` の 2 戦略のみに集約 |
+| **LLM 連携** | 手動コピー＆貼付（自動 API 送信は non-goal） |
 
-詳細は [docs/01-roadmap.md](../../01-roadmap.md) を参照。
+詳細は [`docs/01-roadmap.md`](../../01-roadmap.md) を参照。

@@ -1,336 +1,167 @@
-# my-katrain v1.17.0 (KaTrain fork)
+# myKatrain v1.17.1 (KaTrain fork)
 
-**my-katrain** は、オープンソースの囲碁解析ソフト **KaTrain** をベースにした  
-個人開発の拡張版です。KataGo の解析結果を活かして、学習・指導機能を強化することを目的としています。
+**myKatrain** は、Sander Land 氏によるオープンソース囲碁解析ソフト **KaTrain** をベースにした  
+個人開発の拡張版です。KataGo 解析結果から「カルテ (Karte)」JSON を生成し、  
+外部 LLM に手動で貼り付けて coaching コメントを得る用途に特化しています。
 
-> This is an unofficial personal fork of KaTrain, focused on educational features.
-> It is **not** an official release of the original KaTrain project.
-
----
-
-## Based on KaTrain
-
-このプロジェクトは、Sander Land 氏による KaTrain をベースにしています。:contentReference[oaicite:0]{index=0}  
-
-- Original repository: https://github.com/sanderland/katrain  
-- License: MIT License（本リポジトリの `LICENSE` を参照）
-
-KaTrain は KataGo を用いた囲碁解析・対局ソフトで、主に次のような機能を提供します（概要のみ）:
-
-- 対局棋譜を解析し、各手の損失（ポイントロス）を可視化
-- AI との対局および、悪手を自動やり直しする「指導対局」モード
-- 強さやスタイルの異なる複数の AI 設定
-- ミスの多い部分に焦点を当てた SGF レポート生成 など
-
-詳細なマニュアルやインストール手順は、本家リポジトリの README / INSTALL を参照してください。
-
-- Manual / Usage: https://github.com/sanderland/katrain#manual  
-- Installation: https://github.com/sanderland/katrain#install  
+> **Unofficial personal fork.** This project is **not** an official release of the original KaTrain.  
+> 公式 KaTrain とは別物であり、本家のサポート窓口への問い合わせはご遠慮ください。
 
 ---
 
-## このフォークで追加・変更している主な点
+## 1. このフォークで追加・変更している主な点
 
-※ 開発途中を含む概要です。詳細は `docs/` フォルダの各メモを参照してください。
+| 機能 | 概要 | 対応 Phase |
+|------|------|------------|
+| **KataGo 専用化** | 旧 Leela Zero 解析パスを完全削除（Phase 171） | 171 |
+| **単局 Karte JSON 出力** | 1局の解析結果から重要局面・ミス分布・難易度を含む Karte (v3.3 JSON) を生成 | 171 / 231-237 |
+| **複数局サマリ (Summary) JSON** | N局の弱点パターンを集約した Summary (v3.4 JSON) を生成 | 221 / 270 |
+| **LLM Coach GUI 統合** | myKatrain メニュー「LLM コーチ（手動貼付）」から、Karte/Summary → プロンプト生成 → コピー → 応答貼付 → 検証の 1 サイクルを実行 | 225 / 226 / 227 / 228 |
+| **複数局 LLM コーチ対応** | Summary JSON からの集約サマリプロンプト生成・バリデーション | 227 / 228 |
+| **棋譜並べ (Kifunarabe)** | 重要局面反復・弱点自動 export・履歴永続化 | 177 / 249 |
+| **Beginner Hints (初心者ヒント)** | ミス / 自由度 / 難易度 9 カテゴリ + 派生ヒント | 91-92 / 179 / 182 / 186 |
+| **重要局面ナビゲーション** | 黒前/黒次/白前/白次の 4 ボタン（黒白別ジャンプ） | 250 |
+| **候補手フィルター (PV Filter)** | AUTO / 5 プリセット + ライブプレビュー | 246 / 247 |
+| **バッチ解析** | 複数 SGF を一括再解析（パスのみ指定） | 87 / 195 |
+| **棋力プリセット自動推定** | `general/player_rank` を 1 箇所入力 → AI / LLM Coach へ自動反映 | 229 |
+| **AI 戦略スリム化 (17→2)** | `ai:default` / `ai:handicap` の 2 戦略のみに整理 | 280 |
+| **AYAKA ボイス削除 / TOMOKO 統一** | 全棋力を標準語キャラに統一 | 269 |
+| **KivyMD 1.2.0 移行** | Material Design 3 対応 + フォント tofu fix | 277 / 281 |
 
-### 1. 評価情報レイヤーの拡張
-
-- 各手について、KataGo 解析結果をまとめたデータ構造（例: `MoveEval`, `EvalSnapshot`）を追加
-- 「ポイント損失」「局面の難しさ」「方針のブレ」などを一段階抽象化して扱う仕組み
-
-### 2. 重要局面の抽出・可視化（Phase 2）
-
-- 一局の中から「形勢が大きく動いた手」「難易度の高い手」を自動抽出するロジック
-- 重要局面をタイムラインやグラフ上に重ねて表示するためのフックを追加
-
-### 3. ミス分類・クイズ出題モード（Phase 3–4）
-
-- 自分のミスを種類別に集計し、「どの局面で何を間違えやすいか」を統計として扱う仕組み
-- そのミスからクイズ（選択式問題）を自動生成し、復習できるモードの土台
-
-### 4. 棋譜並べ・ヨセ学習との連携構想
-
-- 19路は「対局」よりも「棋譜並べ」中心で使うことを想定
-- 重要局面・ヨセのローカル目数・難易度情報と組み合わせて、
-  - 重要局面だけを厚く並べるモード
-  - ヨセだけを切り出した「目数差クイズ」モード
-  などを実装するための基盤コードを追加（実装中）
-
-### 5. ChatGPT など外部 LLM 連携用の設計
-
-- 解析結果・弱点統計・棋譜並べ成績を、LLM 向けにまとめて渡す「カルテ」形式を設計中
-- 1クリックで「現在の弱点に合わせた学習プラン提案」を依頼できるようにすることを目標
-
-### 6. コードベースの刷新・安定化（Phase 120）
-
-- 全体的なコード品質の向上：`ruff` による厳格なスタイル統一と静的解析の導入
-- アーキテクチャ改善：UIコンポーネント（ダイアログ管理など）の疎結合化と役割分担の整理
-- 堅牢性の確保：包括的な回帰テストスイートの整備とCIプロセスの修正
+LLM への自動 API 送信は行いません。**プロンプトをクリップボードへコピー → 任意の LLM に手動貼付 → 応答を popup に戻して検証** が正式ワークフローです (`docs/00-purpose-and-scope.md` §7 non-goals 参照)。
 
 ---
 
-## 現在のステータス
+## 2. 動作環境
 
-- ベースバージョン: KaTrain v1.17.0
-- フォーク用途:
-  - 個人利用
-  - 教育機能の試作・検証
-- 公開配布の予定:
-  - 小規模な利用を想定した実験的リポジトリです。
-  - 公式 KaTrain とは別物であり、サポート等は期待しないでください。
+| 項目 | 要件 |
+|------|------|
+| Python | 3.11 以上（主開発環境: 3.13.9 / `.python-version` 参照） |
+| OS | Windows（主利用）/ Linux（CI 検証対象） |
+| KataGo | `analysis` エンジン（`katrain` 設定ダイアログから model / binary を取得） |
+| パッケージ管理 | uv（`uv.lock` で再現可能、`poetry` 手順は廃止） |
+| 表示 | Kivy 2.3.1 + KivyMD 1.2.0 |
+
+> **macOS 検証は範囲外**です。本家 KaTrain の macOS パッケージをご利用ください。
 
 ---
 
-# <a name="manual"></a> KaTrain
+## 3. クイックスタート (fork を clone した場合)
 
-[![Latest Release](http://img.shields.io/github/release/sanderland/katrain?label=download)](http://github.com/sanderland/katrain/releases)
-[![License:MIT](http://img.shields.io/pypi/l/katrain)](http://en.wikipedia.org/wiki/MIT_License)
-[![GitHub Downloads](http://img.shields.io/github/downloads/sanderland/katrain/total?color=%23336699&label=github%20downloads)](http://github.com/sanderland/katrain/releases)
-[![PyPI Downloads](http://pepy.tech/badge/katrain)](http://pepy.tech/project/katrain)
-[![Discord](http://img.shields.io/discord/417022162348802048?logo=discord)](http://discord.com/channels/417022162348802048/629446365688365067)
+```bash
+# 依存を再現性をもって同期
+uv sync
 
-KaTrain is a tool for analyzing games and playing go with AI feedback from KataGo:
+# アプリを起動 (Kivy window が開く)
+uv run python -m katrain
+```
 
-* Review your games to find the moves that were most costly in terms of points lost.
-* Play against AI and get immediate feedback on mistakes with option to retry.
-* Play against a wide range of weakened versions of AI with various styles.
-* Automatically generate focused SGF reviews which show your biggest mistakes.
+初回起動時に KataGo 実行ファイル・モデル・`analysis_config.cfg` の場所を入力するダイアログが表示されます。
 
-## Manual
+> **`pipx install katrain` / `brew install katrain` は本家 KaTrain** を導入します。  
+> 本フォークを動かしたい場合は clone + `uv sync` を利用してください。
 
-<table>
-<td>
+---
 
-- [ KaTrain](#-katrain)
-  - [Manual](#manual)
-  - [  Preview and Youtube Videos](#--preview-and-youtube-videos)
-  - [ Installation](#-installation)
-  - [  Configuring KataGo](#--configuring-katago)
-  - [ Play against AI](#-play-against-ai)
-    - [Instant feedback](#instant-feedback)
-    - [AIs](#ais)
-  - [ Analysis](#-analysis)
-  - [ Keyboard and mouse shortcuts](#-keyboard-and-mouse-shortcuts)
-  - [ Contributing to distributed training](#-contributing-to-distributed-training)
-  - [ Themes](#-themes)
-  - [ FAQ](#-faq)
-  - [ Support / Contribute](#-support--contribute)
+## 4. 開発者向けコマンド
 
+```bash
+# 依存同期
+uv sync
 
-<td>
+# 起動
+uv run python -m katrain
 
-<a href="http://github.com/sanderland/katrain/blob/master/README.md"><img alt="English" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-uk.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=de&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="German" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-de.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=fr&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="French" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-fr.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=uk&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Ukrainian" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-ua.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=ru&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Russian" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-ru.png" width=50></a>
-<br/>
-<a href="http://translate.google.com/translate?sl=en&tl=tr&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Turkish" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-tr.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=zh-CN&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Simplified Chinese" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-cn.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=zh-TW&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Traditional Chinese" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-tw.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=ko&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Korean" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-ko.png" width=50></a>
-<a href="http://translate.google.com/translate?sl=en&tl=ja&u=https%3A%2F%2Fgithub.com%2Fsanderland%2Fkatrain%2Fblob%2Fmaster%2FREADME.md"><img alt="Japanese" src="https://github.com/sanderland/katrain/blob/master/katrain/img/flags/flag-jp.png" width=50></a>
+# テスト（逐次）
+uv run pytest tests
 
-</td>
-</table>
+# テスト（並列・時間短縮）
+uv run pytest tests -n auto
 
-## <a name="preview"></a>  Preview and Youtube Videos
+# テスト（時間上位表示）
+uv run pytest tests --durations=20 --durations-min=0.1
 
-<img alt="screenshot" src="https://raw.githubusercontent.com/sanderland/katrain/master/screenshots/analysis.png" width="550">
+# 静的解析
+uv run mypy katrain
+uv run ruff check katrain tests
+uv run ruff format --check katrain tests
 
-| **Local Joseki Analysis**                  | **Analysis Tutorial**                                                                              | **Teaching Game Tutorial**                                                                                   |
-|:-----------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------:|
-| [![Local Joseki Analysis Video](http://i.imgur.com/YcpmSBx.png)](https://www.youtube.com/watch?v=tXniX57KtKk) | [![Analysis Tutorial](http://i.imgur.com/3EP4IEr.png)](http://www.youtube.com/watch?v=qjxkcKgrsbU) | [![ Teaching Game Tutorial](http://i.imgur.com/jAdcSL5.png)](http://www.youtube.com/watch?v=wFl4Bab_eGM)   |
+# コード整形
+uv run ruff format katrain tests
+```
 
+CI（`.github/workflows/test_and_build.yaml`）では Python 3.11 / 3.12 / 3.13 のマトリクスを実行し、coverage 60% を gate としています。
 
+> headless Kivy テストの詳細は [`docs/06-kivy-headless-testing.md`](docs/06-kivy-headless-testing.md) を参照。
 
-## <a name="install"></a> Installation
-* See the [releases page](http://github.com/sanderland/katrain/releases) for downloadable executables for Windows and macOS.
-* Alternatively use `pipx install katrain` to install the latest version from PyPI on any 64-bit OS in an isolated environment.
-* On macOS, you can also use `brew install katrain` to install the app.
-* [This page](https://github.com/sanderland/katrain/blob/master/INSTALL.md) has detailed instructions for Window, Linux and macOS,
-  as well as troubleshooting and setting up KataGo to use multiple GPUs.
+---
 
-## <a name="kata"></a>  Configuring KataGo
+## 5. AI 戦略
 
-KaTrain comes pre-packaged with a working KataGo (OpenCL version) for Windows, Linux, and pre-M1 Mac operating systems, and the rather old 15 block model.
+| config キー | 説明 |
+|------------|------|
+| `ai:default` | KataGo 通常対局（手加減なし）。プロ棋士レベル |
+| `ai:handicap` | KataGo 置碁（置き石前提の設定） |
 
-To change the model, open 'General and Engine settings' in the application and 'Download models'. You can then select the model you want from the dropdown menu.
+旧 KaTrain の「Calibrated Rank Bot」「Simple Style」「ScoreLoss」「Policy」「KataJigo」等のスタイル AI は **Phase 280 で削除済み** です。代わりにヒント生成・メニュー・LLM Coach 等で教育機能を強化しています。
 
-To change the katago binary, e.g. to the Eigen/CPU version if you don't have a GPU, click 'Download KataGo versions'.
-  You can then select the KataGo binary from the dropdown menu.
-There are also CUDA and TensorRT versions available on [the KataGo release site](https://github.com/lightvector/KataGo/releases). Particularly the latter may offer much better performance on NVIDIA GPUs, but will be harder to 
-set up: [see here for more details](https://github.com/lightvector/KataGo#opencl-vs-cuda-vs-tensorrt-vs-eigen).
+詳細は [`docs/02-code-structure.md`](docs/02-code-structure.md) §5 を参照。
 
-Finally, you can override the entire command used to start the analysis engine, which 
- can be useful for connecting to a remote server. Do keep in mind that KaTrain uses the *analysis engine*
- of KataGo, and not the GTP engine.
+---
 
+## 6. 主要な Karte / Summary ワークフロー
 
-## <a name="ai"></a> Play against AI
+1. SGF をロードし KataGo 解析を実行
+2. **マイ Katrain メニュー → 単局カルテ出力** で `reports/karte/karte_<game>.json` (v3.3) を生成
+3. **マイ Katrain メニュー → LLM コーチ（手動貼付）** で Karte JSON のパスを指定
+4. popup の「プロンプト生成」で Markdown 風プロンプトをクリップボードへコピー
+5. 任意の LLM (ChatGPT / Claude / Gemini 等) に**手動で貼り付け**、応答をコピー
+6. popup の「応答貼付 → 検証」で症状 ID / move number / pointsLost / トーン整合性を 6 ルールで自動チェック
 
-* Select the players in the main menu, or under 'New Game'.
-* In a teaching game, KaTrain will analyze your moves and automatically undo those that are sufficiently bad.
-* When playing against AI, note that the "Undo" button will undo both the AI's last move and yours.
+複数局まとめワークフローは **マイ Katrain メニュー → 複数局サマリ作成** で生成した `summary.json` (v3.4) を使い、上の手順 2 以降を Summary に対して実行します（ポップアップが JSON の型を自動判別）。
 
-### Instant feedback
+Karte JSON のスキーマ正本は [`docs/archive/specs-implemented/karte-schema.md`](docs/archive/specs-implemented/karte-schema.md) です。
 
-The dots on the move indicate how many points were lost by that move.
+---
 
-* The colour indicates the size of the mistake according to KataGo
-* The size indicates if the mistake was actually punished. Going from fully punished at maximal size,
-  to no actual effect on the score at minimal size.
+## 7. ドキュメント入口
 
-In short, if you are a weaker player you should mostly focus on large dots that are red or purple,
-while stronger players can pay more attention to smaller mistakes. If you want to hide some colours
-on the board, or not output details for them in SGFs,you can do so under 'Configure Teacher'.
+| ファイル | 内容 |
+|---------|------|
+| [`docs/00-purpose-and-scope.md`](docs/00-purpose-and-scope.md) | 目的・スコープ・non-goals |
+| [`docs/01-roadmap.md`](docs/01-roadmap.md) | 全体ロードマップ |
+| [`docs/02-code-structure.md`](docs/02-code-structure.md) | コード構造・データフロー |
+| [`docs/usage-guide.md`](docs/usage-guide.md) | 利用者ガイド |
+| [`docs/03-llm-validation.md`](docs/03-llm-validation.md) | LLM 検証手順（手動 / 自動） |
+| [`docs/06-kivy-headless-testing.md`](docs/06-kivy-headless-testing.md) | headless Kivy テスト |
+| [`docs/archive/specs-implemented/`](docs/archive/specs-implemented/) | Phase 実装済みスペック一覧 |
+| [`docs/archive/specs-planned/`](docs/archive/specs-planned/) | 計画中・延期中の仕様 |
+| [`docs/ideas/`](docs/ideas/) | 構想段階のアイデアメモ |
+| [`docs/future/`](docs/future/) | 将来実装予定の機能 |
+| [`docs/resources/`](docs/resources/) | 外部リソース（囲碁用語 YAML 等） |
+| [`AGENTS.md`](AGENTS.md) | opencode / 開発エージェント向け開発ガイド |
 
-### AIs
+---
 
-This section describes the available AIs.
+## 8. upstream との関係
 
-In the 'AI settings', settings which have been tested and calibrated are at the top and have a lighter color,
-changing these will show an estimate of rank.
-This estimate should be reasonably accurate as long as you have not changed the other settings.
+| 項目 | 値 |
+|------|-----|
+| ベースプロジェクト | [sanderland/katrain](https://github.com/sanderland/katrain) |
+| ライセンス | MIT（[`LICENSE`](LICENSE) を参照） |
+| パッケージ名 | `KaTrain`（PyPI / Homebrew では本家版が入る） |
+| Homepage | [`pyproject.toml`](pyproject.toml) の `[project.urls]` を参照 |
 
-* Recommended options for serious play include:
-    * **KataGo** is full KataGo, above professional level. The analysis and feedback given is always based on this full strength KataGo AI.
-    * **Calibrated Rank Bot** was calibrated on various bots (e.g. GnuGo and Pachi at different strength settings) to play a balanced
-     game from the opening to the endgame without making serious (DDK) blunders. Further discussion can be found
-      [here](http://github.com/sanderland/katrain/issues/44) and [here](http://github.com/sanderland/katrain/issues/74).
-    * **Simple Style** Prefers moves that solidify both player's territory, leading to relatively simpler moves.
-* Legacy options which were developed earlier include: 
-    * **ScoreLoss** is KataGo analyzing as usual, but
-      choosing from potential moves depending on the expected score loss, leading to a varied style with mostly small mistakes.
-    * **Policy** uses the top move from the policy network (it's 'shape sense' without reading).
-    * **Policy Weighted** picks a random move weighted by the policy, leading to a varied style with mostly small mistakes, and occasional blunders due to a lack of reading.
-    * **Blinded Policy** picks a number of moves at random and play the best move among them, being effectively 'blind' to part of the board each turn. Calibrated rank is based on the same idea, and recommended over this option.
-* Options that are more on the 'fun and experimental' side include: 
-    * Variants of **Blinded Policy**, which use the same basic strategy, but with a twist:
-       * **Local Style** will consider mostly moves close to the last move.
-       * **Tenuki Style** will consider mostly moves away from the last move.
-       * **Influential Style** will consider mostly 4th+ line moves, leading to a center-oriented style.
-       * **Territory Style** is biased in the opposite way, towards 1-3rd line moves.
-    * **KataJigo** is KataGo attempting to win by 0.5 points, typically by responding to your mistakes with an immediate mistake of it's own.
-    * **KataAntiMirror** is KataGo assuming you are playing mirror go and attempting to break out of it with profit as long as you are.
-    
-The Engine based AIs (KataGo, ScoreLoss, KataJigo) are affected by both the model and choice of visits and maximum time,
- while the policy net based AIs are affected by the choice of model file, but work identically with 1 visit.
+本家は KaTrain のマニュアル・インストール手順・サポート窓口を提供しています。本フォーク固有の質問・Issue は本リポジトリ（私的）の範囲で対応してください。
 
-Further technical details and discussion on some of these AIs can be found on [this](http://lifein19x19.com/viewtopic.php?f=10&t=17488&sid=b11e42c005bb6f4f48c83771e6a27eff) thread at the life in 19x19 forums.
+---
 
-## <a name="analysis"></a> Analysis
+## 9. 現在のステータス
 
-Analysis options in KaTrain allow you to explore variations and request more in-depth analysis from the engine at any point in the game.
+- パッケージバージョン: **v1.17.1**（`pyproject.toml` / `katrain/core/constants.py`）
+- 設定互換最小バージョン: **v1.17.0**（旧 config JSON を読み込める下限）
+- 用途: 個人利用・教育機能の試作・LLM コーチング実験
+- 公開方針: 実験的リポジトリ。バグ報告は GitHub Issue へ（修正は任意）
+- CI: Linux 3.11 / 3.12 / 3.13 で緑、`mypy 0 issues / ruff clean / pytest 6191 PASS + 3 SKIP`（Phase 284 時点）
 
-| Key            | Short Description                      | Details                                                                                                                                                                                                                                                                                               |
-| -------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <kbd>Tab</kbd> | Switch between analysis and play modes | AI moves, teaching mode and timers are suspended in analysis mode. The state of the analysis options and right-hand side panels and options is saved independently for 'play' and 'analyze', allowing you to quickly switch between a more minimalistic 'play' mode and more complex 'analysis' mode. |
-
-The checkboxes at the top of the screen:
-
-| Key          | Short Description     | Details                                                                                                                                                                                                                                     |
-| ------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <kbd>q</kbd> | Child moves are shown | On by default, can turn it off to avoid obscuring other information or when wanting to guess the next move.                                                                                                                                 |
-| <kbd>w</kbd> | Show all dots         | Toggles showing coloured evaluation 'dots' on the last few moves or not. You can configure the thresholds, along with how many of the last moves they are shown for under 'Teaching/Analysis Settings'.                                     |
-| <kbd>e</kbd> | Top moves             | Show the next moves KataGo considered, colored by their expected point loss. Small/faint dots indicate high uncertainty and never show text (lower than your 'fast visits' setting). Hover over any of them to see the principal variation. |
-| <kbd>r</kbd> | Policy moves          | Show KataGo's policy network evaluation, i.e. where it thinks the best next move is purely from the position, and in the absence of any 'reading'. This turns off the 'top moves' setting as the overlap is often not useful.               |
-| <kbd>t</kbd> | Expected territory    | Show expected ownership of each intersection.                                                                                                                                                                                               |
-
-The analysis options available under the 'Analysis' button are used for deeper evaluation of the position:
-
-| Key                                 | Short Description                                                                                            | Details                                                                                                                                                                                                                      |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <kbd>a</kbd>                        | Deeper analysis                                                                                              | Re-evaluate the position using more visits, usually resulting in a more accurate evaluation.                                                                                                                                 |
-| <kbd>s</kbd>                        | Equalize visits                                                                                              | Re-evaluate all currently shown next moves with the same visits as the current top move. Useful to increase confidence in the suggestions with high uncertainty.                                                             |
-| <kbd>d</kbd>                        | Analyze all moves                                                                                            | Evaluate all possible next moves. This can take a bit of time even though 'fast_visits' is used, but can be useful to see how many reasonable next moves are available.                                                      |
-| <kbd>f</kbd>                        | Find alternatives                                                                                            | Increases analysis of current candidate moves to at least the 'fast visits' level, and request a new query that excludes all current candidate moves.                                                                        |
-| <kbd>g</kbd>                        | Select area of interest                                                                                      | Set an area and search only for moves in this box. Good for solving tsumegos. Note that some results may appear outside the box due to establishing a baseline for the best move, and the opponent can tenuki in variations. |
-| <kbd>h</kbd>                        | Reset analysis                                                                                               | This reverts the analysis to what the engine returns after a normal query, removing any additional exploration.                                                                                                              |
-| <kbd>i</kbd>                        | Start insertion mode                                                                                         | Allows you to insert moves, to improve analysis when both players ignore an important exchange or life and death situation. Press again to stop inserting and copy the rest of the branch.                                   |
-| <kbd>l</kbd>                        | Play out the game until the end and add as a collapsed branch, to visualize the potential effect of mistakes | This is done in the background, and can be started at several nodes at once when comparing the results at different starting positions.                                                                                      |
-| <kbd>Space</kbd>                    | Turn continuous analysis on/off.                                                                             | This will continuously improve analysis of the current position, similar to Lizzie's 'pondering', but only when there are no other queries going on.                                                                         |
-| <kbd>Shift</kbd> + <kbd>Space</kbd> | As above, but does not turn 'top moves' hints on when it is off.                                             |                                                                                                                                                                                                                              |
-| <kbd>Enter</kbd>                    | AI move                                                                                                      | Makes the AI move for the current player regardless of current player selection.                                                                                                                                             |
-| <kbd>F2</kbd>                       | Deeper full game analysis                                                                                    | Analyze the entire game to a higher number of visits.                                                                                                                                                                        |
-| <kbd>F3</kbd>                       | Performance report                                                                                           | Show an overview of performance statistics for both players.                                                                                                                                                                 |
-| <kbd>F10</kbd>                      | Tsumego Frame                                                                                                | After placing a life and death problem in a corner/side, use this to fill up the rest of the board to improve AI's ability in solving life and death problems.                                                               |
-
-## <a name="keyboard"></a> Keyboard and mouse shortcuts
-
-In addition to shortcuts mentioned above and those shown in the main menu:
-
-| Key                                            | Short Description                                                                    | Details                                                                                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| <kbd>Alt</kbd>                                 | Open the main menu                                                                   |                                                                                                                                         |
-| <kbd>~</kbd> or <kbd>`</kbd> or <kbd>F12</kbd> | Cycles through more minimalistic UI modes                                            |                                                                                                                                         |
-| <kbd>k</kbd>                                   | Toggle display of board coordinates                                                  |                                                                                                                                         |
-| <kbd>p</kbd>                                   | Pass                                                                                 |                                                                                                                                         |
-| <kbd>Pause</kbd>                               | Pause/Resume timer                                                                   |                                                                                                                                         |
-| <kbd>←</kbd> or <kbd>z</kbd>                   | Undo move                                                                            | Hold shift for 10 moves at a time, or ctrl to skip to the start.                                                                        |
-| <kbd>→</kbd> or <kbd>x</kbd>                   | Redo move                                                                            | Hold shift for 10 moves at a time, or ctrl to skip to the end.                                                                          |
-| <kbd>↑</kbd>/<kbd>↓</kbd>                      | Switch branch                                                                        | As would be expected from the move tree.                                                                                                |
-| <kbd>Home</kbd>/<kbd>End</kbd>                 | Go to the beginning/end of the game                                                  |                                                                                                                                         |
-| <kbd>PageUp</kbd>                              | Make the currently selected node the main branch                                     |                                                                                                                                         |
-| <kbd>Ctrl</kbd> + <kbd>Delete</kbd>            | Delete current node                                                                  |                                                                                                                                         |
-| <kbd>c</kbd>                                   | Collapse/Uncollapse the branch from the current node to the previous branching point |                                                                                                                                         |
-| <kbd>b</kbd>                                   | Go back to the previous branching point                                              |                                                                                                                                         |
-| <kbd>Shift</kbd> + <kbd>b</kbd>                | Go back the main branch                                                              |                                                                                                                                         |
-| <kbd>n</kbd>                                   | Go to one move before the next mistake (orange or worse) by a human player           | As in clicking the forward red arrow                                                                                                    |
-| <kbd>Shift</kbd> + <kbd>n</kbd>                | Go to one move before the previous mistake                                           | As in clicking the backward red arrow                                                                                                   |
-| Scroll Mouse                                   | Redo/Undo move or Scroll through principal variation                                 | When hovering the cursor over the right panel: Redo/Undo move. When hovering over a candidate move: Scroll through principal variation. |
-| Middle Scroll Wheel Click                      | Add principal variation to the move tree                                             | When scrolling, only moves up to the point you are viewing are added.                                                                   |
-| Click on a Move                                | See detailed statistics for a previous move                                          | Along with expected variation that was best instead of this move                                                                        |
-| Double Click on a Move                         | Navigate directly to just before that point in the game                              |                                                                                                                                         |
-| <kbd>Ctrl</kbd> + <kbd>v</kbd>                 | Load SGF from the clipboard and do a 'fast' analysis of the game                     | With a high priority normal analysis for the last move.                                                                                 |
-| <kbd>Ctrl</kbd> + <kbd>c</kbd>                 | Save SGF to clipboard                                                                |                                                                                                                                         |
-| <kbd>Escape</kbd>                              | Stop all analysis                                                                    |                                                                                                                                         |
-
-## <a name="distributed"></a> Contributing to distributed training
-
-Starting in December 2020, KataGo started [distributed training](https://katagotraining.org/).
-This allows people to all help generate self-play games to increase KataGo's strength and train bigger models.
-
-KaTrain 1.8.0+ makes it easy to contribute to distributed training: simply select the option from the main menu, register an account, and click run.
-During this mode you can do little more than watch games.
-
-Keep in mind that partial games are not uploaded,
-so it is best to plan to keep it running for at least an hour, if not several, for the most effective contribution.
-
-A few keyboard shortcuts have special functions in this mode:
-
-| Key               | Short Description                                                  | Details                                                                                                |
-| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| <kbd>Space</kbd>  | Switch between manually navigating the current game                | And automatically advancing it.                                                                        |
-| <kbd>Escape</kbd> | Sends the `quit` command to KataGo                                 | Which starts a slow shutdown, finishing partial games but not starting new ones. Only works on v1.11+. |
-| <kbd>Pause</kbd>  | Pauses/resumes contributions via the `pause` and `resume` commands | Introduced in KataGo v1.11                                                                             |
-
-## <a name="themes"></a> Themes
-
-See [these instructions](THEMES.md) for how to modify the look of any graphics or colours, and creating or install themes.
-   
-## <a name="faq"></a> FAQ
-
-* The program is running too slowly. How can I speed it up?
-  *  Adjust the number of visits or maximum time allowed in the settings.
-* KataGo crashes with "out of memory" errors, how can I prevent this?
-  * Try using a lower number for `nnMaxBatchSize` in `KataGo/analysis_config.cfg`, and avoid using versions compiled with large board sizes.
-  * If still encountering problems, please start KataGo by itself to check for any errors it gives.
-  * Note that if you don't have a GPU, or your GPU does not support OpenCL, you should use the 'eigen' binaries which run on CPU only.
-* The font size is too small
-  * On some ultra-high resolution monitors, dialogs and other elements with text can appear too small. Please see [these](https://github.com/sanderland/katrain/issues/359#issuecomment-784096271) instructions to adjust them.
-* The app crashes with an error about "unable to find any valuable cutbuffer provider"
-  * Install xclip using `sudo apt-get install xclip`
-
-
-## <a name="support"></a> Support / Contribute
-
-[![GitHub issues](http://img.shields.io/github/issues/sanderland/katrain)](http://github.com/sanderland/katrain/issues)
-[![Contributors](http://img.shields.io/static/v1?label=contributors&message=<3&color=dcb424)](CONTRIBUTIONS.md)
-
- * Ideas, feedback, and contributions to code or translations are all very welcome.
-    * For suggestions and planned improvements, see [open issues](http://github.com/sanderland/katrain/issues) on github to check if the functionality is already planned.
-* You can join the [Computer Go Community Discord (formerly Leela Zero & Friends)](http://discord.gg/AjTPFpN) (use the #gui channel) to get help, discuss improvements, or simply show your appreciation. Please do not use github issues to ask for technical help, this is only for bugs, suggestions and discussing contributions.
-
-
-
+詳細は [`AGENTS.md`](AGENTS.md) §1.3 直近のマイルストーンを参照。

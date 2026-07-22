@@ -2,9 +2,14 @@
 
 Minimal proof-of-concept for a 19x19 Go board UI using PySide6 (Qt).
 
+> **スコープ外リマインダー**: 本ディレクトリは **本体の研究開発用 PoC** です。本体の Kivy GUI には一切影響しません。
+>
+> - 本体: Python 3.11+ / Kivy 2.3.1 / KivyMD 1.2.0
+> - PoC: Python 3.13+ / PySide6
+
 ## Purpose
 
-Validate feasibility of moving KaTrain's board UI from Kivy to Qt (PySide6).
+Validate feasibility of moving KaTrain's board UI from Kivy to Qt (PySide6).  
 This is a standalone PoC - it does **not** modify any existing KaTrain/Kivy code.
 
 ## Features
@@ -25,24 +30,26 @@ This is a standalone PoC - it does **not** modify any existing KaTrain/Kivy code
 ## Installation & Running (Windows PowerShell)
 
 ```powershell
-# Navigate to repo root
+# リポジトリルートへ移動
 cd D:\github\katrain-1.17.0
 
-# (Optional) Set execution policy for current process if script activation is blocked
+# (任意) スクリプト実行がブロックされる場合のみ
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-# Create virtual environment (first time only)
-python -m venv .venv
+# PoC 専用の仮想環境を作成 (本体 .venv とは分離)
+python -m venv .venv-poc
 
-# Activate virtual environment
-.\.venv\Scripts\Activate.ps1
+# PoC 用 venv をアクティブ化
+.\.venv-poc\Scripts\Activate.ps1
 
-# Install dependencies
+# 依存インストール (PoC 専用 requirements.txt)
 pip install -r tools\pyside_board_poc\requirements.txt
 
-# Run the PoC
+# PoC を起動
 python tools\pyside_board_poc\board_poc.py
 ```
+
+> **重要**: 本体の依存管理は `uv sync`（`uv.lock`）ですが、PoC は本体 venv を汚さないように **必ず別 venv** で動かしてください。`.venv-poc` 例の venv 名は一例です。
 
 ## Usage
 
@@ -94,19 +101,20 @@ Validate feasibility of:
 ## Running PoC+
 
 ```powershell
-# Navigate to repo root
+# リポジトリルートへ移動
 cd D:\github\katrain-1.17.0
 
-# Activate virtual environment
-.\.venv\Scripts\Activate.ps1
+# PoC 用 venv をアクティブ化
+.\.venv-poc\Scripts\Activate.ps1
 
-# Run the extended PoC
+# Extended PoC を起動
 python tools\pyside_board_poc\board_poc_plus.py
 ```
 
 ## PoC+ Features
 
 ### SGF Loading
+
 - **File → Open SGF (Ctrl+O)**: Load any SGF file
 - **File → Open Sample SGF**: Load built-in sample game (36 moves)
 - Supports main sequence only (variations are ignored)
@@ -147,11 +155,13 @@ To enable real analysis, configure KataGo via **Analysis → Configure KataGo**:
 Settings are saved to `poc_settings.json` in the PoC directory.
 
 **Environment Variables** (optional, override file settings):
+
 - `KATAGO_EXE`: Path to KataGo executable
 - `KATAGO_CONFIG`: Path to analysis config
 - `KATAGO_MODEL`: Path to model file
 
 Example (PowerShell):
+
 ```powershell
 $env:KATAGO_EXE = "C:\path\to\katago.exe"
 $env:KATAGO_CONFIG = "D:\github\katrain-1.17.0\katrain\KataGo\analysis_config.cfg"
@@ -183,7 +193,7 @@ python tools\pyside_board_poc\board_poc_plus.py
 - **SGF**: `"aa"` = top-left = `(col=0, row=0)`
 - **Display**: `"A1"` style (letter + number), **without 'I' skip** (simplified for PoC)
   - `col=0` → `'A'`, `col=8` → `'I'` (not skipped)
-  - `row=0` → `19`, `row=18` → `1`
+  - `row=0` → `19`, `row=18` → `1'`
 
 ## Architecture (PoC+)
 
@@ -194,13 +204,14 @@ python tools\pyside_board_poc\board_poc_plus.py
 | `board_poc_plus.py` | Main application (~1000 lines) |
 | `models.py` | BoardModel + AnalysisModel + GTP utils (~470 lines) |
 | `katago_engine.py` | KataGo process management (~490 lines) |
-| `poc_settings.json` | KataGo path settings (auto-generated) |
+| `poc_settings.json` | KataGo path settings (auto-generated, untracked) |
 | `sample.sgf` | Test SGF file (36 moves) |
 
 ### Architecture Modes
 
 **KataGo Mode (default if configured):**
-```
+
+```text
 MainWindowPlus (GUI Thread)
   ├─ BoardModel ───────────────→ get_position_snapshot()
   │                                       │
@@ -217,7 +228,8 @@ MainWindowPlus (GUI Thread)
 ```
 
 **Dummy Fallback Mode (when KataGo not configured):**
-```
+
+```text
 Main Thread                     Worker Thread
 ─────────────────────────────────────────────────
 MainWindowPlus                  AnalysisWorker
@@ -227,6 +239,7 @@ MainWindowPlus                  AnalysisWorker
 ```
 
 **Key Design Points**:
+
 - **KataGo Mode**: All in GUI thread, QProcess handles async I/O
 - **Dummy Mode**: Worker thread with QTimer for periodic updates
 - 200ms debounce for KataGo queries on rapid position changes

@@ -1,15 +1,16 @@
 # Future（将来の機能）
 
-このフォルダには、将来実装予定の機能仕様書（**まだ実装されていないもの**）が格納されています。
+このフォルダには、**未実装または一部実装済み**の機能仕様書を格納しています。  
+実装済みのものは [`docs/archive/specs-implemented/`](../archive/specs-implemented/) へ移管されます。
 
-> **最終更新**: 2026-07-14（Phase 201: ドキュメント整合）
+> **最終更新**: 2026-07-21（Phase 280 / 250 後の状態整合）
 
 ## ステータス定義
 
 | ステータス | 意味 |
 |-----------|------|
 | `partial` | 一部のみ実装済み（GUI 部分のみ未実装等） |
-| `deferred` | 構想段階、後回し |
+| `deferred` | 構想段階、後回し（DEFERRED 命名規則へ移行予定） |
 | `idea` | 概要レベル、正式仕様未着手 |
 
 ## 収録ファイル
@@ -24,9 +25,15 @@
 
 | ファイル | 概要 | 優先度 |
 |----------|------|--------|
-| [`idea3-ownership-overlay.md`](idea3-ownership-overlay-DEFERRED.md) | Ownership Volatility Overlay（係争地 / 死に石 / 過剰防衛の盤上可視化） | 中 |
-| [`idea5-style-quiz.md`](idea5-style-quiz-DEFERRED.md) | Style Matching Quiz（Human-SL + 標準 KataGo loss 比較クイズ） | 低 |
+| [`idea3-ownership-overlay.md`](idea3-ownership-overlay.md) | Ownership Volatility Overlay（係争地 / 死に石 / 過剰防衛の盤上可視化） | 中 |
+| [`idea5-style-quiz.md`](idea5-style-quiz.md) | Style Matching Quiz（Human-SL + 標準 KataGo loss 比較クイズ） | 低 |
 
-## 実装済みへの移動先（参考）
+> **命名規則**: 延期ファイルはかつて `DEFERRED-` プレフィックス付きで `docs/archive/specs-implemented/` に置かれていましたが、Phase 280 の整理で `docs/future/` へ移管されました。DEFERRED プレフィックスは順次削除中です。
 
-実装完了した仕様書は [`docs/archive/specs-implemented/`](../archive/specs-implemented/) に移管済みです。Phase 80-94 系の機能（Ownership クラスタ、Pattern Mining、Reason Generator、KataGo Setup Rescue、Beginner Hints MVP、Active Review MVP）もすべて実装完了しました。
+## 関連
+
+- **実装済み**: [`docs/archive/specs-implemented/`](../archive/specs-implemented/) — Phase 計画完了済みのスペック
+- **計画中（着手前）**: [`docs/archive/specs-planned/`](../archive/specs-planned/) — Phase 単位の着手前スペック
+- **アイデア原案**: [`docs/ideas/`](../ideas/) — 構想段階のメモ
+
+Phase 80-94 系（Ownership クラスタ / Pattern Mining / Reason Generator / KataGo Setup Rescue / Beginner Hints MVP / Active Review MVP）は実装完了し、`docs/archive/specs-implemented/` へ移管済みです。
