@@ -259,14 +259,20 @@ class GameNode(SGFNode):
             merged_order = min(
                 cur["order"], move_analysis.get("order", ADDITIONAL_MOVE_ORDER)
             )  # parent arriving after child
+            # Phase LV4-1: mutate ``cur`` in place rather than rebuilding
+            # the whole dict with ``{**cur, **move_analysis, ...}``. KataGo
+            # delivers ``move_analysis`` fresh per query and never reuses
+            # it across callbacks (see ``engine.request_analysis`` in
+            # ``core/game_node.py``), so in-place is safe. Cuts ~60 dict
+            # allocations per partial-result tick at 30 candidate moves.
             if cur["visits"] < move_analysis["visits"]:
-                self.analysis["moves"][move_gtp] = {**cur, **move_analysis, "order": merged_order}
-            else:  # prior etc only
-                self.analysis["moves"][move_gtp] = {
-                    **cur,
-                    **{k: v for k, v in move_analysis.items() if k not in cur},
-                    "order": merged_order,
-                }
+                cur.update(move_analysis)
+                cur["order"] = merged_order
+            else:  # prior etc only: existing keys win, new keys are added
+                for k, v in move_analysis.items():
+                    if k not in cur:
+                        cur[k] = v
+                cur["order"] = merged_order
 
     def set_analysis(
         self,
