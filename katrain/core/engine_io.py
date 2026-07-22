@@ -147,12 +147,32 @@ def write_stdin_thread(widget: KataGoEngine) -> None:
         if process is None:
             return
         try:
-            item = widget.write_queue.get(block=True, timeout=0.1)
+            # Phase LV3-1: write_queue is a PriorityQueue of
+            # ``(priority, seq)``. The actual payload lives in
+            # ``_write_queue_payloads`` keyed by seq.
+            priority_item = widget.write_queue.get(block=True, timeout=0.1)
         except queue.Empty:
             continue
         # Check for termination signal (None)
-        if item is None:
+        if priority_item is None:
             return
+        try:
+            _, seq = priority_item
+            item = widget._write_queue_payloads.pop(seq, None)
+        except (TypeError, ValueError) as e:
+            widget.katrain.log(
+                f"Malformed write_queue priority item dropped: {type(priority_item).__name__} ({e!r})",
+                OUTPUT_ERROR,
+            )
+            continue
+        if item is None:
+            # Sequence id not found in payload dict: must not happen, but
+            # log + continue so we don't silently kill the writer.
+            widget.katrain.log(
+                f"write_queue payload missing for seq={seq}",
+                OUTPUT_ERROR,
+            )
+            continue
         query: dict[str, Any]
         callback: Any
         error_callback: Any

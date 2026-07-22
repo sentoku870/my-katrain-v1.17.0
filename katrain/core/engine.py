@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import contextlib
+import itertools
 import json
 import os
 import platform
@@ -170,8 +171,11 @@ class KataGoEngine(BaseEngine):
     """
 
     PONDER_KEY = "_kt_continuous"
-    # Timeout for Queue.get() in consumer threads (seconds)
-    IO_TIMEOUT = 5.0
+    # Phase LV3-2: tighter Queue.get() timeout in the consumer threads.
+    # Previously 5 s; cutting to 1 s makes the stderr / analysis-read
+    # threads wake up 5x more often so pending-query checks and shutdown
+    # propagation are responsive without busy-spinning.
+    IO_TIMEOUT = 1.0
 
     def __init__(
         self,
@@ -198,10 +202,16 @@ class KataGoEngine(BaseEngine):
         self.stdout_reader_thread: threading.Thread | None = None
         self.stderr_reader_thread: threading.Thread | None = None
         self.shell = False
-        self.write_queue: queue.Queue[
-            tuple[dict[str, Any], Callable[..., None] | None, Callable[..., None] | None, Move | None, GameNode | None]
-            | None
-        ] = queue.Queue()
+        # Phase LV3-1: write_queue is now a PriorityQueue so higher-priority
+        # queries (e.g. UI-driven ``PRIORITY_EXTRA_AI_QUERY``) are dequeued
+        # before stale lower-priority background sweeps. Each item is
+        # stored as ``(priority, seq)`` in the queue and the actual
+        # payload (query, callbacks, move, node) is held in a side
+        # dictionary keyed by ``seq``; this avoids Kivy/Queue trying
+        # to compare dicts inside the priority tuple.
+        self.write_queue: queue.PriorityQueue[tuple[int, int] | None] = queue.PriorityQueue()
+        self._write_queue_seq = itertools.count()
+        self._write_queue_payloads: dict[int, tuple[Any, ...]] = {}
         # Output queues for non-blocking I/O (Phase 22)
         self._stdout_queue: queue.Queue[bytes | None] = queue.Queue()
         self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()

@@ -241,6 +241,13 @@ class EngineConfig:
     wide_root_noise: float = 0.04
     enable_ownership: bool = True
     disabled: bool = False
+    # Phase LV3-5: spawn a separate KataGo process for the white side
+    # so black and white analyses run on different threads without
+    # competing for visits. Default ``False`` keeps the historical
+    # single-process behaviour; flipping it on also requires the GUI
+    # layer to wire up two ``KataGoEngine`` instances (tracked
+    # separately as a follow-up).
+    enable_dual_katago: bool = False
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> EngineConfig:
@@ -281,6 +288,9 @@ class EngineConfig:
             wide_root_noise=safe_float(d.get("wide_root_noise"), 0.04),
             enable_ownership=safe_bool(enable_ownership_val, default=True),
             disabled=safe_bool(d.get("disabled"), default=False),
+            # Phase LV3-5: opt-in dual-KataGo flag. ``None``/missing means
+            # the historical single-process behaviour.
+            enable_dual_katago=safe_bool(d.get("enable_dual_katago"), default=False),
         )
 
 

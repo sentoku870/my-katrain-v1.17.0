@@ -44,6 +44,12 @@ def build_analysis_query(
     include_policy: bool = True,
     report_every: float | None = None,
     ponder_key: str = "_kt_continuous",
+    # Phase LV3-4: number of parallel PVs KataGo should compute and
+    # report per analysis query. ``1`` keeps the historical behaviour;
+    # callers in SWEEP / alternative-move mode may bump this to 4-20 so
+    # the engine returns extra PVs in the same query instead of forcing
+    # a new round-trip per move.
+    analysis_pvs: int = 1,
 ) -> dict[str, Any]:
     """Build a KataGo analysis query dict.
 
@@ -119,6 +125,10 @@ def build_analysis_query(
         "overrideSettings": {**settings, **(extra_settings or {})},
         ponder_key: ponder,
     }
+    # Phase LV3-4: emit ``analysisPVs`` whenever the caller asked for
+    # more than the default 1. KataGo ignores the parameter below 1.
+    if analysis_pvs > 1:
+        query["analysisPVs"] = analysis_pvs
 
     if report_every is not None:
         query["reportDuringSearchEvery"] = report_every
@@ -222,7 +232,13 @@ def send_query(
     # Queue the query (decrement on completion/error in analysis_read_thread)
 
     try:
-        widget.write_queue.put((query, callback, error_callback, next_move, node))
+        # Phase LV3-1: priority + monotonic seq are queued, the actual
+        # payload lives in ``_write_queue_payloads`` so the PriorityQueue
+        # only compares (priority, seq) without descending into dicts.
+        priority = query.get("priority", 0)
+        seq = next(widget._write_queue_seq)
+        widget._write_queue_payloads[seq] = (query, callback, error_callback, next_move, node)
+        widget.write_queue.put((priority, seq))
         return True
     except Exception as e:
         # Queue insertion failed (should not happen, but safety net)
