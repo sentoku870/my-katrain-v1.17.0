@@ -510,7 +510,7 @@ def draw_kata_hint_marker(
                 widget.gridpos[move.coords[1]][move.coords[0]][1],
             ),
             text=fmt.format(**keys),
-            font_name="Roboto",
+            font_name=Theme.DEFAULT_FONT,
             markup=True,
             line_height=0.85,
             halign="center",

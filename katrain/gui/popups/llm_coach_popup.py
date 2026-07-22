@@ -28,6 +28,8 @@ is Phase 224 (deferred).
 from __future__ import annotations
 
 import contextlib
+import json
+import re
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
@@ -100,7 +102,7 @@ __all__ = [
 # re-schedules itself when the karte path is still empty. Without this
 # cap the popup would re-schedule forever (and keep referencing widgets
 # of a popup the user has already dismissed).
-_MAX_RANK_DETECT_RETRIES = 5
+_MAX_RANK_DETECT_RETRIES = 2
 _RETRY_INTERVAL = 0.2
 
 # Phase 242-B: minimum interval between rapid validation requests to
@@ -810,8 +812,6 @@ class LLMCoachPopupContent(BoxLayout):
     def _read_summary_games_count(self, summary_path: str) -> int:
         """Phase 272-E: read ``meta.games_analyzed`` from the summary JSON, tolerating I/O errors."""
         try:
-            import json
-
             with open(summary_path, encoding="utf-8") as f:
                 data = json.load(f)
             return (data.get("meta") or {}).get("games_analyzed", 0) or 0
@@ -1085,8 +1085,6 @@ class LLMCoachPopupContent(BoxLayout):
         # Count games/patterns from the rendered prompt so we can show
         # a richer status line. The regex is intentionally lenient —
         # exact numbers are not critical for UX.
-        import re
-
         games_match = re.search(r"\*\*(\d+)\s*局\*\*", content)
         games = int(games_match.group(1)) if games_match else 0
         patterns_match = re.search(r"top\s+(\d+)", content)

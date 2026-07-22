@@ -151,7 +151,7 @@ def draw_pv(widget: BadukPanWidget, pv: Any, node: Any, up_to_move: Any) -> None
             pos=board_coords,
             text=str(i + 1),
             font_size=widget.grid_size * sizefac / 1.45,
-            font_name="Roboto",
+            font_name=Theme.DEFAULT_FONT,
         )
 
 

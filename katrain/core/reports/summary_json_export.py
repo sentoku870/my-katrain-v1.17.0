@@ -23,6 +23,7 @@ from katrain.core import analysis
 from katrain.core.analysis import (
     GameSummaryData,
     MistakeCategory,
+    apply_dynamic_phases,
     get_canonical_loss_from_move,
 )
 from katrain.core.reports.definitions import (
@@ -620,8 +621,6 @@ def build_summary_json(
 
     # Phase 156: opt-in dynamic phase detection (rewrites move.tag)
     if dynamic_phase_detection:
-        from katrain.core.analysis import apply_dynamic_phases
-
         for gd in game_data_list:
             board_size = gd.board_size[0] if isinstance(gd.board_size, tuple) else int(gd.board_size or 19)
             apply_dynamic_phases(list(gd.snapshot.moves), board_size=board_size)
