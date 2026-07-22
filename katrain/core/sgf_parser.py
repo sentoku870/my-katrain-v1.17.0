@@ -15,6 +15,8 @@ class ParseError(Exception):
 
 
 class Move:
+    __slots__ = ("coords", "player")
+
     GTP_COORD = list("ABCDEFGHJKLMNOPQRSTUVWXYZ") + [
         xa + c for xa in "ABCDEFGH" for c in "ABCDEFGHJKLMNOPQRSTUVWXYZ"
     ]  # board size 52+ support

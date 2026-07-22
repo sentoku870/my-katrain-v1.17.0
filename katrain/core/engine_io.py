@@ -335,7 +335,12 @@ def analysis_read_thread(widget: KataGoEngine) -> None:
                     f"[{time_taken:.1f}][{query_id}][{'....' if partial_result else 'done'}] KataGo analysis received: {len(analysis.get('moveInfos', []))} candidate moves, {analysis['rootInfo']['visits'] if results_exist else 'n/a'} visits",
                     OUTPUT_DEBUG,
                 )
-                widget.katrain.log(json_truncate_arrays(analysis), OUTPUT_EXTRA_DEBUG)
+                # Phase LV1-8: rate-limit the verbose JSON dump to at most
+                # once per second so debug runs don't bottleneck on disk I/O.
+                now = time.time()
+                if now - getattr(widget, "_last_extra_debug_log_time", 0.0) > 1.0:
+                    widget._last_extra_debug_log_time = now
+                    widget.katrain.log(json_truncate_arrays(analysis), OUTPUT_EXTRA_DEBUG)
                 try:
                     if callback and results_exist:
                         callback(analysis, partial_result)

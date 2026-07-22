@@ -69,10 +69,14 @@ def format_visits(n: int) -> str:
 
 def json_truncate_arrays(data: Any, lim: int = 20) -> Any:
     if isinstance(data, list):
+        # Phase LV1-13: check length *before* recursing so that dict-list
+        # entries (which previously recursed into every element) are also
+        # collapsed when they exceed ``lim``.
+        if len(data) > lim:
+            head_type = type(data[0]).__name__ if data else "item"
+            return [f"{len(data)} x {head_type}"]
         if data and isinstance(data[0], dict):
             return [json_truncate_arrays(d) for d in data]
-        if len(data) > lim:
-            data = [f"{len(data)} x {type(data[0]).__name__}"]
         return data
     elif isinstance(data, dict):
         return {k: json_truncate_arrays(v) for k, v in data.items()}

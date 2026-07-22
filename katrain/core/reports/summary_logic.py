@@ -91,6 +91,15 @@ class SummaryAnalyzer:
                 # Store moves for confidence level computation
                 stats.all_moves.extend(player_moves)
 
+                # Phase LV1-11: resolve preset/thresholds once per game rather
+                # than re-resolving on every move of every player.
+                if effective_preset:
+                    preset = analysis.get_skill_preset(effective_preset)
+                    thresholds = preset.score_thresholds
+                else:
+                    preset = None
+                    thresholds = None
+
                 for move in player_moves:
                     # 損失を集計（canonical loss: 常に >= 0）
                     loss = get_canonical_loss_from_move(move)
@@ -101,9 +110,7 @@ class SummaryAnalyzer:
                     # Phase 148-C2: re-classify using effective_preset (resolved from auto)
                     # (preset-based score_thresholds, fallback to move.mistake_category)
                     cat = move.mistake_category
-                    if effective_preset:
-                        preset = analysis.get_skill_preset(effective_preset)
-                        thresholds = preset.score_thresholds
+                    if thresholds is not None:
                         if loss >= thresholds[2]:
                             cat = MistakeCategory.BLUNDER
                         elif loss >= thresholds[1]:

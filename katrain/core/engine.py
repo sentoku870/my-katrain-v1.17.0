@@ -504,7 +504,7 @@ class KataGoEngine(BaseEngine):
         except queue.Full:
             # Queue is full - try with timeout
             try:
-                q.put(item, timeout=1.0)
+                q.put(item, timeout=0.1)
             except queue.Full:
                 self.katrain.log(
                     f"Shutdown: queue still full after timeout during {context}, skipping",

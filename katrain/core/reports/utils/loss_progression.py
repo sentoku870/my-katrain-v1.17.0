@@ -104,10 +104,20 @@ def compute_loss_progression(
     for start, end in sorted(buckets_dict):
         bucket_moves = buckets_dict[(start, end)]
         count = len(bucket_moves)
-        total_loss = sum(get_canonical_loss_from_move(m) for m in bucket_moves)
+        # Phase LV1-10: single-pass accumulation instead of two separate
+        # ``sum()`` generators over the same bucket.
+        total_loss = 0.0
+        mistake_count = 0
+        max_move = start
+        for mv in bucket_moves:
+            loss = get_canonical_loss_from_move(mv)
+            total_loss += loss
+            if loss >= MISTAKE_THRESHOLD:
+                mistake_count += 1
+            if mv.move_number > max_move:
+                max_move = mv.move_number
         rounded_total = round(total_loss, 2)
-        mistake_count = sum(1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD)
-        final_end_move = min(end, max(mv.move_number for mv in bucket_moves)) if truncate_end_move else end
+        final_end_move = min(end, max_move) if truncate_end_move else end
         out.append(
             LossBucket(
                 start_move=start,
