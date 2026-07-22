@@ -118,3 +118,45 @@ class TestBoardKvNavButtonCaptions:
         src = Path("katrain/gui/kv/board.kv").read_text(encoding="utf-8")
         assert "caption_text:" in src
         assert "tooltip_text:" in src
+
+    def test_naviconbutton_template_mixes_tooltipmixin(self):
+        """Phase 287-F fix: <NavIconButton@...> must include TooltipMixin so
+        the tooltip_text property actually triggers long-press tooltips."""
+        src = Path("katrain/gui/kv/board.kv").read_text(encoding="utf-8")
+        assert "TooltipMixin" in src, (
+            "NavIconButton template must mix in TooltipMixin; otherwise tooltip_text silently does nothing."
+        )
+
+    def test_naviconbuttonwithcaption_uses_python_class(self):
+        """Phase 287-F fix: <NavIconButtonWithCaption> must reference the
+        Python class (not @BoxLayout) so Kivy properties resolve."""
+        src = Path("katrain/gui/kv/board.kv").read_text(encoding="utf-8")
+        # Old form was <NavIconButtonWithCaption@BoxLayout>: which made
+        # root.caption_text fail with AttributeError. The fix replaces
+        # it with <NavIconButtonWithCaption>: (Python class).
+        assert "<NavIconButtonWithCaption@BoxLayout>:" not in src
+        assert "<NavIconButtonWithCaption>:" in src
+
+    def test_naviconbuttonwithcaption_class_declares_properties(self):
+        """Phase 287-F fix: the Python class must declare caption_text,
+        tooltip_text, icon, color as Kivy properties."""
+        import ast
+        from pathlib import Path
+
+        src = Path("katrain/gui/widgets/nav_icon_caption.py").read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        # Look for class NavIconButtonWithCaption with the 4 properties.
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef) and node.name == "NavIconButtonWithCaption":
+                prop_names: set[str] = set()
+                for stmt in node.body:
+                    if isinstance(stmt, ast.Assign):
+                        for target in stmt.targets:
+                            if isinstance(target, ast.Name) and isinstance(stmt.value, ast.Call):
+                                prop_names.add(target.id)
+                assert {"caption_text", "tooltip_text", "icon", "color"} <= prop_names, (
+                    f"NavIconButtonWithCaption must declare caption_text/tooltip_text/icon/color "
+                    f"as Kivy properties; got {prop_names}"
+                )
+                return
+        raise AssertionError("NavIconButtonWithCaption class not found")

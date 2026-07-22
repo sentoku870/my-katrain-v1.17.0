@@ -3,22 +3,29 @@
 #:import Theme katrain.gui.theme.Theme
 #:import BLACK katrain.gui.theme.BLACK
 #:import STATUS_INFO katrain.core.constants.STATUS_INFO
+#:import TooltipMixin katrain.gui.kivyutils.mixins.TooltipMixin
 
 <BadukPanWidget>:
     size: self.parent.height, self.parent.height
     katrain: app.gui
 
-<NavIconButton@TransparentIconButton>:
+# Phase 287-F: NavIconButton mixes in TooltipMixin so the tooltip_text
+# property turns into a 500ms long-press popup. The TooltipMixin lives
+# in katrain.gui.kivyutils.mixins and is re-exported via __init__.
+<NavIconButton@TransparentIconButton+TooltipMixin>:
     size_hint: 0.06, 0.4
     icon_size: [min(self.size[0],self.height),min(self.size[0],self.height)]
     pos_hint: {'center_y': 0.5}
 
 # Phase 287-F: a small vertical layout that pairs a NavIconButton with
-# a short text caption underneath. The wrapper keeps the same
-# size_hint_x as the bare icon button so the 8-cell row layout below
-# still aligns. The icon button carries a tooltip_text that the
+# a short text caption underneath. The class is defined in Python
+# (katrain.gui.widgets.nav_icon_caption) so Kivy can resolve
+# root.caption_text / root.tooltip_text / root.icon / root.color via
+# the Kivy property bindings declared there. The wrapper keeps the
+# same size_hint_x as the bare icon button so the 8-cell row layout
+# below still aligns. The icon button carries a tooltip_text that the
 # TooltipMixin turns into a long-press popup.
-<NavIconButtonWithCaption@BoxLayout>:
+<NavIconButtonWithCaption>:
     orientation: 'vertical'
     spacing: 2
     padding: 0
