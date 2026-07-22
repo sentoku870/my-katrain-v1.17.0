@@ -1630,6 +1630,18 @@ msgstr ""
 "Show a one-line summary of blunder / mistake / good move based on points "
 "lost"
 
+msgid "mykatrain:settings:bh_section_mistake"
+msgstr "Mistake classification"
+
+msgid "mykatrain:settings:bh_section_meta"
+msgstr "KataGo / meta analysis"
+
+msgid "mykatrain:settings:bh_section_structural"
+msgstr "Structural hints"
+
+msgid "mykatrain:settings:bh_section_meaning"
+msgstr "Meaning tags"
+
 msgid "mykatrain:settings:summary_freedom"
 msgstr "Move-freedom summary hints:"
 

@@ -498,68 +498,66 @@ def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupCon
 
 
 def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Phase 179 + 182 + 186: 7 per-category-group toggles under the master switch.
+    """Phase 179 + 182 + 186 + 251 + 287: collapsible per-category groups.
 
-    Phase 251: extended to also expose the 10 individual category
-    toggles (4 structural + 6 meaning-tag) so users can suppress a
-    single category (e.g. turn off ``CUT_RISK`` while keeping
-    ``SELF_ATARI``).
+    The 16 Beginner Hints toggles used to be laid out as a single flat
+    list. Phase 287-C groups them into 4 collapsible sections so the
+    analysis tab no longer scrolls forever:
+
+    1. ミス分類 (mistake, freedom, difficulty) — 3 high-level summary rows
+       that classify the player's actual moves.
+    2. KataGo/メタ (katago_uncertain, ownership, policy) — 3 rows about
+       KataGo's own analysis output.
+    3. 構造 (self_atari, ignore_atari, missed_capture, cut_risk) — 4
+       structural hints from Phase 91.
+    4. 意味タグ (low_liberties, self_capture_like, bad_shape, heavy_group,
+       missed_defense, urgent_vs_big) — 6 meaning-tag hints from Phase 92.
+
+    Each section is a clickable header that toggles the visibility of
+    its child rows. The headers default to expanded (Phase 287-C decision:
+    most users want to see all categories by default) and persist their
+    state across the popup session via the section's _collapsed flag.
     """
-    summary_rows = [
+    section_groups: list[tuple[str, list[tuple[str, list[bool]]]]] = [
         (
-            "mykatrain:settings:summary_mistake",
-            "selected_summary_mistake",
-            state.selected_summary_mistake,
+            "mykatrain:settings:bh_section_mistake",
+            [
+                ("mykatrain:settings:summary_mistake", state.selected_summary_mistake),
+                ("mykatrain:settings:summary_freedom", state.selected_summary_freedom),
+                ("mykatrain:settings:summary_difficulty", state.selected_summary_difficulty),
+            ],
         ),
         (
-            "mykatrain:settings:summary_freedom",
-            "selected_summary_freedom",
-            state.selected_summary_freedom,
+            "mykatrain:settings:bh_section_meta",
+            [
+                ("mykatrain:settings:katago_uncertain", state.selected_katago_uncertain),
+                ("mykatrain:settings:summary_ownership", state.selected_summary_ownership),
+                ("mykatrain:settings:summary_policy", state.selected_summary_policy),
+            ],
         ),
         (
-            "mykatrain:settings:summary_difficulty",
-            "selected_summary_difficulty",
-            state.selected_summary_difficulty,
+            "mykatrain:settings:bh_section_structural",
+            [
+                ("mykatrain:settings:self_atari", state.selected_self_atari),
+                ("mykatrain:settings:ignore_atari", state.selected_ignore_atari),
+                ("mykatrain:settings:missed_capture", state.selected_missed_capture),
+                ("mykatrain:settings:cut_risk", state.selected_cut_risk),
+            ],
         ),
         (
-            "mykatrain:settings:katago_uncertain",
-            "selected_katago_uncertain",
-            state.selected_katago_uncertain,
-        ),
-        (
-            "mykatrain:settings:summary_ownership",
-            "selected_summary_ownership",
-            state.selected_summary_ownership,
-        ),
-        (
-            "mykatrain:settings:summary_policy",
-            "selected_summary_policy",
-            state.selected_summary_policy,
+            "mykatrain:settings:bh_section_meaning",
+            [
+                ("mykatrain:settings:low_liberties", state.selected_low_liberties),
+                ("mykatrain:settings:self_capture_like", state.selected_self_capture_like),
+                ("mykatrain:settings:bad_shape", state.selected_bad_shape),
+                ("mykatrain:settings:heavy_group", state.selected_heavy_group),
+                ("mykatrain:settings:missed_defense", state.selected_missed_defense),
+                ("mykatrain:settings:urgent_vs_big", state.selected_urgent_vs_big),
+            ],
         ),
     ]
-    for label_key, _field_name, selected_ref in summary_rows:
-        _add_toggle_row(inner, label_key, selected_ref, state)
-
-    # Phase 251: per-category toggles for the 4 structural detectors
-    # (Phase 91) and 6 meaning-tag fallbacks (Phase 92). These
-    # previously had no individual control; users could only flip the
-    # master ``beginner_hints/enabled`` switch.
-    individual_rows = [
-        # Structural (Phase 91)
-        ("mykatrain:settings:self_atari", state.selected_self_atari),
-        ("mykatrain:settings:ignore_atari", state.selected_ignore_atari),
-        ("mykatrain:settings:missed_capture", state.selected_missed_capture),
-        ("mykatrain:settings:cut_risk", state.selected_cut_risk),
-        # Meaning-tag (Phase 92)
-        ("mykatrain:settings:low_liberties", state.selected_low_liberties),
-        ("mykatrain:settings:self_capture_like", state.selected_self_capture_like),
-        ("mykatrain:settings:bad_shape", state.selected_bad_shape),
-        ("mykatrain:settings:heavy_group", state.selected_heavy_group),
-        ("mykatrain:settings:missed_defense", state.selected_missed_defense),
-        ("mykatrain:settings:urgent_vs_big", state.selected_urgent_vs_big),
-    ]
-    for label_key, selected_ref in individual_rows:
-        _add_toggle_row(inner, label_key, selected_ref, state)
+    for header_key, items in section_groups:
+        _add_collapsible_section(inner, header_key, items, state)
 
 
 def _add_toggle_row(
@@ -597,6 +595,70 @@ def _add_toggle_row(
     inner.add_widget(row)
     if state.register_searchable is not None:
         state.register_searchable(label_key, row)
+
+
+def _add_collapsible_section(
+    inner: BoxLayoutType,
+    header_key: str,
+    items: list[tuple[str, list[bool]]],
+    state: _SettingsPopupContext,
+) -> None:
+    """Phase 287-C: collapsible section for grouped Beginner Hints.
+
+    Renders a header toggle button (``▾ Section (n)``) followed by a
+    vertically stacked content box that contains one ``_add_toggle_row``
+    per item. Toggling the header hides/shows the content box by
+    setting ``height=0`` + ``opacity=0`` (collapsed) or the content's
+    ``minimum_height`` + ``opacity=1`` (expanded). Default state is
+    expanded.
+
+    Args:
+        inner: Parent BoxLayout the section is appended to.
+        header_key: i18n key for the section header text. The rendered
+            label is ``f"{i18n._(header_key)} ({len(items)})"``.
+        items: ``(label_key, selected_ref)`` pairs consumed by
+            :func:`_add_toggle_row`.
+        state: Shared popup state (provides ``register_searchable``).
+    """
+    _add_searchable_label(inner, header_key, state)
+    from kivy.uix.togglebutton import ToggleButton
+
+    header_text = f"{i18n._(header_key)} ({len(items)})"
+    header = ToggleButton(
+        text=f"▾ {header_text}",
+        size_hint_y=None,
+        height=dp(32),
+        state="down",  # expanded by default
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        halign="left",
+    )
+    inner.add_widget(header)
+
+    content = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(2))
+    content.bind(minimum_height=content.setter("height"))
+
+    for label_key, selected_ref in items:
+        _add_toggle_row(content, label_key, selected_ref, state)
+
+    inner.add_widget(content)
+
+    def _on_header_state(_btn: Any, new_state: str) -> None:
+        if new_state == "down":
+            header.text = f"▾ {header_text}"
+            content.opacity = 1
+            content.height = content.minimum_height
+        else:
+            header.text = f"▸ {header_text}"
+            content.opacity = 0
+            content.height = 0
+
+    header.bind(state=_on_header_state)
+    # Apply the initial state once so content.height is correct on first
+    # render (without this the content box has height=0 until the user
+    # clicks the header).
+    _on_header_state(header, "down")
 
 
 def _build_reset_button() -> Button:

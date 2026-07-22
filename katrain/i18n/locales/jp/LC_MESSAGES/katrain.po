@@ -1581,6 +1581,18 @@ msgstr "ミス分類のヒント:"
 msgid "mykatrain:settings:summary_mistake_desc"
 msgstr "点数ロスに応じて「致命的なミス」「損な手」「良い手」を 1 行で指摘"
 
+msgid "mykatrain:settings:bh_section_mistake"
+msgstr "ミス分類"
+
+msgid "mykatrain:settings:bh_section_meta"
+msgstr "KataGo / メタ分析"
+
+msgid "mykatrain:settings:bh_section_structural"
+msgstr "構造ヒント"
+
+msgid "mykatrain:settings:bh_section_meaning"
+msgstr "意味タグ"
+
 msgid "mykatrain:settings:summary_freedom"
 msgstr "手の自由度のヒント:"
 
