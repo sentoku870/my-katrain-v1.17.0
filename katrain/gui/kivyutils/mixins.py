@@ -120,7 +120,10 @@ class TooltipMixin(Widget):
         else:
             self._tooltip_popup.text = self.tooltip_text
         # Anchor the tooltip below the widget centre.
-        self._tooltip_popup.pos = (self.center_x - self._tooltip_popup.width / 2, self.y - self._tooltip_popup.height - 4)
+        self._tooltip_popup.pos = (
+            self.center_x - self._tooltip_popup.width / 2,
+            self.y - self._tooltip_popup.height - 4,
+        )
         if self._tooltip_popup.parent is None:
             self._tooltip_popup.open()
 

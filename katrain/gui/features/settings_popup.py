@@ -496,9 +496,7 @@ def _build_search_bar(
         elif hits == 0:
             search_status.text = i18n._("mykatrain:settings:search_no_hits")
         else:
-            search_status.text = i18n._("mykatrain:settings:search_hit_count").format(
-                hits=hits, total=total
-            )
+            search_status.text = i18n._("mykatrain:settings:search_hit_count").format(hits=hits, total=total)
 
     def on_search_clear(*_args: Any) -> None:
         """検索をクリア"""

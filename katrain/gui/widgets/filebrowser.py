@@ -265,14 +265,10 @@ class LinkTree(TreeView):
 
     def fill_tree(self, fav_list: list[tuple[str, str]]) -> None:
         user_path = get_home_directory()
-        self._favs = self.add_node(
-            TreeLabel(text=i18n._("ui:filebrowser:favorites"), is_open=True, no_selection=True)
-        )
+        self._favs = self.add_node(TreeLabel(text=i18n._("ui:filebrowser:favorites"), is_open=True, no_selection=True))
         self.reload_favs(fav_list)
 
-        libs = self.add_node(
-            TreeLabel(text=i18n._("ui:filebrowser:libraries"), is_open=True, no_selection=True)
-        )
+        libs = self.add_node(TreeLabel(text=i18n._("ui:filebrowser:libraries"), is_open=True, no_selection=True))
         # Phase 287-D: leave the OS-specific directory names (Documents /
         # Music / ...) in English even on the JP locale, because they are
         # the actual directory names on disk and renaming them in the UI

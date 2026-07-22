@@ -52,9 +52,7 @@ def _format_entry_line(entry: Any) -> str:
     crit_correct = s.get("critical_3_correct", 0)
     crit_rate = (crit_correct / crit_total * 100.0) if crit_total else 0.0
     crit_text = (
-        _i18n._("ui:kifunarabe:history:critical3").format(
-            correct=crit_correct, total=crit_total, rate=crit_rate
-        )
+        _i18n._("ui:kifunarabe:history:critical3").format(correct=crit_correct, total=crit_total, rate=crit_rate)
         if crit_total
         else ""
     )
@@ -63,17 +61,14 @@ def _format_entry_line(entry: Any) -> str:
     if entry.sgf_path:
         sgf_name = os.path.basename(entry.sgf_path)
 
-    return (
-        f"{entry.timestamp}   {sgf_name}\n"
-        + _i18n._("ui:kifunarabe:history:format").format(
-            total=total,
-            correct=correct,
-            wrong=wrong,
-            auto=auto,
-            skipped=skipped,
-            correct_rate=f"{correct_rate:.1f}%",
-            crit_text=crit_text,
-        )
+    return f"{entry.timestamp}   {sgf_name}\n" + _i18n._("ui:kifunarabe:history:format").format(
+        total=total,
+        correct=correct,
+        wrong=wrong,
+        auto=auto,
+        skipped=skipped,
+        correct_rate=f"{correct_rate:.1f}%",
+        crit_text=crit_text,
     )
 
 

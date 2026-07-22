@@ -158,12 +158,7 @@ class TestSettingsPopupHasApplySearchFilter:
 
         src = Path("katrain/gui/features/settings_popup.py").read_text(encoding="utf-8")
         tree = ast.parse(src)
-        names = {
-            n.name
-            for n in tree.body
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-        }
+        names = {n.name for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
         assert "apply_search_filter" in names, (
-            "apply_search_filter must be defined in settings_popup.py "
-            "so the search bar wires to the pure helper."
+            "apply_search_filter must be defined in settings_popup.py so the search bar wires to the pure helper."
         )
