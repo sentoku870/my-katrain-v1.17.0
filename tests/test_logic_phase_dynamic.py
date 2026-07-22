@@ -157,13 +157,19 @@ class TestConstants:
 
 
 class TestApplyDynamicPhases:
-    """apply_dynamic_phases rewrites move.tag in place."""
+    """apply_dynamic_phases is pure: returns ``list[str]``, no side-effects.
+
+    Phase LV4-2: callers that need ``mv.tag`` must write it themselves.
+    """
 
     def test_tag_overwritten(self):
         moves = [make_move(i, 30.0) for i in range(1, 251)]
         for i in range(244, 250):
             moves[i].score_stdev = 3.0
-        apply_dynamic_phases(moves)
+        phases = apply_dynamic_phases(moves)
+        # Phase LV4-2: callers apply the returned phases to ``mv.tag``.
+        for mv, phase in zip(moves, phases, strict=False):
+            mv.tag = phase
         assert moves[0].tag == "opening"
         assert moves[50].tag == "middle"
         # Phase 158-G: window=3 triggers at index 246; tag uses the legacy
@@ -175,8 +181,11 @@ class TestApplyDynamicPhases:
         moves = [make_move(i, 30.0) for i in range(1, 251)]
         for i in range(244, 250):
             moves[i].score_stdev = 3.0
-        apply_dynamic_phases(moves)
+        phases = apply_dynamic_phases(moves)
+        # Mirror the caller-side write so the second pass sees a clean
+        # input (the function itself does not mutate ``mv.tag``).
+        for mv, phase in zip(moves, phases, strict=False):
+            mv.tag = phase
         first_pass = [m.tag for m in moves]
-        apply_dynamic_phases(moves)
         second_pass = [m.tag for m in moves]
         assert first_pass == second_pass
