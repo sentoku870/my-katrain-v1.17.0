@@ -46,11 +46,18 @@ def do_config_popup(ctx: KaTrainGui) -> None:
     from kivy.metrics import dp
 
     from katrain.gui.popups import ConfigPopup, I18NPopup
+    from katrain.gui.popups._base import clamp_popup_size
 
     ctx.controls.timer.paused = True
     if not ctx.config_popup:
         content = ConfigPopup(ctx)
-        new_popup = I18NPopup(title_key="general settings title", size=[dp(1200), dp(950)], content=content).__self__
+        # Phase 287-E: clamp to 90% of the current window so the
+        # 1200x950 dp default does not overflow 1366x768 displays.
+        new_popup = I18NPopup(
+            title_key="general settings title",
+            size=clamp_popup_size([dp(1200), dp(950)]),
+            content=content,
+        ).__self__
         # P2-A (H6): release the two language bindings on dismiss so
         # repeated open/close cycles don't accumulate callbacks.
         new_popup.bind(on_dismiss=lambda _instance: content.cleanup())

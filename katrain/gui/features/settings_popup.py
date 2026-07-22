@@ -237,6 +237,8 @@ def do_mykatrain_settings_popup(
     main_layout.add_widget(tabbed_panel)
     main_layout.add_widget(buttons_layout)
 
+    from katrain.gui.popups._base import clamp_popup_size
+
     popup = I18NPopup(
         title_key="mykatrain:settings",
         # Phase 180-C: enlarged from dp(700) -> dp(850) so the kifunarabe
@@ -244,7 +246,9 @@ def do_mykatrain_settings_popup(
         # without truncating the help text. The kifunarabe tab also wraps
         # its inner BoxLayout in a ScrollView as a safety net for future
         # additions.
-        size=[dp(900), dp(850)],
+        # Phase 287-E: clamp to 90% of the current window so 900x850 dp
+        # fits on 1366x768 displays at 100% DPI.
+        size=clamp_popup_size([dp(900), dp(850)]),
         content=main_layout,
     ).__self__
     state.popup = popup

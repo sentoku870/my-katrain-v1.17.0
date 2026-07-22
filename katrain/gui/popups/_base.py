@@ -45,6 +45,40 @@ def _get_app_gui() -> Any:
     return getattr(app, "gui", None)
 
 
+def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[float]:
+    """Clamp a popup size to ``max_ratio`` of the current app window.
+
+    Phase 287-E: the popup dialogs previously used fixed ``dp(W)`` /
+    ``dp(H)`` sizes (e.g. 1200x950 for the general settings) that would
+    overflow the screen on small windows, 1366x768 laptops with the
+    Windows DPI scale at 125%, and DPI-2x displays. This helper returns
+    a size that never exceeds ``max_ratio`` (default 90%) of the current
+    ``Window.width`` / ``Window.height``. Falls back to the requested
+    size if the window dimensions are not yet known (e.g. in headless
+    tests).
+
+    Args:
+        requested: ``[width, height]`` in dp / px.
+        max_ratio: Maximum fraction of the window dimension the popup
+            may occupy. Default 0.9 leaves a 5% margin on each side.
+
+    Returns:
+        A fresh ``[width, height]`` list with each dimension clamped
+        independently.
+    """
+    from kivy.core.window import Window
+
+    width = float(requested[0])
+    height = float(requested[1])
+    win_w = getattr(Window, "width", None)
+    win_h = getattr(Window, "height", None)
+    if win_w and win_w > 0:
+        width = min(width, win_w * max_ratio)
+    if win_h and win_h > 0:
+        height = min(height, win_h * max_ratio)
+    return [width, height]
+
+
 class I18NPopup(Popup):
     title_key = StringProperty("")
     font_name = StringProperty(Theme.DEFAULT_FONT)

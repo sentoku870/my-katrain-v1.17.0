@@ -1319,12 +1319,15 @@ def open_llm_coach_popup(ctx: Any) -> Any:
     """
     from kivy.metrics import dp
 
+    from katrain.gui.popups._base import clamp_popup_size
+
     content = LLMCoachPopupContent(katrain=ctx)
     # Phase 225.7: wider popup so the LLM response input doesn't
     # overflow and the action buttons don't overlap.
+    # Phase 287-E: clamp to 90% of the current window.
     popup = I18NPopup(
         title_key="mykatrain:llm-coach:title",
-        size=[dp(900), dp(720)],
+        size=clamp_popup_size([dp(900), dp(720)]),
         content=content,
     ).__self__
     content.popup = popup
