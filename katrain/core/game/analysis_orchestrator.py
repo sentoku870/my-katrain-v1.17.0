@@ -92,6 +92,18 @@ class AnalysisOrchestrator:
                 Exposed for tests to inject fast polling.
         """
         game = self._game
+        # Phase LV2-4: hoist the engine liveness check out of the loop.
+        # If either side's engine is dead, log once and exit the entire
+        # sweep instead of polling capacity for every node.
+        for player in ("B", "W"):
+            engine = game.engines.get(player)
+            if engine is not None and not engine.check_alive():
+                game.katrain.log(
+                    f"analyze_all_nodes: engine for {player} is not alive, skipping full sweep",
+                    OUTPUT_DEBUG,
+                )
+                return
+
         for sgf_node in game.root.nodes_in_tree:
             if not isinstance(sgf_node, GameNode):
                 continue
@@ -104,6 +116,15 @@ class AnalysisOrchestrator:
                 # Skip analysis if engine is disabled
                 if not engine:
                     continue
+
+                # Phase LV2-4: re-check liveness per-node to cover the
+                # case where the engine dies mid-sweep.
+                if not engine.check_alive():
+                    game.katrain.log(
+                        f"analyze_all_nodes: engine for {node.next_player} died mid-sweep, stopping",
+                        OUTPUT_DEBUG,
+                    )
+                    return
 
                 if not self._wait_for_engine_capacity(
                     engine,

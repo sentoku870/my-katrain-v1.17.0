@@ -72,8 +72,13 @@ class BadukPanWidget(Widget):
         # ``(window, pos)`` signature expected here.
         self._last_mouse_process_time: float = 0.0
         Window.bind(mouse_pos=self.on_mouse_pos)
-        self.redraw_board_contents_trigger = Clock.create_trigger(self.draw_board_contents, 0.05)
-        self.redraw_trigger = Clock.create_trigger(self.redraw, 0.05)
+        # Phase LV2-1: lengthen the debounce on the board-content redraw
+        # trigger from 50 ms to 100 ms. The previous 50 ms interval caused
+        # back-to-back redraws when analysis results landed within the
+        # same wall-clock millisecond, which made the GUI feel sluggish
+        # when navigating rapidly through a long game tree.
+        self.redraw_board_contents_trigger = Clock.create_trigger(self.draw_board_contents, 0.1)
+        self.redraw_trigger = Clock.create_trigger(self.redraw, 0.1)
         self.redraw_hover_contents_trigger = Clock.create_trigger(self.draw_hover_contents, 0.01)
         self.bind(size=self.redraw_trigger, pos=self.redraw_trigger)
 

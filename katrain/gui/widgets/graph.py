@@ -30,8 +30,13 @@ class Graph(Widget):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._lock = threading.Lock()
-        self.bind(pos=self.update_graph, size=self.update_graph)
+        # Phase LV2-3: bind to the throttled redraw trigger instead of
+        # ``update_graph`` directly. Previously, every window resize
+        # would invoke ``update_graph`` synchronously, which rebuilds
+        # score/winrate point arrays and re-runs ``get_important_move_numbers``
+        # on each pixel change.
         self.redraw_trigger = Clock.create_trigger(self.update_graph, 0.1)
+        self.bind(pos=lambda *_a: self.redraw_trigger(), size=lambda *_a: self.redraw_trigger())
 
     def set_nodes_from_list(self, node_list: list[GameNode]) -> None:
         """Set nodes from a pre-built node list.
