@@ -160,3 +160,36 @@ class TestBoardKvNavButtonCaptions:
                 )
                 return
         raise AssertionError("NavIconButtonWithCaption class not found")
+
+    def test_naviconbuttonwithcaption_registers_on_press_event(self):
+        """Phase 287-F follow-up: ``on_press: root.katrain(...)`` rule on
+        NavIconButtonWithCaption in board.kv requires the class to have
+        registered that event via ``register_event_type``. Without it the
+        KV parser raises::
+
+          AttributeError: press
+
+        at startup."""
+        import ast
+        from pathlib import Path
+
+        src = Path("katrain/gui/widgets/nav_icon_caption.py").read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        for cls in tree.body:
+            if isinstance(cls, ast.ClassDef) and cls.name == "NavIconButtonWithCaption":
+                init = next(
+                    (m for m in cls.body if isinstance(m, ast.FunctionDef) and m.name == "__init__"),
+                    None,
+                )
+                assert init is not None, "NavIconButtonWithCaption must define __init__"
+                init_src = ast.unparse(init)
+                assert "register_event_type" in init_src, (
+                    "NavIconButtonWithCaption.__init__ must call "
+                    "register_event_type('on_press') so KV's "
+                    "`on_press: ...` rule binds cleanly."
+                )
+                assert '"on_press"' in init_src or "'on_press'" in init_src, (
+                    "register_event_type must be called with the literal 'on_press' string"
+                )
+                return
+        raise AssertionError("NavIconButtonWithCaption class not found")
