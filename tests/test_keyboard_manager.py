@@ -303,6 +303,22 @@ class TestPopupBehavior:
         # analysis_controls.dropdown.open_game_analysis_popup() が呼ばれる
         assert ("open_game_analysis_popup", ()) in stubs["dispatched_actions"]
 
+    def test_popup_escape_dismisses(self, manager, stubs):
+        """Phase 287: Esc dismisses any open popup (universal close)."""
+        popup = PopupStub()
+        stubs["popup"] = popup
+        manager.on_keyboard_down(None, (27, "escape"), None, [])
+        assert popup.dismissed is True
+        # Esc on popup must not dispatch any action (no stop-analysis, etc.)
+        assert stubs["dispatched_actions"] == []
+
+    def test_escape_without_popup_stops_analysis(self, manager, stubs):
+        """Phase 287: When no popup is open, Esc keeps its existing
+        ``KEY_STOP_ANALYSIS`` semantics (analyze-extra, stop)."""
+        stubs["popup"] = None
+        manager.on_keyboard_down(None, (27, "escape"), None, [])
+        assert ("analyze-extra", ("stop",)) in stubs["dispatched_actions"]
+
 
 class TestNavigation:
     """ナビゲーションキーテスト"""
