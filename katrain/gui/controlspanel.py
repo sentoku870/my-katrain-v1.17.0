@@ -119,7 +119,7 @@ class ControlsPanel(BoxLayout):
         self.active_comment_node = None
         self.last_timer_update: tuple[Any, float, bool] = (None, 0.0, False)
         self.beep_start = 5.2
-        self.timer_interval = 0.07
+        self.timer_interval = 0.1
 
         # Phase 106: 購読状態管理
         self._subscribed_notifier = None

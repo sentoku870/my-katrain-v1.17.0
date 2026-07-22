@@ -14,6 +14,7 @@ from typing import Any
 from katrain.common.short_hash import short_hash
 from katrain.core import analysis
 from katrain.core.analysis import (
+    apply_dynamic_phases,
     build_node_map,
     classify_mistake,
     get_canonical_loss_from_move,
@@ -106,8 +107,6 @@ def build_karte_json(
 
     # Phase 156: Opt-in dynamic phase detection (overrides move.tag)
     if dynamic_phase_detection:
-        from katrain.core.analysis import apply_dynamic_phases
-
         apply_dynamic_phases(moves, board_size=board_x)
 
     # Get effective preset and thresholds

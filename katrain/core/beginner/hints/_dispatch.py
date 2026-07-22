@@ -199,31 +199,6 @@ def compute_beginner_hint(
         # Phase 265: post-process — re-label with curator weak-axis
         return hint
 
-        hint = _hints_pkg.detect_self_atari(inp)
-        if hint and _category_enabled(hint.category, category_filter):
-            return hint
-
-        hint = _hints_pkg.detect_ignore_atari(inp)
-        if hint and _category_enabled(hint.category, category_filter):
-            return hint
-
-        hint = _hints_pkg.detect_missed_capture(inp)
-        if hint and _category_enabled(hint.category, category_filter):
-            return hint
-
-        hint = _hints_pkg.detect_cut_risk(inp, game)
-        if hint and _category_enabled(hint.category, category_filter):
-            return hint
-
-        hint = _get_meaning_tag_hint(node, move.coords)
-
-        if hint and require_reliable and hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
-            return None
-        if hint and not _category_enabled(hint.category, category_filter):
-            return None
-
-        return hint
-
     finally:
         if game.current_node != original_node:
             game.set_current_node(original_node)

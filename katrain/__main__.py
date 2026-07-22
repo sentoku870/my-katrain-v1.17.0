@@ -560,7 +560,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 self._suppress_play_mode_switch = False
 
         # Phase 22: Clockイベントを追跡（cleanup用）
-        animation_event = Clock.schedule_interval(lambda dt: self.ctx.analysis_controller.handle_animations(), 0.1)
+        animation_event = Clock.schedule_interval(lambda dt: self.ctx.analysis_controller.handle_animations(), 0.2)
         self._clock_events.append(animation_event)
 
         Window.request_keyboard(None, self, "").bind(

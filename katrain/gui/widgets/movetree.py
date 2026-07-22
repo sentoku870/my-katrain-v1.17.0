@@ -219,7 +219,12 @@ class MoveTreeCanvas(Widget):
                 draw_stone(pos, node.player, special_node)
                 text = "+" if placements else str(node.depth)
                 Color(*Theme.STONE_COLORS["W" if node.player == "B" and not node.shortcut_from else "B"])
-                draw_text(pos=pos, text=text, font_size=self.move_size * 1.75 / (1 + 1 * len(text)), font_name="Roboto")
+                draw_text(
+                    pos=pos,
+                    text=text,
+                    font_size=self.move_size * 1.75 / (1 + 1 * len(text)),
+                    font_name=Theme.DEFAULT_FONT,
+                )
 
             if current_node in self.move_xy_pos:
                 self.scroll_view_widget.scroll_to_pixel(*self.move_xy_pos[current_node])

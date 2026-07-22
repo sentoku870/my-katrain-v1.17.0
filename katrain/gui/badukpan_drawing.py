@@ -139,7 +139,7 @@ def draw_stone(
             pos=widget.gridpos[y][x],
             text=text,
             font_size=widget.stone_size * 0.9,
-            font_name="Roboto",
+            font_name=Theme.DEFAULT_FONT,
         )
 
 
@@ -309,14 +309,14 @@ def draw_coordinates(widget: BadukPanWidget, gridpos_x: list[float], gridpos_y: 
                 pos=(gridpos_x[i], gridpos_y[0] - coord_offset),
                 text=get_x_coordinate_text(widget, i, board_size_x),
                 font_size=widget.grid_size / 1.5,
-                font_name="Roboto",
+                font_name=Theme.DEFAULT_FONT,
             )
         for i in range(board_size_y):
             draw_text(
                 pos=(gridpos_x[0] - coord_offset, gridpos_y[i]),
                 text=get_y_coordinate_text(widget, i, board_size_y),
                 font_size=widget.grid_size / 1.5,
-                font_name="Roboto",
+                font_name=Theme.DEFAULT_FONT,
             )
 
 
@@ -657,7 +657,7 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
                         draw_text(
                             pos=(widget.gridpos[y][x][0], widget.gridpos[y][x][1]),
                             text=f"{100 * move_policy:.2f}"[:4] + "%",
-                            font_name="Roboto",
+                            font_name=Theme.DEFAULT_FONT,
                             font_size=widget.grid_size / 4,
                             halign="center",
                         )
