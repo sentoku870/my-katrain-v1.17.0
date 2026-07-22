@@ -205,6 +205,9 @@ class KataGoEngine(BaseEngine):
         # Output queues for non-blocking I/O (Phase 22)
         self._stdout_queue: queue.Queue[bytes | None] = queue.Queue()
         self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()
+        # Phase LV1-8: timestamp of the last ``OUTPUT_EXTRA_DEBUG`` JSON
+        # dump, used to rate-limit the verbose log stream.
+        self._last_extra_debug_log_time: float = 0.0
         # Shutdown event (recreated on each start, not cleared)
         self._shutdown_event = threading.Event()
         # Phase 159: RLock for safe reentrancy in terminate_queries()
@@ -504,7 +507,7 @@ class KataGoEngine(BaseEngine):
         except queue.Full:
             # Queue is full - try with timeout
             try:
-                q.put(item, timeout=1.0)
+                q.put(item, timeout=0.1)
             except queue.Full:
                 self.katrain.log(
                     f"Shutdown: queue still full after timeout during {context}, skipping",

@@ -142,4 +142,5 @@ def clear_texture_caches() -> None:
           古いフォントのテクスチャがメモリに残り続けることを防ぐ
     """
     _create_text_texture.cache_clear()
-    _logger.debug("Text texture cache cleared")
+    cached_texture.cache_clear()
+    _logger.debug("Texture caches cleared (text + image)")

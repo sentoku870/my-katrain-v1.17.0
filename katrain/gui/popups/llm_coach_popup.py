@@ -28,7 +28,6 @@ is Phase 224 (deferred).
 from __future__ import annotations
 
 import contextlib
-import json
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -794,7 +793,9 @@ class LLMCoachPopupContent(BoxLayout):
         default_user: str | None,
     ) -> None:
         """Phase 272-E: surface the summary-detection result in the status line."""
-        games = self._read_summary_games_count(summary_path)
+        # ``path_games_analyzed`` is populated by ``_detect_path_type``; in
+        # tests the helper may be invoked before that runs, so default to 0.
+        games = getattr(self, "path_games_analyzed", 0)
         if default_user and matched.get("name"):
             self._set_status(
                 i18n._("mykatrain:llm-coach:summary-perspective-summary").format(
@@ -808,15 +809,6 @@ class LLMCoachPopupContent(BoxLayout):
                 i18n._("mykatrain:llm-coach:auto-detect-no-default-user"),
                 error=not bool(matched.get("name")),
             )
-
-    def _read_summary_games_count(self, summary_path: str) -> int:
-        """Phase 272-E: read ``meta.games_analyzed`` from the summary JSON, tolerating I/O errors."""
-        try:
-            with open(summary_path, encoding="utf-8") as f:
-                data = json.load(f)
-            return (data.get("meta") or {}).get("games_analyzed", 0) or 0
-        except Exception:  # noqa: BLE001
-            return 0
 
     def on_summary_perspective_changed(self, *_args: Any) -> None:
         """KV-side callback: summary perspective spinner selection changed.

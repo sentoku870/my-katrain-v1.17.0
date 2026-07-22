@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 from kivy.graphics.context_instructions import Color, PopMatrix, PushMatrix, Rotate, Translate
@@ -656,7 +657,7 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
                         Color(*Theme.HINT_TEXT_COLOR)
                         draw_text(
                             pos=(widget.gridpos[y][x][0], widget.gridpos[y][x][1]),
-                            text=f"{100 * move_policy:.2f}"[:4] + "%",
+                            text=_format_policy_pct_label(move_policy),
                             font_name=Theme.DEFAULT_FONT,
                             font_size=widget.grid_size / 4,
                             halign="center",
@@ -689,3 +690,13 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
                         )
 
     widget.redraw_hover_contents_trigger()
+
+
+@lru_cache(maxsize=4096)
+def _format_policy_pct_label(move_policy: float) -> str:
+    """Format a per-move policy (0..1) into a short "x.xx%" label.
+
+    Cached because the policy-redraw loop emits 100+ labels per frame at
+    19x19 and the result depends only on the policy value.
+    """
+    return f"{100 * move_policy:.2f}"[:4] + "%"

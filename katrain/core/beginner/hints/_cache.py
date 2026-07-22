@@ -45,7 +45,10 @@ def get_beginner_hint_cached(
     hint for the current node.
     """
     cache_attr = "_beginner_hint_cache"
-    filter_key = None if not category_filter else tuple(sorted((k, bool(v)) for k, v in category_filter.items()))
+    # Phase LV1-12: Python 3.7+ preserves dict insertion order, so we
+    # don't need to ``sorted()`` here. ``bool(v)`` is kept to normalise
+    # truthy/falsy values consistently across calls.
+    filter_key = None if not category_filter else tuple((k, bool(v)) for k, v in category_filter.items())
 
     cached = getattr(node, cache_attr, _NOT_COMPUTED)
     if cached is not _NOT_COMPUTED and isinstance(cached, tuple) and len(cached) == 3:

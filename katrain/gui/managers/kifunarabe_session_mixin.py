@@ -108,11 +108,10 @@ class KifunarabeSessionMixin:
         # A2: enable board "Top Moves" candidate markers if user asked
         # for them, and trigger a redraw so the markers actually render.
         self._apply_hint_toggle(max_hints=config.max_hints)
-        self._schedule_redraw()
 
         # Belt-and-braces: even if ``analysis_controls`` wasn't ready
         # at the first schedule, retry on a slightly later main-thread
-        # tick.
+        # tick. The deferred redraw subsumes the immediate one above.
         from kivy.clock import Clock
 
         def _resync(_dt: float) -> None:

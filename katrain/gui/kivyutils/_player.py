@@ -8,6 +8,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 
 from __future__ import annotations
 
+import weakref
 from typing import Any
 
 from kivy.clock import Clock
@@ -66,7 +67,9 @@ class PlayerSetupBlock(MDBoxLayout):
     black = ObjectProperty(None)
     white = ObjectProperty(None)
     update_global = BooleanProperty(False)
-    INSTANCES: list[Any] = []
+    # Phase LV1-15: WeakSet so widget instances are released automatically
+    # when the popup is destroyed (no manual cleanup required).
+    INSTANCES: weakref.WeakSet[Any] = weakref.WeakSet()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -75,7 +78,7 @@ class PlayerSetupBlock(MDBoxLayout):
         self.players = {"B": self.black, "W": self.white}
         self.add_widget(self.black)
         self.add_widget(self.white)
-        PlayerSetupBlock.INSTANCES.append(self)
+        PlayerSetupBlock.INSTANCES.add(self)
 
     def swap_players(self) -> None:
         player_dump = {bw: p.player_type_dump for bw, p in self.players.items()}

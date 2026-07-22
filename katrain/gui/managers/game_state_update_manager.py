@@ -125,7 +125,7 @@ class GameStateUpdateManager:
         # Pondering control
         engine = self._get_engine()
         if engine:
-            if self._get_pondering():
+            if self._get_pondering() and not engine.is_pondering:
                 game.analyze_extra("ponder")
             else:
                 engine.stop_pondering()

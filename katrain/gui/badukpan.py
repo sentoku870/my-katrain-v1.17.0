@@ -65,7 +65,8 @@ class BadukPanWidget(Widget):
         self.animating_pv_index: Any = None
         self._animate_interval: Any = None  # ClockEvent reference for PV animation (lazy init)
         self.last_mouse_pos: tuple[float, float] = (0, 0)
-        Window.bind(mouse_pos=self.on_mouse_pos)
+        self._mouse_pos_trigger = Clock.create_trigger(self.on_mouse_pos, 0.02)
+        Window.bind(mouse_pos=self._mouse_pos_trigger)
         self.redraw_board_contents_trigger = Clock.create_trigger(self.draw_board_contents, 0.05)
         self.redraw_trigger = Clock.create_trigger(self.redraw, 0.05)
         self.redraw_hover_contents_trigger = Clock.create_trigger(self.draw_hover_contents, 0.01)
@@ -613,7 +614,7 @@ class BadukPanWidget(Widget):
         multiple times safely.
         """
         with contextlib.suppress(Exception):
-            Window.unbind(mouse_pos=self.on_mouse_pos)
+            Window.unbind(mouse_pos=self._mouse_pos_trigger)
         if self._animate_interval is not None:
             with contextlib.suppress(Exception):
                 self._animate_interval.cancel()

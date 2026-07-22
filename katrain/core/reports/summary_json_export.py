@@ -118,14 +118,21 @@ def _ensure_tags_for_top_moves(
     # Build a game_name -> game lookup once
     games_by_name = {g.game_name: g for g in all_games_for_top_mistakes}
 
+    # Phase LV1-9: cache ``build_node_map`` per game (keyed by ``id(game)``)
+    # so we don't rebuild it for every top-move candidate of the same game.
+    node_map_cache: dict[int, dict[int, Any]] = {}
+
     for game_name, move in top_moves:
         if move.meaning_tag_id is None:
             game = games_by_name.get(game_name)
             if game is not None:
-                try:
-                    node_map = build_node_map(game)
-                except (TypeError, AttributeError):
-                    node_map = {}
+                gid = id(game)
+                if gid not in node_map_cache:
+                    try:
+                        node_map_cache[gid] = build_node_map(game)
+                    except (TypeError, AttributeError):
+                        node_map_cache[gid] = {}
+                node_map = node_map_cache[gid]
                 node = node_map.get(move.move_number)
                 context = build_classification_context_from_node(
                     node,
