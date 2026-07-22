@@ -130,27 +130,11 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
     Phase 158+: This was previously a single 239-line method on BadukPanWidget.
     Now delegates to focused helpers in this module and badukpan_pv.
     Phase 171: Leela 分岐を削除。常に KataGo のヒントを描画する。
-    Phase LV2-2: when the PV animation is running (10 Hz clock), skip
-    the heavy candidate-marker / hover-overlay / pass-circle passes
-    and only re-paint the beginner hint highlight + the PV stones.
-    This keeps the animation frame budget intact.
     """
     katrain = widget.katrain
     board_size_x, board_size_y = katrain.game.board_size
     if len(widget.gridpos[0]) < board_size_x or len(widget.gridpos) < board_size_y:
         return  # race condition
-
-    # PV アニメ中は candidate / hover overlay / pass_circle を再計算しない。
-    # beginner hint highlight だけ更新し、PV 石は ``update_pv_animation_state``
-    # が別途描画する。
-    if widget.animating_pv is not None:
-        with widget.canvas.after:
-            widget.canvas.after.clear()
-            widget.draw_beginner_hint_highlight()
-        from katrain.gui.badukpan_pv import update_pv_animation_state
-
-        update_pv_animation_state(widget)
-        return
 
     ghost_alpha = Theme.GHOST_ALPHA
     game_ended = katrain.game.end_result
