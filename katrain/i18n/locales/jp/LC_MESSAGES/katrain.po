@@ -1921,6 +1921,63 @@ msgstr "クリア"
 msgid "ui:restoresize_label"
 msgstr "起動時にウィンドウサイズを復元"
 
+# Phase 287-F: captions and tooltips for the nav icon buttons along
+# the bottom of the main window. Captions stay short (≤6 chars JP,
+# ≤8 chars EN); tooltips can be a sentence + shortcut hint.
+msgid "ui:caption:prev-mistake"
+msgstr "前のミス"
+
+msgid "ui:tooltip:prev-mistake"
+msgstr "前のミスへ戻る（Shift+←）"
+
+msgid "ui:caption:next-mistake"
+msgstr "次のミス"
+
+msgid "ui:tooltip:next-mistake"
+msgstr "次のミスへ進む（Shift+→）"
+
+msgid "ui:caption:first"
+msgstr "先頭"
+
+msgid "ui:tooltip:first-move"
+msgstr "棋譜の先頭に戻る（Home）"
+
+msgid "ui:caption:last"
+msgstr "終端"
+
+msgid "ui:tooltip:last-move"
+msgstr "棋譜の終端へ進む（End）"
+
+msgid "ui:caption:prev-10"
+msgstr "10手戻る"
+
+msgid "ui:tooltip:prev-10"
+msgstr "10手戻る（Ctrl+←）"
+
+msgid "ui:caption:next-10"
+msgstr "10手進む"
+
+msgid "ui:tooltip:next-10"
+msgstr "10手進む（Ctrl+→）"
+
+msgid "ui:caption:prev-1"
+msgstr "1手戻る"
+
+msgid "ui:tooltip:prev-1"
+msgstr "1手戻る（← または Z）"
+
+msgid "ui:caption:next-1"
+msgstr "1手進む"
+
+msgid "ui:tooltip:next-1"
+msgstr "1手進む（→ または X）"
+
+msgid "ui:caption:rotate"
+msgstr "回転"
+
+msgid "ui:tooltip:rotate"
+msgstr "盤面を 180° 回転"
+
 msgid "ui:filebrowser:locations"
 msgstr "場所"
 

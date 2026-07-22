@@ -13,6 +13,33 @@
     icon_size: [min(self.size[0],self.height),min(self.size[0],self.height)]
     pos_hint: {'center_y': 0.5}
 
+# Phase 287-F: a small vertical layout that pairs a NavIconButton with
+# a short text caption underneath. The wrapper keeps the same
+# size_hint_x as the bare icon button so the 8-cell row layout below
+# still aligns. The icon button carries a tooltip_text that the
+# TooltipMixin turns into a long-press popup.
+<NavIconButtonWithCaption@BoxLayout>:
+    orientation: 'vertical'
+    spacing: 2
+    padding: 0
+    NavIconButton:
+        id: icon_btn
+        icon: root.icon
+        color: root.color
+        size_hint_y: 0.7
+        tooltip_text: root.tooltip_text
+        on_press: root.dispatch('on_press')
+    Label:
+        id: caption_label
+        text: root.caption_text
+        size_hint_y: 0.3
+        font_size: sp(10)
+        color: Theme.TEXT_COLOR
+        halign: 'center'
+        valign: 'middle'
+        shorten: True
+        max_lines: 1
+
 <BadukPanControls>:
     katrain: app.gui
     circles: [black_circle,white_circle]
@@ -50,18 +77,26 @@
         pos_hint: {'center_x': 0.5,'center_y':0.5}
         Label:
             size_hint: 0.075, 0.5
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Previous-Mistake.png'
             color: Theme.MISTAKE_BUTTON_COLOR
+            caption_text: i18n._('ui:caption:prev-mistake')
+            tooltip_text: i18n._('ui:tooltip:prev-mistake')
             on_press: root.katrain('find-mistake','undo')
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Previous-End.png'
+            caption_text: i18n._('ui:caption:first')
+            tooltip_text: i18n._('ui:tooltip:first-move')
             on_press: root.katrain('undo',9999)
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Previous-5.png'
+            caption_text: i18n._('ui:caption:prev-10')
+            tooltip_text: i18n._('ui:tooltip:prev-10')
             on_press: root.katrain('undo',10)
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Previous.png'
+            caption_text: i18n._('ui:caption:prev-1')
+            tooltip_text: i18n._('ui:tooltip:prev-1')
             on_press: root.katrain('undo')
         MDFloatLayout:
             size_hint: 0.05, 1
@@ -78,21 +113,31 @@
                 id: white_circle
                 player: 'W'
                 text: ''
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Next.png'
+            caption_text: i18n._('ui:caption:next-1')
+            tooltip_text: i18n._('ui:tooltip:next-1')
             on_press: root.katrain('redo')
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Next-5.png'
+            caption_text: i18n._('ui:caption:next-10')
+            tooltip_text: i18n._('ui:tooltip:next-10')
             on_press: root.katrain('redo',10)
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Next-End.png'
+            caption_text: i18n._('ui:caption:last')
+            tooltip_text: i18n._('ui:tooltip:last-move')
             on_press: root.katrain('redo',9999)
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Next-Mistake.png'
             color: Theme.MISTAKE_BUTTON_COLOR
+            caption_text: i18n._('ui:caption:next-mistake')
+            tooltip_text: i18n._('ui:tooltip:next-mistake')
             on_press: root.katrain('find-mistake','redo')
-        NavIconButton:
+        NavIconButtonWithCaption:
             icon: 'Rotate.png'
+            caption_text: i18n._('ui:caption:rotate')
+            tooltip_text: i18n._('ui:tooltip:rotate')
             on_press: root.katrain('rotate')
     ClickableLabel:
         pos_hint: {'center_x': 0.85,'center_y':0.5}
