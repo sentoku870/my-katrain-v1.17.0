@@ -81,18 +81,16 @@ class TestBadukPanWidgetCleanup:
         from katrain.gui.badukpan import BadukPanWidget
 
         widget = self._make_widget()
-        # Phase LV1-5: ``Window.bind(mouse_pos=...)`` now goes through a
-        # 20 ms-throttled trigger, so ``cleanup()`` must unbind the same
-        # trigger object.
+        # Phase LV1-5: the mouse-move handler now throttles internally
+        # (no external trigger) but ``cleanup()`` still unbinds
+        # ``on_mouse_pos``.
         on_mouse_pos = widget.on_mouse_pos
-        mouse_pos_trigger = widget._mouse_pos_trigger
         with patch.object(Window, "unbind") as mock_unbind:
             BadukPanWidget.cleanup(widget)
             mock_unbind.assert_called_once()
             # The call passes the callback as a keyword argument.
             _args, kwargs = mock_unbind.call_args
-            bound = kwargs.get("mouse_pos")
-            assert bound is on_mouse_pos or bound is mouse_pos_trigger
+            assert kwargs.get("mouse_pos") is on_mouse_pos
 
     def test_cleanup_idempotent_when_animate_interval_already_none(self):
         from katrain.gui.badukpan import BadukPanWidget
