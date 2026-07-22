@@ -73,6 +73,7 @@ from katrain.gui.kivyutils.buttons import (
     AutoSizedButton,
     AutoSizedRectangleButton,
     AutoSizedRectangleToggleButton,
+    MaterialIconButton,
     PauseButton,
     SizedButton,
     SizedRectangleButton,
@@ -114,6 +115,8 @@ __all__ = [
     "SizedRectangleToggleButton",
     "SizedToggleButton",
     "TransparentIconButton",
+    "MaterialIconButton",
+    "MdiIconOrImage",
     # Widgets - Labels
     "TableCellLabel",
     "TableStatLabel",

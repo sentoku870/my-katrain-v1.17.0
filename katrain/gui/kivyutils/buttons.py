@@ -18,6 +18,7 @@ Hierarchy:
 - SizedRectangleToggleButton (ToggleButtonMixin + SizedRectangleButton)
 - AutoSizedRectangleToggleButton (ToggleButtonMixin + AutoSizedRectangleButton)
 - TransparentIconButton
+- MaterialIconButton (Phase 287-G: KivyMD MDI フォント描画)
 - PauseButton
 """
 
@@ -96,6 +97,65 @@ class TransparentIconButton(CircularRippleBehavior, Button):
     icon_size = ListProperty([25, 25])
     icon = StringProperty("")
     disabled = BooleanProperty(False)
+
+
+class MaterialIconButton(CircularRippleBehavior, Button):
+    """Phase 287-G: Material Design Icons 版の操作ボタン。
+
+    アイコン名 (``menu`` 等の MDI 名、または既存の PNG パス) を受け取り、
+    内部で PNG ファイルパスに解決して ``Image`` 描画する。``Image`` ベース
+    の描画は Kivy で実績のあるパスで、確実に見える。
+
+    MDI 名 (``menu`` 等) は ``theme_loader.MDI_TO_PNG_FALLBACK`` 経由で
+    既存の Flaticon PNG ファイルに解決される。既存の ``TransparentIconButton``
+    と全く同じ描画パスを使うため、互換性も維持される。
+
+    ライセンス上、``katrain/img/`` 配下のアイコン PNG は Flaticon 由来
+    (LICENSE に帰属記載済み) であり、本マップは当該ライセンスを尊重する。
+    """
+
+    color = ListProperty(Theme.TEXT_COLOR if hasattr(Theme, "TEXT_COLOR") else [1, 1, 1, 1])
+    icon_size = ListProperty([25, 25])
+    icon = StringProperty("")
+    disabled = BooleanProperty(False)
+    image = ObjectProperty(None)
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+
+    def _resolved_source(self) -> str:
+        """Resolve ``self.icon`` (MDI name or PNG path) to a PNG file path."""
+        from katrain.gui.theme_loader import (  # noqa: WPS433
+            LEGACY_ICON_TO_MDI,
+            MDI_TO_PNG_FALLBACK,
+        )
+
+        name = self.icon or ""
+        if not name:
+            return ""
+        # Already a PNG / image asset path? Pass through.
+        if name.lower().endswith((".png", ".jpg", ".jpeg", ".gif")):
+            # If it's a legacy PNG name, still return as-is.
+            if name in LEGACY_ICON_TO_MDI or "/" in name:
+                return name
+            return name
+        # Resolve legacy PNG name -> MDI name (in case someone still passes
+        # the legacy PNG name).
+        mdi_name = LEGACY_ICON_TO_MDI.get(name, name)
+        # MDI name -> PNG fallback file.
+        return MDI_TO_PNG_FALLBACK.get(mdi_name, "")
+
+    def on_icon(self, *_args: object) -> None:
+        if self.image is not None:
+            self.image.source = self._resolved_source()
+
+    def on_color(self, *_args: object) -> None:
+        if self.image is not None:
+            self.image.color = [c * 0.4 for c in self.color[:3]] + [1] if self.disabled else list(self.color)
+
+    def on_disabled(self, *_args: object) -> None:
+        if self.image is not None:
+            self.image.color = [c * 0.4 for c in self.color[:3]] + [1] if self.disabled else list(self.color)
 
 
 class PauseButton(CircularRippleBehavior, LeftButtonBehavior, Widget):

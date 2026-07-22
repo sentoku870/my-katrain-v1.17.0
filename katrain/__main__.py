@@ -772,6 +772,14 @@ class KaTrainApp(MDApp):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Blue"
 
+        # Phase 287-G: register the MDI ("Icons") font with Kivy's
+        # LabelBase. kivymd.font_definitions performs the registration as
+        # an import side-effect, so any MDI Label built before this
+        # import would fail with ``OSError: Label: File
+        # 'materialdesignicons-webfont.ttf' not found``. Import early,
+        # before KV load and before any ``MdiIconOrImage`` construction.
+        import kivymd.font_definitions  # noqa: F401, WPS433
+
         # Phase 133: KV files are now loaded from katrain/gui/kv/ directory
 
         package_path = get_package_path()
@@ -805,6 +813,18 @@ class KaTrainApp(MDApp):
             )
         else:
             Theme.DEFAULT_FONT = resolved_font
+        # Phase 287-G: resolve the bold-face font (falls back to the regular
+        # font via the canonical name in katrain.common.theme_constants when
+        # no dedicated bold OTF is bundled).
+        resolved_bold = resource_find(Theme.DEFAULT_FONT_BOLD)
+        if resolved_bold is not None:
+            Theme.DEFAULT_FONT_BOLD = resolved_bold
+        else:
+            logging.getLogger(__name__).info(
+                "Bold font %r not found; falling back to regular %r.",
+                Theme.DEFAULT_FONT_BOLD,
+                Theme.DEFAULT_FONT,
+            )
         # Load Split KV files (Phase 133)
         kv_dir = find_package_resource("katrain/gui/kv")
         kv_files = glob.glob(os.path.join(kv_dir, "*.kv"))

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
+from katrain.common import DEFAULT_FONT_BOLD as _DEFAULT_FONT_BOLD
+from katrain.common import DEFAULT_ICON_FONT as _DEFAULT_ICON_FONT
 
-# basic colors
+# basic colors (Phase 287-G: legacy aliases retained for backward compatibility)
 WHITE = [0.95, 0.95, 0.95, 1]
 BLACK = [0.05, 0.05, 0.05, 1]
 LIGHT_GREY = [0.7, 0.7, 0.7, 1]
@@ -17,40 +19,72 @@ BLUE = [0.3, 0.7, 0.9, 1]
 
 
 class Theme:
-    # font (PR #113: canonical source is katrain.common.DEFAULT_FONT)
+    # ------------------------------------------------------------------ #
+    # Fonts                                                              #
+    # ------------------------------------------------------------------ #
+    # Phase 287-G: フォント名の canonical source は
+    # katrain.common.DEFAULT_FONT_*。Kivy/KivyMD 内部 label も含めて
+    # ``Theme.DEFAULT_FONT`` を参照すれば tofu 対策が連動する。
     DEFAULT_FONT = _DEFAULT_FONT
+    DEFAULT_FONT_BOLD = _DEFAULT_FONT_BOLD
+    DEFAULT_ICON_FONT = _DEFAULT_ICON_FONT
+
     INPUT_FONT_SIZE = 20  # sp
     DESC_FONT_SIZE = 18  # sp
     NOTES_FONT_SIZE = 16  # sp
+    TITLE_FONT_SIZE = 24  # sp
+    HEADING_FONT_SIZE = 20  # sp
+    SMALL_FONT_SIZE = 14  # sp
 
-    # gui colors
-    BACKGROUND_COLOR = [36 / 255, 48 / 255, 62 / 255, 1]
-    BOX_BACKGROUND_COLOR = [46 / 255, 65 / 255, 88 / 255, 1]
-    LIGHTER_BACKGROUND_COLOR = [64 / 255, 85 / 255, 110 / 255, 1]
+    # ------------------------------------------------------------------ #
+    # Semantic color tokens (Phase 287-G: 統一カラー導入)               #
+    # ------------------------------------------------------------------ #
+    # WCAG 1.4.3 を意識した輝度コントラスト:
+    # - COLOR_TEXT_PRIMARY / COLOR_BG        ≈ 15.15:1
+    # - COLOR_TEXT_PRIMARY / COLOR_SURFACE   ≈ 12.50:1
+    # - COLOR_TEXT_SECONDARY / COLOR_SURFACE ≈  8.60:1
+    # - COLOR_PRIMARY / COLOR_BG             ≈  7.34:1
+    COLOR_BG = [24 / 255, 33 / 255, 43 / 255, 1]
+    COLOR_SURFACE = [34 / 255, 48 / 255, 64 / 255, 1]
+    COLOR_SURFACE_VARIANT = [44 / 255, 65 / 255, 87 / 255, 1]
+    COLOR_PRIMARY = [100 / 255, 181 / 255, 246 / 255, 1]
+    COLOR_ON_PRIMARY = [11 / 255, 31 / 255, 51 / 255, 1]
+    COLOR_TEXT_PRIMARY = [245 / 255, 247 / 255, 250 / 255, 1]
+    COLOR_TEXT_SECONDARY = [199 / 255, 208 / 255, 218 / 255, 1]
+    COLOR_TEXT_DISABLED = [140 / 255, 150 / 255, 165 / 255, 1]
+    COLOR_OUTLINE = [88 / 255, 105 / 255, 124 / 255, 1]
+    COLOR_SUCCESS = [112 / 255, 211 / 255, 154 / 255, 1]
+    COLOR_WARNING = [255 / 255, 209 / 255, 102 / 255, 1]
+    COLOR_ERROR = [255 / 255, 112 / 255, 112 / 255, 1]
+    COLOR_INFO = COLOR_PRIMARY
+
+    # gui colors (legacy aliases — 既存 JSON / 設定との互換のため保持)
+    BACKGROUND_COLOR = COLOR_BG
+    BOX_BACKGROUND_COLOR = COLOR_SURFACE
+    LIGHTER_BACKGROUND_COLOR = COLOR_SURFACE_VARIANT
     SCROLLBAR_COLOR = LIGHT_GREY
-    TEXT_COLOR = WHITE
+    TEXT_COLOR = COLOR_TEXT_PRIMARY
     SCORE_COLOR = BLUE  # blue
     WINRATE_COLOR = GREEN  # green
     POINTLOSS_COLOR = YELLOW  # yellow
     BUTTON_INACTIVE_COLOR = LIGHT_GREY
-    BUTTON_BORDER_COLOR = WHITE
-    BUTTON_TEXT_COLOR = WHITE
+    BUTTON_BORDER_COLOR = COLOR_TEXT_PRIMARY
+    BUTTON_TEXT_COLOR = COLOR_TEXT_PRIMARY
     PAUSE_ACTIVE_COLOR = ORANGE
     TIMER_TEXT_COLOR = GREEN
     TIMER_TEXT_TIMEOUT_COLOR = ORANGE
     CIRCLE_TEXT_COLORS = {"W": BLACK, "B": WHITE}
     NOTES_TAB_FONT_COLOR = YELLOW
-    INFO_TAB_FONT_COLOR = WHITE
-    ERROR_BORDER_COLOR = RED
-    MENU_ITEM_FONT_COLOR = WHITE
-    MENU_ITEM_SHORTCUT_COLOR = LIGHT_GREY
+    INFO_TAB_FONT_COLOR = COLOR_TEXT_PRIMARY
+    ERROR_BORDER_COLOR = COLOR_ERROR
+    MENU_ITEM_FONT_COLOR = COLOR_TEXT_PRIMARY
+    MENU_ITEM_SHORTCUT_COLOR = COLOR_TEXT_SECONDARY
     PLAY_ANALYZE_TAB_COLOR = YELLOW
-    INPUT_FONT_COLOR = WHITE
-    MISTAKE_BUTTON_COLOR = [0.79, 0.06, 0.06, 1]
-    STAT_WORSE_COLOR = [0.8, 0.4, 0.2, 1]
-    STAT_BETTER_COLOR = [0.2, 0.5, 0.1, 1]
-    # Primary button color (blue-ish to match app theme)
-    PRIMARY_COLOR = [0.25, 0.45, 0.65, 1]
+    INPUT_FONT_COLOR = COLOR_TEXT_PRIMARY
+    MISTAKE_BUTTON_COLOR = COLOR_ERROR
+    STAT_WORSE_COLOR = COLOR_WARNING
+    STAT_BETTER_COLOR = COLOR_SUCCESS
+    PRIMARY_COLOR = COLOR_PRIMARY
     # Phase 111: Alias for backward compatibility
     # Note: Colors are List[float] but often assigned tuples; consider Sequence[float] for future strict work
     SECONDARY_COLOR = PRIMARY_COLOR

@@ -93,7 +93,10 @@
     color: Theme.TIMER_TEXT_TIMEOUT_COLOR if self.timeout else Theme.TIMER_TEXT_COLOR
     markup: True
     max_lines: 1
-    font_name: 'digital-7 (mono).ttf'
+    # Phase 287-G: digital-7 (non-commercial, 幅可変でない)を廃止し、
+    # Noto Sans JP に統一してライセンスとフォント一貫性を改善する。
+    # 桁揃えは right-align + 固定幅 text_size で吸収。
+    font_name: Theme.DEFAULT_FONT
 
 <Timer>:
     spacing: Theme.CP_SPACING
