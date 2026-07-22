@@ -33,19 +33,27 @@
         id: icon_btn
         icon: root.icon
         color: root.color
-        size_hint_y: 0.7
+        size_hint_y: 0.6
         tooltip_text: root.tooltip_text
         on_press: root.dispatch('on_press')
     Label:
         id: caption_label
         text: root.caption_text
-        size_hint_y: 0.3
-        font_size: sp(10)
+        size_hint_y: 0.4
+        # Phase 287-G (this fix): sp(10) + shorten/1-line on a 2500x1440
+        # display collapses JP captions like 「前のミス」「10手戻る」into
+        # unreadable stubs. Bump the font, give the label more vertical
+        # room, and let the text wrap to two lines so it always shows
+        # the full caption. Pin the font to Theme.DEFAULT_FONT so it
+        # doesn't fall back to Roboto (which lacks JP glyphs and
+        # renders blank on the user-facing language).
+        font_size: sp(11)
+        font_name: Theme.DEFAULT_FONT
         color: Theme.TEXT_COLOR
         halign: 'center'
         valign: 'middle'
         shorten: True
-        max_lines: 1
+        max_lines: 2
 
 <BadukPanControls>:
     katrain: app.gui
