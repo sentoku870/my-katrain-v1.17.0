@@ -39,7 +39,8 @@ def resolve_mdi_glyph(icon_name: str) -> str:
         from kivymd.icon_definitions import md_icons  # noqa: WPS433
     except Exception:
         return ""
-    return md_icons.get(resolved, "")
+    result = md_icons.get(resolved, "")
+    return result if isinstance(result, str) else ""
 
 
 def is_png_path(icon_name: str) -> bool:
