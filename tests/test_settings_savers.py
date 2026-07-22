@@ -409,3 +409,91 @@ class TestMigrateDefaultUserRank:
 
         general_call = ctx.set_config_section.call_args_list[0]
         assert general_call.args[1]["player_rank"] == "4段"
+
+
+class TestBuildKifunarabeConfig:
+    """Phase 287-A: regression tests for the kifunarabe settings save path.
+
+    The kifunarabe tab in the myKatrain settings popup exposes six widgets
+    (one text input + five checkboxes). Previously the save block inside
+    ``do_mykatrain_settings_popup`` forgot to read the
+    ``auto_export_cb`` widget, so flipping the checkbox had no effect on
+    the persisted config. The dict assembly was extracted into
+    ``build_kifunarabe_config`` so this regression can be caught without
+    spinning up a Kivy popup.
+    """
+
+    def _refs(
+        self,
+        *,
+        sgf_load: str = "",
+        show_digits: bool = False,
+        show_actual_border: bool = False,
+        uniform_color: bool = True,
+        auto_toggle: bool = True,
+        auto_export: bool = False,
+    ) -> dict:
+        return {
+            "sgf_load_input": MagicMock(text=sgf_load),
+            "show_digits_cb": MagicMock(active=show_digits),
+            "show_actual_border_cb": MagicMock(active=show_actual_border),
+            "uniform_color_cb": MagicMock(active=uniform_color),
+            "auto_toggle_cb": MagicMock(active=auto_toggle),
+            "auto_export_cb": MagicMock(active=auto_export),
+        }
+
+    def test_persists_auto_export_weaknesses(self):
+        """The Phase 287-A regression: ``auto_export_cb`` must be read."""
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(auto_export=True)
+        kif = build_kifunarabe_config(refs)
+        assert kif["auto_export_weaknesses"] is True
+
+    def test_persists_all_six_widgets(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(
+            sgf_load="/tmp/games",
+            show_digits=True,
+            show_actual_border=True,
+            uniform_color=False,
+            auto_toggle=False,
+            auto_export=True,
+        )
+        kif = build_kifunarabe_config(refs)
+        assert kif == {
+            "sgf_load": "/tmp/games",
+            "show_digits": True,
+            "show_actual_border": True,
+            "uniform_color": False,
+            "auto_toggle_markers": False,
+            "auto_export_weaknesses": True,
+        }
+
+    def test_preserves_unknown_keys_from_existing(self):
+        """Phase 277 pattern: merge into existing so future keys survive."""
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs()
+        existing = {"sgf_load": "/old", "future_key": "preserved"}
+        kif = build_kifunarabe_config(refs, existing)
+        assert kif["future_key"] == "preserved"
+        assert kif["sgf_load"] == ""  # overwritten by current widget value
+        assert kif["auto_export_weaknesses"] is False
+
+    def test_existing_none_starts_empty(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(sgf_load="/a")
+        kif = build_kifunarabe_config(refs, None)
+        assert kif["sgf_load"] == "/a"
+        # No phantom keys from a None merge
+        assert set(kif.keys()) == {
+            "sgf_load",
+            "show_digits",
+            "show_actual_border",
+            "uniform_color",
+            "auto_toggle_markers",
+            "auto_export_weaknesses",
+        }

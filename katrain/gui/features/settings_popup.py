@@ -38,6 +38,7 @@ from katrain.gui.features.settings_popup_savers import (  # noqa: F401 (re-expor
     _save_engine_settings,
     _save_general_settings,
     _save_mykatrain_settings,
+    build_kifunarabe_config,
     migrate_default_user_rank,
 )
 from katrain.gui.features.settings_popup_state import _SettingsPopupContext
@@ -303,13 +304,12 @@ def do_mykatrain_settings_popup(
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.
         # Phase 177-H: persist the auto-toggle-markers preference.
+        # Phase 287-A: also persist the auto-export-weaknesses toggle.
+        # The dict assembly lives in ``build_kifunarabe_config`` so the
+        # path can be unit-tested without a Kivy popup (see
+        # ``tests/test_settings_savers.py::TestBuildKifunarabeConfig``).
         with contextlib.suppress(Exception):
-            kif = dict(ctx.config("kifunarabe", {}) or {})
-            kif["sgf_load"] = widget_refs["sgf_load_input"].text
-            kif["show_digits"] = bool(widget_refs["show_digits_cb"].active)
-            kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
-            kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)
-            kif["auto_toggle_markers"] = bool(widget_refs["auto_toggle_cb"].active)
+            kif = build_kifunarabe_config(widget_refs, ctx.config("kifunarabe"))
             ctx.set_config_section("kifunarabe", kif)
             ctx.save_config("kifunarabe")
         # Phase 177-F: if kifunarabe is active, the user just toggled

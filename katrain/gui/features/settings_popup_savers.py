@@ -101,6 +101,38 @@ def _save_beginner_hints_settings(
     ctx.save_config("beginner_hints")
 
 
+def build_kifunarabe_config(widget_refs: dict[str, Any], existing: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build the ``kifunarabe`` config dict from the settings popup widgets.
+
+    Phase 287-A: previously this dict-assembly lived inline inside the
+    ``save_settings`` closure in ``settings_popup.py``. Extracting it here
+    makes the kifunarabe save path testable without spinning up a Kivy
+    popup, and prevents future regressions where a checkbox is added to
+    the tab but forgotten in the save block.
+
+    Args:
+        widget_refs: The dict returned by the kifunarabe tab builder.
+            Must contain ``sgf_load_input``, ``show_digits_cb``,
+            ``show_actual_border_cb``, ``uniform_color_cb``,
+            ``auto_toggle_cb`` and ``auto_export_cb``.
+        existing: Existing ``kifunarabe`` config dict to merge into so
+            unknown keys (added by future phases) are preserved. ``None``
+            starts from an empty dict.
+
+    Returns:
+        A fresh dict ready to be written via ``ctx.set_config_section``
+        and ``ctx.save_config``.
+    """
+    kif: dict[str, Any] = dict(existing or {})
+    kif["sgf_load"] = widget_refs["sgf_load_input"].text
+    kif["show_digits"] = bool(widget_refs["show_digits_cb"].active)
+    kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
+    kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)
+    kif["auto_toggle_markers"] = bool(widget_refs["auto_toggle_cb"].active)
+    kif["auto_export_weaknesses"] = bool(widget_refs["auto_export_cb"].active)
+    return kif
+
+
 def migrate_default_user_rank(
     ctx: FeatureContext,
     current_settings: dict[str, Any],
