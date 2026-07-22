@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
+from typing import Any
 
 from katrain.common.config_store import JsonFileConfigStore
 from katrain.common.resource_utils import find_package_resource
@@ -69,7 +71,6 @@ class Player:
 
 
 from collections.abc import Callable
-from typing import Any
 
 
 def _save_config_with_errors(
@@ -122,6 +123,26 @@ class KaTrainBase:
     PACKAGE_CONFIG_FILE = "katrain/config.json"
 
     """Settings, logging, and players functionality, so other classes like bots who need a katrain instance can be used without a GUI"""
+
+    @staticmethod
+    def _read_general_section(path: str) -> dict[str, Any] | None:
+        """Phase LV3-6: cheap JSON peek at the ``general`` section.
+
+        Used during startup to compare the on-disk ``version`` against
+        ``CONFIG_MIN_VERSION`` without paying the cost of building a
+        full ``JsonFileConfigStore`` (and again at line 226 below).
+        Returns ``None`` on any I/O or shape error so callers can fall
+        back to the "outdated config" recovery path.
+        """
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        general = data.get("general")
+        return general if isinstance(general, dict) else None
 
     def __init__(self, force_package_config: bool = False, debug_level: int | None = None, **kwargs: Any) -> None:
         from katrain.core.game import Game  # Local import to avoid circular dependency
@@ -195,7 +216,12 @@ class KaTrainBase:
                         self.log(f"Copied package config to local file {config_file}", OUTPUT_INFO)
                     else:  # user file exists
                         try:
-                            general_config = JsonFileConfigStore(user_config_file).get("general")
+                            # Phase LV3-6: avoid building a full
+                            # ``JsonFileConfigStore`` (and a second
+                            # one at line 226 below) just to peek at the
+                            # version. A lightweight ``json.load`` keeps
+                            # the startup I/O budget low.
+                            general_config = self._read_general_section(user_config_file)
                             if general_config is None:
                                 raise KeyError("general section missing")
                             version_str = general_config["version"]

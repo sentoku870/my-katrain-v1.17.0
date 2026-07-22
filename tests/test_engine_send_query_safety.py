@@ -1,5 +1,6 @@
 """Tests for send_query() safety mechanisms."""
 
+import itertools
 import queue
 import threading
 from unittest.mock import MagicMock
@@ -20,7 +21,12 @@ def minimal_engine():
     engine._pending_query_lock = threading.Lock()
     engine.katago_process = MagicMock()
     engine.katago_process.poll.return_value = None  # Process alive
-    engine.write_queue = queue.Queue()
+    engine.write_queue = queue.PriorityQueue()
+    # Phase LV3-1: write_queue is a PriorityQueue of ``(priority, seq)``
+    # with the actual payload kept in ``_write_queue_payloads`` to keep
+    # the priority tuple comparable.
+    engine._write_queue_seq = itertools.count()
+    engine._write_queue_payloads = {}
     engine.katrain = MagicMock()
     engine.thread_lock = threading.Lock()
     # Default scheduler: identity (sync, headless/test). Tests that need
