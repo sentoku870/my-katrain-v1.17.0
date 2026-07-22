@@ -228,13 +228,13 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "auto_toggle_cb": auto_toggle_cb,
         "auto_export_cb": auto_export_cb,
     }
-    # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
-    # additions (history list, longer help text, etc.) don't overflow.
-    # The ScrollView occupies the full tab area; the inner BoxLayout
-    # retains its size_hint_y=None + minimum_height binding so it grows
-    # to fit its children and the ScrollView scrolls vertically.
-    from kivy.uix.scrollview import ScrollView
-
-    scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, bar_width=dp(8))
-    scroll.add_widget(inner)
-    return scroll, widget_refs
+    # Phase 287-B: the orchestrator in settings_popup.py already wraps
+    # every tab (analysis / export / kifunarabe / diagnostics) in a
+    # ScrollView at lines 174-186. Returning a nested ScrollView here
+    # caused:
+    #   - two scrollbars stacked at the right edge,
+    #   - mouse-wheel events captured by the wrong layer,
+    #   - ambiguous touch-scroll ownership on trackpads.
+    # Return the inner BoxLayout directly so the layout matches the
+    # other tabs and the single outer ScrollView owns scrolling.
+    return inner, widget_refs

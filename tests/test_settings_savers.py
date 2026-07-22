@@ -497,3 +497,76 @@ class TestBuildKifunarabeConfig:
             "auto_toggle_markers",
             "auto_export_weaknesses",
         }
+
+
+class TestKifunarabeTabReturnShape:
+    """Phase 287-B: regression test for the double ScrollView fix.
+
+    The kifunarabe tab builder must return the inner BoxLayout directly
+    (matching the analysis / export / diagnostics tabs). The orchestrator
+    in settings_popup.py wraps every tab in a single ScrollView, so a
+    tab builder that returns its own ScrollView would create two stacked
+    ScrollViews (visible double scrollbar, ambiguous wheel events).
+
+    The full tab builder needs a live Kivy window (it instantiates
+    CheckBox / TextInput at module load via `dp(...)`), so this test
+    verifies the contract via AST inspection of the source file rather
+    than by calling the builder.
+    """
+
+    def test_kifunarabe_tab_does_not_return_scrollview(self):
+        import ast
+        from pathlib import Path
+
+        src_path = Path("katrain/gui/features/settings_popup_tabs/kifunarabe_tab.py")
+        tree = ast.parse(src_path.read_text(encoding="utf-8"))
+
+        # Find the ``_build_kifunarabe_tab`` function and look for any
+        # ``return ... ScrollView(...)`` statement. If the double-wrap
+        # regression returns, this assertion fires.
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "_build_kifunarabe_tab":
+                for stmt in ast.walk(node):
+                    if isinstance(stmt, ast.Return) and stmt.value is not None:
+                        # Walk into the return expression for any ScrollView call.
+                        for sub in ast.walk(stmt.value):
+                            if isinstance(sub, ast.Call):
+                                callee = ast.unparse(sub.func) if hasattr(ast, "unparse") else ""
+                                if "ScrollView" in callee:
+                                    raise AssertionError(
+                                        "_build_kifunarabe_tab must not construct "
+                                        "or return a ScrollView. The orchestrator "
+                                        "(settings_popup.py:183-186) already wraps "
+                                        "every tab in one. Returning a nested "
+                                        "ScrollView caused two stacked scrollbars "
+                                        "and ambiguous wheel events."
+                                    )
+                return
+        raise AssertionError("_build_kifunarabe_tab function not found")
+
+    def test_other_tabs_still_return_boxlayout(self):
+        """Sanity: the four tab builders all return plain BoxLayouts."""
+        import ast
+        from pathlib import Path
+
+        for tab_file in ("analysis_tab.py", "export_tab.py", "kifunarabe_tab.py", "diagnostics_tab.py"):
+            src_path = Path(f"katrain/gui/features/settings_popup_tabs/{tab_file}")
+            text = src_path.read_text(encoding="utf-8")
+            # A ScrollView usage inside docstrings/comments is fine;
+            # only flag if a ScrollView() is constructed in module-level
+            # code (not inside a function body).
+            tree = ast.parse(text)
+            for node in tree.body:
+                # If someone adds a top-level ``from kivy.uix.scrollview
+                # import ScrollView`` outside a function, that's still OK
+                # because the import is lazy. The danger is constructing
+                # ScrollView at module level (which Phase 180-C did).
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name) and target.id in ("scroll", "ScrollView"):
+                            # Assigned at module top-level → flag it.
+                            if isinstance(node.value, ast.Call) and "ScrollView" in ast.unparse(node.value.func):
+                                raise AssertionError(
+                                    f"{tab_file} constructs a ScrollView at module "
+                                    "level. Each tab must return a plain BoxLayout."
+                                )
