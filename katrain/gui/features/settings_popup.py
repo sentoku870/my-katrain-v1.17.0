@@ -17,7 +17,7 @@ import os
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
@@ -388,11 +388,62 @@ def do_mykatrain_settings_popup(
 # =============================================================================
 
 
+def apply_search_filter(searchable_widgets: list[dict[str, Any]], query: str) -> tuple[int, int]:
+    """Collapse non-matching rows and return ``(hits, total)``.
+
+    Phase 287-G (UI/UX fixes, Wave C commit 8): the previous filter
+    only faded non-matching rows (opacity 0.3) and left them
+    interactive. Users still saw a long list of grayed-out options and
+    the ScrollView height never shrunk. This implementation sets
+    ``height = 0`` and ``disabled = True`` on non-matches so they
+    truly disappear from the layout, then reports the hit count so the
+    UI can show "N of M hits" feedback.
+
+    Args:
+        searchable_widgets: List of dicts with ``label_text`` (str) and
+            ``widget`` (the row BoxLayout) keys.
+        query: Raw search string; whitespace is stripped and lower-cased.
+
+    Returns:
+        ``(hits, total)`` count tuple.
+    """
+    q = (query or "").strip().lower()
+    hits = 0
+    total = 0
+    for item in searchable_widgets:
+        widget = item.get("widget")
+        if widget is None:
+            continue
+        total += 1
+        label_text = (item.get("label_text", "") or "").lower()
+        match = (not q) or (q in label_text)
+        if match:
+            hits += 1
+            # Restore the row to its natural height + interactivity.
+            widget.opacity = 1.0
+            widget.disabled = False
+            widget.height = getattr(widget, "_natural_height", None) or widget.height or 1
+        else:
+            # Collapse: zero height + transparent + disabled. We
+            # remember the previous height so a later query restore can
+            # put the row back.
+            if not hasattr(widget, "_natural_height"):
+                widget._natural_height = widget.height
+            widget.opacity = 0
+            widget.disabled = True
+            widget.height = 0
+    return hits, total
+
+
 def _build_search_bar(
     searchable_widgets: list[dict[str, Any]],
     register_searchable: Callable[[str, Any], None],
 ) -> tuple[BoxLayout, TextInput]:
-    """Build the search bar (text input + clear button) and wire search callbacks.
+    """Build the search bar (text input + status label + clear button).
+
+    Phase 287-G: added a status label so the user sees "N of M hits"
+    (or "該当なし") as they type. The filter collapses non-matching
+    rows instead of just fading them.
 
     Args:
         searchable_widgets: Mutable list that the on_text callback will iterate
@@ -403,29 +454,26 @@ def _build_search_bar(
         (search_layout, search_input) tuple. The layout is ready to be added to
         a parent; search_input is returned so the caller can clear its text.
     """
-
-    def on_search_text_change(instance: Any, value: str) -> None:
-        """検索テキスト変更時のフィルタ処理"""
-        query = value.strip().lower()
-        for item in searchable_widgets:
-            label_text = item.get("label_text", "").lower()
-            widget = item.get("widget")
-            if widget is None:
-                continue
-            if query and query not in label_text:
-                widget.opacity = 0.3
-            else:
-                widget.opacity = 1.0
+    from katrain.gui.widgets.factory import Label as FactoryLabel
 
     search_layout = BoxLayout(orientation="horizontal", spacing=dp(8), size_hint_y=None, height=dp(40))
     search_input = TextInput(
         hint_text=i18n._("mykatrain:settings:search_placeholder"),
         multiline=False,
-        size_hint_x=0.85,
+        size_hint_x=0.65,
         height=dp(40),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         foreground_color=Theme.TEXT_COLOR,
         font_name=Theme.DEFAULT_FONT,
+    )
+    search_status = FactoryLabel(
+        text="",
+        size_hint_x=0.20,
+        font_size=sp(11),
+        color=Theme.TEXT_COLOR,
+        halign="center",
+        valign="middle",
+        shorten=True,
     )
     search_clear_btn = Button(
         text=i18n._("mykatrain:settings:search_clear"),
@@ -436,7 +484,21 @@ def _build_search_bar(
         font_name=Theme.DEFAULT_FONT,
     )
     search_layout.add_widget(search_input)
+    search_layout.add_widget(search_status)
     search_layout.add_widget(search_clear_btn)
+
+    def on_search_text_change(instance: Any, value: str) -> None:
+        """検索テキスト変更時のフィルタ処理"""
+        hits, total = apply_search_filter(searchable_widgets, value)
+        q = (value or "").strip()
+        if not q:
+            search_status.text = ""
+        elif hits == 0:
+            search_status.text = i18n._("mykatrain:settings:search_no_hits")
+        else:
+            search_status.text = i18n._("mykatrain:settings:search_hit_count").format(
+                hits=hits, total=total
+            )
 
     def on_search_clear(*_args: Any) -> None:
         """検索をクリア"""

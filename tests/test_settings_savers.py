@@ -563,10 +563,14 @@ class TestKifunarabeTabReturnShape:
                 # ScrollView at module level (which Phase 180-C did).
                 if isinstance(node, ast.Assign):
                     for target in node.targets:
-                        if isinstance(target, ast.Name) and target.id in ("scroll", "ScrollView"):
+                        if (
+                            isinstance(target, ast.Name)
+                            and target.id in ("scroll", "ScrollView")
+                            and isinstance(node.value, ast.Call)
+                            and "ScrollView" in ast.unparse(node.value.func)
+                        ):
                             # Assigned at module top-level → flag it.
-                            if isinstance(node.value, ast.Call) and "ScrollView" in ast.unparse(node.value.func):
-                                raise AssertionError(
-                                    f"{tab_file} constructs a ScrollView at module "
-                                    "level. Each tab must return a plain BoxLayout."
-                                )
+                            raise AssertionError(
+                                f"{tab_file} constructs a ScrollView at module "
+                                "level. Each tab must return a plain BoxLayout."
+                            )

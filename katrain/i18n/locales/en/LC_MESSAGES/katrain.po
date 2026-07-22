@@ -1973,6 +1973,13 @@ msgstr "Search settings..."
 msgid "mykatrain:settings:search_clear"
 msgstr "Clear"
 
+# Phase 287-G: settings search status line.
+msgid "mykatrain:settings:search_hit_count"
+msgstr "{hits} / {total} matches"
+
+msgid "mykatrain:settings:search_no_hits"
+msgstr "No matches"
+
 # Phase 287-D: replace fixed English strings in the file browser /
 # settings popup with i18n keys.
 msgid "ui:restoresize_label"
