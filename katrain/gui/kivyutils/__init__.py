@@ -84,6 +84,7 @@ from katrain.gui.kivyutils.mixins import (
     BackgroundMixin,
     LeftButtonBehavior,
     ToggleButtonMixin,
+    TooltipMixin,
 )
 
 __all__ = [
@@ -102,6 +103,7 @@ __all__ = [
     "BackgroundMixin",
     "LeftButtonBehavior",
     "ToggleButtonMixin",
+    "TooltipMixin",
     # Buttons
     "AutoSizedButton",
     "AutoSizedRectangleButton",

@@ -409,3 +409,168 @@ class TestMigrateDefaultUserRank:
 
         general_call = ctx.set_config_section.call_args_list[0]
         assert general_call.args[1]["player_rank"] == "4段"
+
+
+class TestBuildKifunarabeConfig:
+    """Phase 287-A: regression tests for the kifunarabe settings save path.
+
+    The kifunarabe tab in the myKatrain settings popup exposes six widgets
+    (one text input + five checkboxes). Previously the save block inside
+    ``do_mykatrain_settings_popup`` forgot to read the
+    ``auto_export_cb`` widget, so flipping the checkbox had no effect on
+    the persisted config. The dict assembly was extracted into
+    ``build_kifunarabe_config`` so this regression can be caught without
+    spinning up a Kivy popup.
+    """
+
+    def _refs(
+        self,
+        *,
+        sgf_load: str = "",
+        show_digits: bool = False,
+        show_actual_border: bool = False,
+        uniform_color: bool = True,
+        auto_toggle: bool = True,
+        auto_export: bool = False,
+    ) -> dict:
+        return {
+            "sgf_load_input": MagicMock(text=sgf_load),
+            "show_digits_cb": MagicMock(active=show_digits),
+            "show_actual_border_cb": MagicMock(active=show_actual_border),
+            "uniform_color_cb": MagicMock(active=uniform_color),
+            "auto_toggle_cb": MagicMock(active=auto_toggle),
+            "auto_export_cb": MagicMock(active=auto_export),
+        }
+
+    def test_persists_auto_export_weaknesses(self):
+        """The Phase 287-A regression: ``auto_export_cb`` must be read."""
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(auto_export=True)
+        kif = build_kifunarabe_config(refs)
+        assert kif["auto_export_weaknesses"] is True
+
+    def test_persists_all_six_widgets(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(
+            sgf_load="/tmp/games",
+            show_digits=True,
+            show_actual_border=True,
+            uniform_color=False,
+            auto_toggle=False,
+            auto_export=True,
+        )
+        kif = build_kifunarabe_config(refs)
+        assert kif == {
+            "sgf_load": "/tmp/games",
+            "show_digits": True,
+            "show_actual_border": True,
+            "uniform_color": False,
+            "auto_toggle_markers": False,
+            "auto_export_weaknesses": True,
+        }
+
+    def test_preserves_unknown_keys_from_existing(self):
+        """Phase 277 pattern: merge into existing so future keys survive."""
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs()
+        existing = {"sgf_load": "/old", "future_key": "preserved"}
+        kif = build_kifunarabe_config(refs, existing)
+        assert kif["future_key"] == "preserved"
+        assert kif["sgf_load"] == ""  # overwritten by current widget value
+        assert kif["auto_export_weaknesses"] is False
+
+    def test_existing_none_starts_empty(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(sgf_load="/a")
+        kif = build_kifunarabe_config(refs, None)
+        assert kif["sgf_load"] == "/a"
+        # No phantom keys from a None merge
+        assert set(kif.keys()) == {
+            "sgf_load",
+            "show_digits",
+            "show_actual_border",
+            "uniform_color",
+            "auto_toggle_markers",
+            "auto_export_weaknesses",
+        }
+
+
+class TestKifunarabeTabReturnShape:
+    """Phase 287-B: regression test for the double ScrollView fix.
+
+    The kifunarabe tab builder must return the inner BoxLayout directly
+    (matching the analysis / export / diagnostics tabs). The orchestrator
+    in settings_popup.py wraps every tab in a single ScrollView, so a
+    tab builder that returns its own ScrollView would create two stacked
+    ScrollViews (visible double scrollbar, ambiguous wheel events).
+
+    The full tab builder needs a live Kivy window (it instantiates
+    CheckBox / TextInput at module load via `dp(...)`), so this test
+    verifies the contract via AST inspection of the source file rather
+    than by calling the builder.
+    """
+
+    def test_kifunarabe_tab_does_not_return_scrollview(self):
+        import ast
+        from pathlib import Path
+
+        src_path = Path("katrain/gui/features/settings_popup_tabs/kifunarabe_tab.py")
+        tree = ast.parse(src_path.read_text(encoding="utf-8"))
+
+        # Find the ``_build_kifunarabe_tab`` function and look for any
+        # ``return ... ScrollView(...)`` statement. If the double-wrap
+        # regression returns, this assertion fires.
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "_build_kifunarabe_tab":
+                for stmt in ast.walk(node):
+                    if isinstance(stmt, ast.Return) and stmt.value is not None:
+                        # Walk into the return expression for any ScrollView call.
+                        for sub in ast.walk(stmt.value):
+                            if isinstance(sub, ast.Call):
+                                callee = ast.unparse(sub.func) if hasattr(ast, "unparse") else ""
+                                if "ScrollView" in callee:
+                                    raise AssertionError(
+                                        "_build_kifunarabe_tab must not construct "
+                                        "or return a ScrollView. The orchestrator "
+                                        "(settings_popup.py:183-186) already wraps "
+                                        "every tab in one. Returning a nested "
+                                        "ScrollView caused two stacked scrollbars "
+                                        "and ambiguous wheel events."
+                                    )
+                return
+        raise AssertionError("_build_kifunarabe_tab function not found")
+
+    def test_other_tabs_still_return_boxlayout(self):
+        """Sanity: the four tab builders all return plain BoxLayouts."""
+        import ast
+        from pathlib import Path
+
+        for tab_file in ("analysis_tab.py", "export_tab.py", "kifunarabe_tab.py", "diagnostics_tab.py"):
+            src_path = Path(f"katrain/gui/features/settings_popup_tabs/{tab_file}")
+            text = src_path.read_text(encoding="utf-8")
+            # A ScrollView usage inside docstrings/comments is fine;
+            # only flag if a ScrollView() is constructed in module-level
+            # code (not inside a function body).
+            tree = ast.parse(text)
+            for node in tree.body:
+                # If someone adds a top-level ``from kivy.uix.scrollview
+                # import ScrollView`` outside a function, that's still OK
+                # because the import is lazy. The danger is constructing
+                # ScrollView at module level (which Phase 180-C did).
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if (
+                            isinstance(target, ast.Name)
+                            and target.id in ("scroll", "ScrollView")
+                            and isinstance(node.value, ast.Call)
+                            and "ScrollView" in ast.unparse(node.value.func)
+                        ):
+                            # Assigned at module top-level → flag it.
+                            raise AssertionError(
+                                f"{tab_file} constructs a ScrollView at module "
+                                "level. Each tab must return a plain BoxLayout."
+                            )

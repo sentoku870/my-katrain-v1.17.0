@@ -1630,6 +1630,18 @@ msgstr ""
 "Show a one-line summary of blunder / mistake / good move based on points "
 "lost"
 
+msgid "mykatrain:settings:bh_section_mistake"
+msgstr "Mistake classification"
+
+msgid "mykatrain:settings:bh_section_meta"
+msgstr "KataGo / meta analysis"
+
+msgid "mykatrain:settings:bh_section_structural"
+msgstr "Structural hints"
+
+msgid "mykatrain:settings:bh_section_meaning"
+msgstr "Meaning tags"
+
 msgid "mykatrain:settings:summary_freedom"
 msgstr "Move-freedom summary hints:"
 
@@ -1960,6 +1972,99 @@ msgstr "Search settings..."
 
 msgid "mykatrain:settings:search_clear"
 msgstr "Clear"
+
+# Phase 287-G: settings search status line.
+msgid "mykatrain:settings:search_hit_count"
+msgstr "{hits} / {total} matches"
+
+msgid "mykatrain:settings:search_no_hits"
+msgstr "No matches"
+
+# Phase 287-D: replace fixed English strings in the file browser /
+# settings popup with i18n keys.
+msgid "ui:restoresize_label"
+msgstr "Restore window size on startup"
+
+# Phase 287-F: captions and tooltips for the nav icon buttons.
+msgid "ui:caption:prev-mistake"
+msgstr "Prev mistake"
+
+msgid "ui:tooltip:prev-mistake"
+msgstr "Jump to previous mistake (Shift+Left)"
+
+msgid "ui:caption:next-mistake"
+msgstr "Next mistake"
+
+msgid "ui:tooltip:next-mistake"
+msgstr "Jump to next mistake (Shift+Right)"
+
+msgid "ui:caption:first"
+msgstr "First"
+
+msgid "ui:tooltip:first-move"
+msgstr "Jump to first move (Home)"
+
+msgid "ui:caption:last"
+msgstr "Last"
+
+msgid "ui:tooltip:last-move"
+msgstr "Jump to last move (End)"
+
+msgid "ui:caption:prev-10"
+msgstr "-10"
+
+msgid "ui:tooltip:prev-10"
+msgstr "Go back 10 moves (Ctrl+Left)"
+
+msgid "ui:caption:next-10"
+msgstr "+10"
+
+msgid "ui:tooltip:next-10"
+msgstr "Go forward 10 moves (Ctrl+Right)"
+
+msgid "ui:caption:prev-1"
+msgstr "-1"
+
+msgid "ui:tooltip:prev-1"
+msgstr "Go back 1 move (Left or Z)"
+
+msgid "ui:caption:next-1"
+msgstr "+1"
+
+msgid "ui:tooltip:next-1"
+msgstr "Go forward 1 move (Right or X)"
+
+msgid "ui:caption:rotate"
+msgstr "Rotate"
+
+msgid "ui:tooltip:rotate"
+msgstr "Rotate the board 180 degrees"
+
+msgid "ui:filebrowser:locations"
+msgstr "Locations"
+
+msgid "ui:filebrowser:favorites"
+msgstr "Favorites"
+
+msgid "ui:filebrowser:libraries"
+msgstr "Libraries"
+
+msgid "ui:filebrowser:computer"
+msgstr "Computer"
+
+msgid "ui:filebrowser:select_folder_title"
+msgstr "Select folder - Navigate into target folder, then click 'Select This Folder'"
+
+msgid "ui:filebrowser:select_this_folder"
+msgstr "Select This Folder"
+
+msgid "ui:kifunarabe:history:format"
+msgstr ""
+"  total {total}, correct {correct}, wrong {wrong}, auto {auto}, skip {skipped}\n"
+"  correct rate {correct_rate}{crit_text}"
+
+msgid "ui:kifunarabe:history:critical3"
+msgstr "  critical_3 {correct}/{total} ({rate:.1f}%)"
 
 msgid "mykatrain:diagnostics"
 msgstr "Diagnostics"

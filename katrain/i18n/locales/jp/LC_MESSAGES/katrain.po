@@ -1581,6 +1581,18 @@ msgstr "ミス分類のヒント:"
 msgid "mykatrain:settings:summary_mistake_desc"
 msgstr "点数ロスに応じて「致命的なミス」「損な手」「良い手」を 1 行で指摘"
 
+msgid "mykatrain:settings:bh_section_mistake"
+msgstr "ミス分類"
+
+msgid "mykatrain:settings:bh_section_meta"
+msgstr "KataGo / メタ分析"
+
+msgid "mykatrain:settings:bh_section_structural"
+msgstr "構造ヒント"
+
+msgid "mykatrain:settings:bh_section_meaning"
+msgstr "意味タグ"
+
 msgid "mykatrain:settings:summary_freedom"
 msgstr "手の自由度のヒント:"
 
@@ -1903,6 +1915,101 @@ msgstr "設定を検索..."
 
 msgid "mykatrain:settings:search_clear"
 msgstr "クリア"
+
+# Phase 287-G: settings search status line.
+msgid "mykatrain:settings:search_hit_count"
+msgstr "{hits} / {total} 件ヒット"
+
+msgid "mykatrain:settings:search_no_hits"
+msgstr "該当なし"
+
+# Phase 287-D: replace fixed English strings in the file browser /
+# settings popup with i18n keys.
+msgid "ui:restoresize_label"
+msgstr "起動時にウィンドウサイズを復元"
+
+# Phase 287-F: captions and tooltips for the nav icon buttons along
+# the bottom of the main window. Captions stay short (≤6 chars JP,
+# ≤8 chars EN); tooltips can be a sentence + shortcut hint.
+msgid "ui:caption:prev-mistake"
+msgstr "前のミス"
+
+msgid "ui:tooltip:prev-mistake"
+msgstr "前のミスへ戻る（Shift+←）"
+
+msgid "ui:caption:next-mistake"
+msgstr "次のミス"
+
+msgid "ui:tooltip:next-mistake"
+msgstr "次のミスへ進む（Shift+→）"
+
+msgid "ui:caption:first"
+msgstr "先頭"
+
+msgid "ui:tooltip:first-move"
+msgstr "棋譜の先頭に戻る（Home）"
+
+msgid "ui:caption:last"
+msgstr "終端"
+
+msgid "ui:tooltip:last-move"
+msgstr "棋譜の終端へ進む（End）"
+
+msgid "ui:caption:prev-10"
+msgstr "10手戻る"
+
+msgid "ui:tooltip:prev-10"
+msgstr "10手戻る（Ctrl+←）"
+
+msgid "ui:caption:next-10"
+msgstr "10手進む"
+
+msgid "ui:tooltip:next-10"
+msgstr "10手進む（Ctrl+→）"
+
+msgid "ui:caption:prev-1"
+msgstr "1手戻る"
+
+msgid "ui:tooltip:prev-1"
+msgstr "1手戻る（← または Z）"
+
+msgid "ui:caption:next-1"
+msgstr "1手進む"
+
+msgid "ui:tooltip:next-1"
+msgstr "1手進む（→ または X）"
+
+msgid "ui:caption:rotate"
+msgstr "回転"
+
+msgid "ui:tooltip:rotate"
+msgstr "盤面を 180° 回転"
+
+msgid "ui:filebrowser:locations"
+msgstr "場所"
+
+msgid "ui:filebrowser:favorites"
+msgstr "お気に入り"
+
+msgid "ui:filebrowser:libraries"
+msgstr "ライブラリ"
+
+msgid "ui:filebrowser:computer"
+msgstr "コンピュータ"
+
+msgid "ui:filebrowser:select_folder_title"
+msgstr "フォルダ選択 — 対象フォルダに移動して「このフォルダを選択」をクリック"
+
+msgid "ui:filebrowser:select_this_folder"
+msgstr "このフォルダを選択"
+
+msgid "ui:kifunarabe:history:format"
+msgstr ""
+"  総数 {total}、正解 {correct}、不正解 {wrong}、自動 {auto}、スキップ {skipped}\n"
+"  正解率 {correct_rate}{crit_text}"
+
+msgid "ui:kifunarabe:history:critical3"
+msgstr "  critical_3 {correct}/{total} ({rate:.1f}%)"
 
 msgid "mykatrain:diagnostics"
 msgstr "診断情報"

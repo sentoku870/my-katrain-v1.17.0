@@ -200,6 +200,11 @@ class Theme:
     KEY_SAVE_GAME_AS = "d"
     KEY_LOAD_GAME = "l"
     KEY_SUBMIT_POPUP = ["enter", "numpadenter"]
+    # Phase 287 (UI/UX fixes): Esc dismisses any open popup (universal
+    # "close dialog" gesture). The KEY_STOP_ANALYSIS handler below also
+    # binds "escape" but only fires when no popup is open, so the two
+    # usages coexist: popup open → dismiss; no popup → stop analysis.
+    KEY_POPUP_DISMISS = "escape"
 
     KEY_ANALYSIS_CONTROLS_SHOW_CHILDREN = "q"
     KEY_ANALYSIS_CONTROLS_EVAL = "w"

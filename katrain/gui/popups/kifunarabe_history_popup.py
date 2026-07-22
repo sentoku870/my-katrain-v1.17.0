@@ -33,7 +33,12 @@ def _format_entry_line(entry: Any) -> str:
         2026-07-18 09:30:14   D4
         total 38, correct 30, wrong 6, auto 2, skip 0
         correct rate 83.3%   critical_3 2/3 (66.7%)
+
+    Phase 287-D: rendered via the i18n key ``ui:kifunarabe:history:format``
+    so the labels are translated for JP users.
     """
+    from katrain.core.lang import i18n as _i18n
+
     s = entry.summary or {}
     total = s.get("total_positions", 0)
     correct = s.get("correct_count", 0)
@@ -46,16 +51,24 @@ def _format_entry_line(entry: Any) -> str:
     crit_total = s.get("critical_3_total", 0)
     crit_correct = s.get("critical_3_correct", 0)
     crit_rate = (crit_correct / crit_total * 100.0) if crit_total else 0.0
-    crit_text = f"   critical_3 {crit_correct}/{crit_total} ({crit_rate:.1f}%)" if crit_total else ""
+    crit_text = (
+        _i18n._("ui:kifunarabe:history:critical3").format(correct=crit_correct, total=crit_total, rate=crit_rate)
+        if crit_total
+        else ""
+    )
 
     sgf_name = ""
     if entry.sgf_path:
         sgf_name = os.path.basename(entry.sgf_path)
 
-    return (
-        f"{entry.timestamp}   {sgf_name}\n"
-        f"  total {total}, correct {correct}, wrong {wrong}, auto {auto}, skip {skipped}\n"
-        f"  correct rate {correct_rate:.1f}%{crit_text}"
+    return f"{entry.timestamp}   {sgf_name}\n" + _i18n._("ui:kifunarabe:history:format").format(
+        total=total,
+        correct=correct,
+        wrong=wrong,
+        auto=auto,
+        skipped=skipped,
+        correct_rate=f"{correct_rate:.1f}%",
+        crit_text=crit_text,
     )
 
 

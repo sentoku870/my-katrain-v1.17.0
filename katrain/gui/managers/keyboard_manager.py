@@ -166,6 +166,13 @@ class KeyboardManager:
         # ポップアップ処理
         popup = self._get_popup_open()
         if popup:
+            # Phase 287 (UI/UX fixes): Esc dismisses the popup. Placed
+            # before the F-key allow-list so the user can always escape
+            # a popup with a single keystroke, regardless of which
+            # "open popup" shortcut brought it up.
+            if keycode[1] == Theme.KEY_POPUP_DISMISS:
+                popup.dismiss()
+                return
             if keycode[1] in [
                 Theme.KEY_DEEPERANALYSIS_POPUP,
                 Theme.KEY_REPORT_POPUP,

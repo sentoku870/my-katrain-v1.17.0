@@ -16,6 +16,7 @@ from katrain.gui.popups import (
     I18NPopup,
     NewGamePopup,
 )
+from katrain.gui.popups._base import clamp_popup_size
 
 
 class DialogFactory:
@@ -29,7 +30,7 @@ class DialogFactory:
         """Create NewGamePopup."""
         raw = I18NPopup(
             title_key="New Game title",
-            size=[dp(800), dp(900)],
+            size=clamp_popup_size([dp(800), dp(900)]),
             content=NewGamePopup(self.gui),
         )
         popup: Any = getattr(raw, "__self__", raw)
@@ -40,7 +41,7 @@ class DialogFactory:
         """Create TimerPopup."""
         raw = I18NPopup(
             title_key="timer settings",
-            size=[dp(600), dp(500)],
+            size=clamp_popup_size([dp(600), dp(500)]),
             content=ConfigTimerPopup(self.gui),
         )
         popup: Any = getattr(raw, "__self__", raw)
@@ -52,7 +53,7 @@ class DialogFactory:
         content = ConfigTeacherPopup(self.gui)
         raw = I18NPopup(
             title_key="teacher settings",
-            size=[dp(800), dp(825)],
+            size=clamp_popup_size([dp(800), dp(825)]),
             content=content,
         )
         popup: Any = getattr(raw, "__self__", raw)
@@ -65,7 +66,7 @@ class DialogFactory:
         """Create AIPopup."""
         raw = I18NPopup(
             title_key="ai settings",
-            size=[dp(750), dp(750)],
+            size=clamp_popup_size([dp(750), dp(750)]),
             content=ConfigAIPopup(self.gui),
         )
         popup: Any = getattr(raw, "__self__", raw)
@@ -76,7 +77,7 @@ class DialogFactory:
         """Create EngineRecoveryPopup."""
         raw = I18NPopup(
             title_key="engine recovery",
-            size=[dp(600), dp(700)],
+            size=clamp_popup_size([dp(600), dp(700)]),
             content=EngineRecoveryPopup(self.gui, error_message=error_message, code=code),
         )
         popup: Any = getattr(raw, "__self__", raw)
