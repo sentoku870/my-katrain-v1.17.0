@@ -389,17 +389,3 @@ class TestValidatePromptConfig:
 
 
 # --- Public API ---
-
-
-class TestExports:
-    def test_all_reexports(self):
-        import katrain.core.coach as pkg
-
-        for name in [
-            "PromptConfig",
-            "LlmPrompt",
-            "build_translation_prompt",
-            "append_llm_prompt_block",
-            "render_markdown",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"

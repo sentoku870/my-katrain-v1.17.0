@@ -106,56 +106,21 @@ class TestSummaryAvailableFields:
 # --- Phase 228-C: Shape B (players.<name>.mistakes / phases) ---
 
 
-def _real_shape_summary() -> dict:
-    """A summary JSON shaped like the real ``summary_json_export.py`` output."""
-    return {
-        "schema_version": "3.4",
-        "meta": {"games_analyzed": 3},
-        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
-        "players": {
-            "sentoku870": {
-                "mistakes": {
-                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
-                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
-                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
-                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
-                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
-                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
-                },
-            },
-            "opponent1": {
-                "mistakes": {
-                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
-                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
-                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
-                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
-                },
-            },
-        },
-    }
-
-
 class TestSummaryAvailableFieldsShapeB:
     """Phase 228-C: ``_summary_available_categories`` and
     ``_summary_available_phases`` accept the standard 4 mistake
     categories and 3 phase labels when the summary uses the real
     ``summary_json_export.py`` shape."""
 
-    def test_shape_b_categories_includes_4_standard(self):
-        data = _real_shape_summary()
+    def test_shape_b_categories_includes_4_standard(self, real_shape_summary):
+        data = real_shape_summary
         cats = _summary_available_categories(data)
         # The 4 standard categories must be present
         for cat in ("blunder", "mistake", "inaccuracy", "good"):
             assert cat in cats
 
-    def test_shape_b_phases_includes_3_standard(self):
-        data = _real_shape_summary()
+    def test_shape_b_phases_includes_3_standard(self, real_shape_summary):
+        data = real_shape_summary
         phases = _summary_available_phases(data)
         for ph in ("opening", "middle", "endgame"):
             assert ph in phases
@@ -356,14 +321,14 @@ class TestValidatorAcceptsShapeBCategories:
     when LLM cites the standard 4 mistake categories from a
     Shape B summary."""
 
-    def test_blunder_mistake_inaccuracy_good_all_clean(self):
+    def test_blunder_mistake_inaccuracy_good_all_clean(self, real_shape_summary):
         from katrain.core.coach.master_db import CoachMode, ToneVoice
         from katrain.core.coach.summary_prompt_builder import (
             SummaryPromptConfig,
             build_summary_weakness_prompt,
         )
 
-        data = _real_shape_summary()
+        data = real_shape_summary
         response = (
             "考察: 中盤の blunder が最多です。\n"
             "抽出した弱点パターン: [blunder, mistake, inaccuracy]\n"
@@ -386,14 +351,14 @@ class TestValidatorAcceptsShapeBCategories:
         assert "middle" in report.referenced_phases
         assert "opening" in report.referenced_phases
 
-    def test_fantasy_category_still_flagged_for_shape_b(self):
+    def test_fantasy_category_still_flagged_for_shape_b(self, real_shape_summary):
         from katrain.core.coach.master_db import CoachMode, ToneVoice
         from katrain.core.coach.summary_prompt_builder import (
             SummaryPromptConfig,
             build_summary_weakness_prompt,
         )
 
-        data = _real_shape_summary()
+        data = real_shape_summary
         # Cite a real category plus a hallucinated one
         response = "考察: ...\n抽出した弱点パターン: [blunder, fantasy_category]\n参照したphase: [middle]\n"
         cfg = SummaryPromptConfig(
@@ -450,14 +415,14 @@ class TestValidatorAcceptsShapeBCategories:
         phase_kinds = [i.kind for i in report.issues if i.kind == "phase_label_out_of_set"]
         assert phase_kinds == []
 
-    def test_good_category_citation_clean(self):
+    def test_good_category_citation_clean(self, real_shape_summary):
         from katrain.core.coach.master_db import CoachMode, ToneVoice
         from katrain.core.coach.summary_prompt_builder import (
             SummaryPromptConfig,
             build_summary_weakness_prompt,
         )
 
-        data = _real_shape_summary()
+        data = real_shape_summary
         # LLM might mention "good" as a positive observation
         response = "考察: 良い手も 79.9% あります。\n抽出した弱点パターン: [blunder, good]\n参照したphase: [middle]\n"
         cfg = SummaryPromptConfig(

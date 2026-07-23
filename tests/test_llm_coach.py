@@ -31,6 +31,7 @@ import pytest
 from katrain.core.coach import cli as coach_cli
 from katrain.core.coach import llm_validator as coach_validator
 from katrain.gui.features import llm_coach
+from tests.conftest import make_karte_with_player_info
 
 # --- Helpers -----------------------------------------------------------
 
@@ -271,16 +272,7 @@ class TestDetectPlayerInfo:
     def test_reads_player_info_from_karte_meta(self, tmp_path):
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "醉舞", "rank": "4d"},
-                            "white": {"name": "仙得", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("醉舞", "4d", "仙得", "3d")),
             encoding="utf-8",
         )
         from katrain.gui.features.llm_coach import detect_player_info
@@ -313,16 +305,7 @@ class TestDetectPlayerColorForUser:
     def test_returns_color_when_default_user_matches(self, tmp_path):
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "sentoku", "rank": "5k"},
-                            "white": {"name": "opponent", "rank": "6k"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("sentoku", "5k", "opponent", "6k")),
             encoding="utf-8",
         )
         ctx = MagicMock()
@@ -379,16 +362,7 @@ class TestDetectPlayerColorForUserWithPlayerInfo:
         # When player_info is None, the function reads the file itself.
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "sentoku", "rank": "5k"},
-                            "white": {"name": "opponent", "rank": "6k"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("sentoku", "5k", "opponent", "6k")),
             encoding="utf-8",
         )
         from katrain.gui.features.llm_coach import detect_player_color_for_user

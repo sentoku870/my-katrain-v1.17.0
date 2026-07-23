@@ -433,6 +433,96 @@ def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
 
 
 # ---------------------------------------------------------------------------
+# Karte / Summary shared fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def real_shape_summary() -> dict:
+    """Canonical Shape-B Summary JSON used by the coach validator, prompt
+    builder, and Shape-B extractor test suites.
+
+    The data mirrors what ``katrain.core.reports.summary_json_export``
+    actually emits: a ``players.<name>.{mistakes,phases}`` layout (no
+    top-level ``weaknesses`` or ``phase_x_mistake`` arrays). Tests that
+    want fewer mistakes or phases should deep-copy and mutate the dict
+    rather than edit this fixture in place.
+
+    Function-scoped so each test gets a fresh dict; mutation never leaks.
+    """
+    return {
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 3,
+            "date_range": ["2025-10-31", "2025-11-06"],
+            "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0},
+        },
+        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
+        "players": {
+            "sentoku870": {
+                "mistakes": {
+                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
+                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
+                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
+                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
+                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
+                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
+                },
+            },
+            "opponent1": {
+                "mistakes": {
+                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
+                    "inaccuracy": {"count": 28, "pct": 7.2, "denominator": 388, "avg_loss": 2.95},
+                    "mistake": {"count": 8, "pct": 2.1, "denominator": 388, "avg_loss": 5.5},
+                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
+                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
+                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
+                },
+            },
+        },
+        "loss_progression": {"all": [{"mistake_count": 5}] * 3},
+    }
+
+
+def make_player_info(
+    black_name: str = "P1",
+    black_rank: str | None = "4d",
+    white_name: str = "P2",
+    white_rank: str | None = "3d",
+) -> dict:
+    """Build a ``player_info`` dict for Karte meta / detect_player_info().
+
+    Returns:
+        ``{"black": {"name": ..., "rank": ...}, "white": {"name": ..., "rank": ...}}``
+    """
+    return {
+        "black": {"name": black_name, "rank": black_rank},
+        "white": {"name": white_name, "rank": white_rank},
+    }
+
+
+def make_karte_with_player_info(
+    black_name: str = "P1",
+    black_rank: str | None = "4d",
+    white_name: str = "P2",
+    white_rank: str | None = "3d",
+) -> dict:
+    """Build a minimal Karte JSON dict with ``meta.player_info`` populated.
+
+    Convenience wrapper for the file-write pattern:
+
+        karte.write_text(json.dumps(make_karte_with_player_info()), encoding="utf-8")
+    """
+    return {"meta": {"player_info": make_player_info(black_name, black_rank, white_name, white_rank)}}
+
+
+# ---------------------------------------------------------------------------
 # Game/Engine Fixtures
 # ---------------------------------------------------------------------------
 

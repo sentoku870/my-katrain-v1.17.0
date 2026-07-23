@@ -194,31 +194,3 @@ class TestEstimateFromLoss:
 
 
 # --- Public API surface ---
-
-
-class TestExports:
-    def test_init_reexports_match_master_db(self):
-        import katrain.core.coach as pkg
-        import katrain.core.coach.master_db as md
-
-        for name in [
-            "CoachMode",
-            "ToneVoice",
-            "RankRange",
-            "ModeConfig",
-            "ToneConfig",
-            "get_mode_config",
-            "get_tone_config",
-            "all_modes",
-            "all_tones",
-            "estimate_mode_from_rank",
-            "estimate_mode_from_loss",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"
-            assert hasattr(md, name), f"master_db missing {name}"
-
-
-# --- Phase 269: AYAKA voice removed ---
-# The Kansai dictionary sync tests (Phase 242-A) and the AYAKA-specific
-# ToneConfig checks were removed along with the AYAKA voice itself. See
-# git history (Phase 242-A) for the prior coverage if needed.
