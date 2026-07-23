@@ -105,6 +105,13 @@ class Theme:
     TOP_MOVE_TEXTURE = "topmove.png"
     BOARD_TEXTURE = "board.png"
     GRAPH_TEXTURE = "graph_bg.png"
+    # Phase SABAKI-1: opt-in Sabaki-style textures. ``default`` keeps the
+    # bundled PNG (current behaviour); ``sabaki`` switches to runtime
+    # generated gradient textures from ``katrain.gui.sabaki_textures``.
+    # Designed to be toggled from ``theme-*.json`` overrides only - the
+    # upstream default stays at ``"default"`` for backward compatibility.
+    STONE_TEXTURE_MODE = "default"  # "default" | "sabaki"
+    BOARD_TEXTURE_MODE = "default"  # "default" | "sabaki"
     # sounds
     STONE_SOUNDS = [f"stone{i}.wav" for i in [1, 2, 3, 4, 5]]
     CAPTURING_SOUND = "capturing.wav"

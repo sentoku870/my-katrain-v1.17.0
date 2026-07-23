@@ -94,3 +94,29 @@ The colors are specified as RGB values and a maximum alpha transparency.
 
 [Download](https://github.com/sanderland/katrain/blob/master/themes/jeff-sounds.zip)
 
+### Sabaki-style board and stones
+
+* Re-creates Sabaki's default CSS-rendered board and stones as runtime
+  textures - no PNG assets required, so there are no licensing concerns.
+* Opt-in: drop [`themes/theme-sabaki.json`](themes/theme-sabaki.json)
+  into `~/.katrain/` (no unzip step - the file is the entire theme).
+* Toggles two `Theme.*` flags: `STONE_TEXTURE_MODE` and
+  `BOARD_TEXTURE_MODE`. Both accept `"default"` (bundled PNGs) or
+  `"sabaki"` (runtime gradients).
+* Works with all existing KaTrain analysis overlays (eval dots,
+  territory, ownership, hints) - only the base board/stone visuals
+  change.
+
+Activate with:
+
+```bash
+# Linux / WSL / macOS
+cp themes/theme-sabaki.json ~/.katrain/
+
+# Windows (PowerShell)
+Copy-Item themes\theme-sabaki.json $HOME\.katrain\
+```
+
+To revert, remove the file from `~/.katrain/` (or change the two
+`..._MODE` values back to `"default"` and reload KaTrain).
+

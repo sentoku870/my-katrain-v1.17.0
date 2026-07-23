@@ -66,6 +66,7 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         "play",
         "selfplay_setup",
         "tsumego_frame",
+        "toggle_coordinates",
         # ---- popup_commands ----
         "select_box",
         "new_game_popup",

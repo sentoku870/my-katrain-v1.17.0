@@ -1985,6 +1985,12 @@ msgstr "回転"
 msgid "ui:tooltip:rotate"
 msgstr "盤面を 180° 回転"
 
+msgid "ui:caption:coordinates"
+msgstr "座標"
+
+msgid "ui:tooltip:coordinates"
+msgstr "座標表示の切り替え（K）"
+
 msgid "ui:filebrowser:locations"
 msgstr "場所"
 

@@ -1,0 +1,8 @@
+{
+  "_comment": "Sabaki-style board/stone theme for myKatrain. Drop this file (and any sister *.png overrides) into ~/.katrain/ to activate. See THEMES.md for details.",
+  "STONE_TEXTURE_MODE": "sabaki",
+  "BOARD_TEXTURE_MODE": "sabaki",
+  "BOARD_COLOR": [0.93, 0.78, 0.50, 1],
+  "STONE_SIZE": 0.50,
+  "LINE_COLOR": [0.05, 0.05, 0.05, 1]
+}

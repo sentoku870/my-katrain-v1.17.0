@@ -37,6 +37,7 @@ from katrain.core.constants import STATUS_TEACHING
 from katrain.core.game import Move
 from katrain.core.utils import var_to_grid
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
+from katrain.gui.sabaki_textures import get_board_texture_or_none, get_stone_texture_or_none
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
@@ -74,10 +75,12 @@ def draw_stone(
     else:
         (owner, other) = ("B", "W")  # prevent errors in unused unset vars
     Color(1, 1, 1, alpha)
+    sabaki_stone = get_stone_texture_or_none(player)
+    stone_texture = sabaki_stone if sabaki_stone is not None else cached_texture(Theme.STONE_TEXTURE[player])
     Rectangle(
         pos=(widget.gridpos[y][x][0] - stone_size, widget.gridpos[y][x][1] - stone_size),
         size=(2 * stone_size, 2 * stone_size),
-        texture=cached_texture(Theme.STONE_TEXTURE[player]),
+        texture=stone_texture,
     )
     # Draw ownership marks on stones; the mark is a square with an outline.
     if (ownership is not None or loss is not None) and (
@@ -261,13 +264,15 @@ def draw_board_background(
         Color(*Theme.INSERT_BOARD_COLOR_TINT)  # dreamy
     else:
         Color(*Theme.BOARD_COLOR_TINT)  # image is a bit too light
+    sabaki_board = get_board_texture_or_none()
+    board_texture = sabaki_board if sabaki_board is not None else cached_texture(Theme.BOARD_TEXTURE)
     Rectangle(
         pos=(
             gridpos_x[0] - widget.grid_size * grid_spaces_margin_x[0],
             gridpos_y[0] - widget.grid_size * grid_spaces_margin_y[0],
         ),
         size=(widget.grid_size * x_grid_spaces, widget.grid_size * y_grid_spaces),
-        texture=cached_texture(Theme.BOARD_TEXTURE),
+        texture=board_texture,
     )
 
 

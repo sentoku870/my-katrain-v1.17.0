@@ -57,6 +57,21 @@ def do_rotate(ctx: KaTrainGui) -> None:
     ctx.board_gui.rotate_gridpos()
 
 
+def do_toggle_coordinates(ctx: KaTrainGui) -> None:
+    """Toggle the A-T / 1-19 coordinate labels around the board.
+
+    The same toggle is reachable via the ``K`` keyboard shortcut.  This
+    command is added so the GUI button in ``board.kv`` can dispatch
+    through the standard command pipeline.
+
+    Args:
+        ctx: KaTrainGui instance
+    """
+    board_gui = getattr(ctx, "board_gui", None)
+    if board_gui is not None:
+        board_gui.toggle_coordinates()
+
+
 def do_find_mistake(ctx: KaTrainGui, fn: str = "redo") -> None:
     """Advance to the next mistake in the game tree.
 

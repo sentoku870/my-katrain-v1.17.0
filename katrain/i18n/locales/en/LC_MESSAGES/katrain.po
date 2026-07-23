@@ -2040,6 +2040,12 @@ msgstr "Rotate"
 msgid "ui:tooltip:rotate"
 msgstr "Rotate the board 180 degrees"
 
+msgid "ui:caption:coordinates"
+msgstr "Coordinates"
+
+msgid "ui:tooltip:coordinates"
+msgstr "Toggle coordinate labels (K)"
+
 msgid "ui:filebrowser:locations"
 msgstr "Locations"
 
