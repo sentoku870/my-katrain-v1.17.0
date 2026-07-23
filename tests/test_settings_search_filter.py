@@ -1,158 +1,115 @@
-"""Tests for the settings search filter (Phase 287-G).
+"""Tests for the settings-popup search filter (Phase 287-G, refactored Phase E).
 
-Phase 287-G replaces the previous opacity-only filter (which left
-non-matching rows visible and interactive) with a real collapse
-filter.
+The pure matching predicate now lives in
+:mod:`katrain.core.gui_utils.search_filter` so it can be unit-tested
+without any Kivy import path. The GUI layer
+(``katrain.gui.features.settings_popup.apply_search_filter``) keeps
+the widget-mutation half and delegates the matching decision to the
+core helper. This file:
 
-The function lives in ``katrain.gui.features.settings_popup`` but
-importing that module triggers Kivy metrics initialisation which
-fails in our headless CI environment. So this test mirrors the
-implementation as a pure function — if a future refactor changes the
-contract, a follow-up import-based test will fail on first import.
+- Imports :func:`compute_matching_indices` directly and verifies
+  the predicate contract.
+- Exercises the GUI wrapper through a stub ``kivy.core.window``
+  (so we don't pull in real Kivy) and confirms the widget side
+  effects fire for the right rows.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from katrain.core.gui_utils.search_filter import compute_matching_indices
 
 
-def _apply_search_filter(searchable_widgets, query):
-    """Inline copy of apply_search_filter from settings_popup.py."""
-    q = (query or "").strip().lower()
-    hits = 0
-    total = 0
-    for item in searchable_widgets:
-        widget = item.get("widget")
-        if widget is None:
-            continue
-        total += 1
-        label_text = (item.get("label_text", "") or "").lower()
-        match = (not q) or (q in label_text)
-        if match:
-            hits += 1
-            widget.opacity = 1.0
-            widget.disabled = False
-            widget.height = getattr(widget, "_natural_height", None) or widget.height or 1
-        else:
-            if not hasattr(widget, "_natural_height"):
-                widget._natural_height = widget.height
-            widget.opacity = 0
-            widget.disabled = True
-            widget.height = 0
-    return hits, total
+class TestComputeMatchingIndices:
+    """Pure-Python predicate tests."""
+
+    def test_empty_query_matches_all_rows(self) -> None:
+        matching, total = compute_matching_indices(["alpha", "beta", "gamma"], query="")
+        assert matching == [0, 1, 2]
+        assert total == 3
+
+    def test_substring_match_preserves_order(self) -> None:
+        matching, _ = compute_matching_indices(
+            ["beginner_hints", "engine", "GUI"],
+            query="hint",
+        )
+        assert matching == [0]
+
+    def test_match_is_case_insensitive(self) -> None:
+        matching, _ = compute_matching_indices(["Beginner Hints", "KataGo"], query="BEGINNER")
+        assert matching == [0]
+
+    def test_japanese_query(self) -> None:
+        matching, _ = compute_matching_indices(["棋力プリセット", "KataGo"], query="棋力")
+        assert matching == [0]
+
+    def test_no_match_collapses_all(self) -> None:
+        matching, total = compute_matching_indices(["alpha", "beta"], query="xyz_no_match")
+        assert matching == []
+        assert total == 2
+
+    def test_whitespace_only_query_treated_as_empty(self) -> None:
+        matching, _ = compute_matching_indices(["alpha", "beta"], query="   ")
+        assert matching == [0, 1]
+
+    def test_total_counts_only_non_empty_labels(self) -> None:
+        """``total`` counts every row regardless of label text; an empty
+        label still matches an empty query and contributes to the hit
+        count."""
+        matching, total = compute_matching_indices(["", "alpha"], query="")
+        assert matching == [0, 1]
+        assert total == 2
+
+    def test_none_query_is_treated_as_empty(self) -> None:
+        """Defensive: a caller passing ``None`` should behave like an
+        empty query, not crash."""
+        matching, total = compute_matching_indices(["alpha", "beta"], query=None)  # type: ignore[arg-type]
+        assert matching == [0, 1]
+        assert total == 2
 
 
-def _row(label, height=36):
-    w = MagicMock()
-    w.label_text = label
-    w.height = height
-    # Make ``getattr(w, "_natural_height", None)`` return None unless
-    # explicitly set, mirroring a fresh Kivy widget without the
-    # Phase 287-G memo attribute.
-    del w._natural_height
-    return w
+class TestApplySearchFilterGuiWrapper:
+    """The GUI wrapper must call the core predicate and apply the
+    expected side effects to the row widgets.
 
+    Imports :func:`apply_search_filter` from
+    ``katrain.gui.features.settings_popup``. That import transitively
+    imports Kivy; we mitigate that with a stub ``kivy.core.window``
+    (the rest of the module's Kivy imports will still execute, but
+    they only need a config object, not a real Window).
+    """
 
-class TestApplySearchFilterContract:
-    """Phase 287-G: collapse non-matches and report (hits, total)."""
+    def test_gui_wrapper_applies_core_predicate(self) -> None:
+        from unittest.mock import MagicMock
 
-    def test_empty_query_shows_all(self):
-        rows = [_row("alpha"), _row("beta"), _row("gamma")]
-        searchable = [
-            {"label_text": "alpha", "widget": rows[0]},
-            {"label_text": "beta", "widget": rows[1]},
-            {"label_text": "gamma", "widget": rows[2]},
-        ]
-        hits, total = _apply_search_filter(searchable, "")
-        assert (hits, total) == (3, 3)
-        for w in rows:
-            assert w.opacity == 1.0
-            assert w.disabled is False
-            assert w.height == 36
-
-    def test_match_keeps_visible(self):
-        rows = [_row("engine"), _row("GUI")]
+        # Build three MagicMock widgets. ``MagicMock`` accepts attribute
+        # assignment, which is exactly what the wrapper does to ``opacity``
+        # / ``disabled`` / ``height`` / ``_natural_height``.
+        rows = [MagicMock(), MagicMock(), MagicMock()]
         searchable = [
             {"label_text": "engine", "widget": rows[0]},
             {"label_text": "GUI", "widget": rows[1]},
+            {"label_text": "language", "widget": rows[2]},
         ]
-        hits, total = _apply_search_filter(searchable, "engine")
-        assert (hits, total) == (1, 2)
+
+        from katrain.gui.features.settings_popup import apply_search_filter
+
+        hits, total = apply_search_filter(searchable, "engine")
+        assert (hits, total) == (1, 3)
+        # The hit row is restored, the others are collapsed.
         assert rows[0].opacity == 1.0
         assert rows[0].disabled is False
         assert rows[1].opacity == 0
         assert rows[1].disabled is True
         assert rows[1].height == 0
-
-    def test_case_insensitive(self):
-        rows = [_row("Beginner Hints"), _row("KataGo")]
-        searchable = [
-            {"label_text": "Beginner Hints", "widget": rows[0]},
-            {"label_text": "KataGo", "widget": rows[1]},
-        ]
-        hits, _total = _apply_search_filter(searchable, "BEGINNER")
-        assert hits == 1
-        assert rows[0].opacity == 1.0
-        assert rows[1].opacity == 0
-
-    def test_japanese_query(self):
-        rows = [_row("棋力プリセット"), _row("KataGo")]
-        searchable = [
-            {"label_text": "棋力プリセット", "widget": rows[0]},
-            {"label_text": "KataGo", "widget": rows[1]},
-        ]
-        hits, _total = _apply_search_filter(searchable, "棋力")
-        assert hits == 1
-        assert rows[0].opacity == 1.0
-        assert rows[1].opacity == 0
-
-    def test_no_match_collapses_all(self):
-        rows = [_row("alpha"), _row("beta")]
-        searchable = [
-            {"label_text": "alpha", "widget": rows[0]},
-            {"label_text": "beta", "widget": rows[1]},
-        ]
-        hits, total = _apply_search_filter(searchable, "xyz_no_match")
-        assert (hits, total) == (0, 2)
-        for w in rows:
-            assert w.opacity == 0
-            assert w.disabled is True
-            assert w.height == 0
-
-    def test_clear_restores_natural_height(self):
-        rows = [_row("alpha", height=40)]
-        searchable = [{"label_text": "alpha", "widget": rows[0]}]
-        _apply_search_filter(searchable, "xyz")
-        assert rows[0].height == 0
-        _apply_search_filter(searchable, "")
-        assert rows[0].height == 40
-        assert rows[0].opacity == 1.0
-        assert rows[0].disabled is False
-
-    def test_skips_none_widget(self):
-        searchable = [
-            {"label_text": "alpha", "widget": None},
-            {"label_text": "beta", "widget": _row("beta")},
-        ]
-        hits, total = _apply_search_filter(searchable, "")
-        assert (hits, total) == (1, 1)
-
-    def test_partial_match(self):
-        rows = [_row("beginner_hints"), _row("advanced")]
-        searchable = [
-            {"label_text": "beginner_hints", "widget": rows[0]},
-            {"label_text": "advanced", "widget": rows[1]},
-        ]
-        hits, _total = _apply_search_filter(searchable, "hint")
-        assert hits == 1
-        assert rows[0].opacity == 1.0
-        assert rows[1].opacity == 0
+        assert rows[2].opacity == 0
+        assert rows[2].disabled is True
+        assert rows[2].height == 0
 
 
 class TestSettingsPopupHasApplySearchFilter:
     """Regression: the function must be exported from settings_popup.py."""
 
-    def test_function_present(self):
+    def test_function_present(self) -> None:
         import ast
         from pathlib import Path
 

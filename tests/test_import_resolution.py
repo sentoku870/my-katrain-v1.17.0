@@ -22,6 +22,12 @@ from __future__ import annotations
 import importlib
 import pkgutil
 
+# Reused by ``TestCycleAccounting`` below to walk a module's import
+# graph with the same TYPE_CHECKING-aware semantics used by
+# ``tests/test_architecture.py``. Importing the collector here keeps
+# the cycle test self-contained.
+from tests.test_architecture import AllImportCollector
+
 # Phase A-13: run on CI. Kivy is mocked via KIVY_NO_WINDOW/KIVY_GL_BACKEND
 # set by the test_and_build.yaml workflow. Previously this file was
 # skipped on CI to dodge a brittle Kivy import that is now handled by the
@@ -73,30 +79,110 @@ class TestImportResolution:
 
 
 class TestCycleAccounting:
-    """Document the cycle count before / after Phase 174 refactors.
+    """Guards against re-introducing the known four-node circular import
+    cluster that Phase 173 documented as a runtime-tolerated SCC.
 
-    The actual SCC computation lives in scripts/find_cycles.py (CLI use)
-    — running it on every pytest invocation is too slow. Instead, this
-    class records the reference values.
+    The historical ``test_reference_scc_count_documented`` compared two
+    hard-coded constants to themselves (assert 50 == 50) and asserted
+    nothing -- it passed regardless of the actual import graph. This
+    rewrite uses the ``AllImportCollector`` (defined alongside the
+    architecture tests) to walk ``katrain/core/ai`` and
+    ``katrain/core/reports/karte/sections/metadata`` directly and prove
+    that neither module imports the other at module scope (a strict
+    requirement to keep the four-node SCC at bay).
 
-    Update these numbers when cycles are intentionally broken.
+    Cycles that go through TYPE_CHECKING blocks, deferred imports
+    inside functions, or ``__getattr__`` stubs are still tolerated --
+    the assertion below is intentionally restricted to *module-level*
+    imports to mirror the audit it replaced.
     """
 
-    def test_reference_scc_count_documented(self) -> None:
-        """Reference: SCC count and 4-node+ SCC count as of Phase 174 start.
+    # Phase 173 review found these four modules formed a single SCC:
+    #   core.ai <-> core.batch.orchestration
+    #            <-> core.game.facade
+    #            <-> core.reports.karte.sections.metadata
+    # The four-node cluster is the boundary we watch; a regression
+    # that brings back a direct edge between any pair is a hard fail.
+    _PROHIBITED_EDGES = {
+        ("katrain.core.ai", "katrain.core.batch.orchestration"),
+        ("katrain.core.batch.orchestration", "katrain.core.ai"),
+        ("katrain.core.ai", "katrain.core.game.facade"),
+        ("katrain.core.game.facade", "katrain.core.ai"),
+        ("katrain.core.ai", "katrain.core.reports.karte.sections.metadata"),
+        ("katrain.core.reports.karte.sections.metadata", "katrain.core.ai"),
+    }
+    _WATCHED_TARGETS = (
+        "katrain.core.batch.orchestration",
+        "katrain.core.game.facade",
+        "katrain.core.reports.karte.sections.metadata",
+    )
 
-        Phase 173 architecture review found:
-          - 50 SCCs in total
-          - 1 four-node SCC: core.ai <-> core.batch.orchestration
-                              <-> core.game.facade
-                              <-> core.reports.karte.sections.metadata
+    def _module_imports(self, module_name: str) -> set[str]:
+        """Return the set of module-level imports of ``module_name``."""
+        import ast
+        import importlib
+        from pathlib import Path
 
-        These are runtime-tolerated via __getattr__ lazy import, but
-        should be tracked. After P1-B this number should drop.
+        spec = importlib.util.find_spec(module_name)
+        if spec is None or spec.origin is None:
+            raise AssertionError(f"module {module_name!r} not importable from spec")
+        source = Path(spec.origin).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        # ``AllImportCollector`` already does the TYPE_CHECKING walk;
+        # reusing it keeps the cycle check consistent with the
+        # architecture tests.
+        package = ".".join(module_name.split(".")[:-1])
+        collector = AllImportCollector(module_package=package)
+        collector.visit(tree)
+        return {name for _line, name in collector.all_imports}
+
+    def test_no_known_four_node_cycle_edges(self) -> None:
+        """``katrain.core.ai`` must not directly import the three peers
+        that historically formed the Phase 173 four-node SCC, and vice
+        versa. Indirect cycles (through helpers, TYPE_CHECKING, or
+        deferred imports) remain tolerated.
         """
-        # This is a documentation test — it asserts the reference value.
-        reference_total_sccs = 50
-        reference_4node_sccs = 1
-        # If these are intentionally updated, bump the build:
-        assert reference_total_sccs == 50
-        assert reference_4node_sccs == 1
+        ai_imports = self._module_imports("katrain.core.ai")
+        for peer in self._WATCHED_TARGETS:
+            assert peer not in ai_imports, (
+                f"katrain.core.ai must not directly import {peer}; the "
+                f"Phase 173 audit documented this edge as the entry "
+                f"point of a four-node circular SCC. Move the import "
+                f"behind a function body or a TYPE_CHECKING guard."
+            )
+            peer_imports = self._module_imports(peer)
+            assert "katrain.core.ai" not in peer_imports, (
+                f"{peer} must not directly import katrain.core.ai; the "
+                f"Phase 173 audit documented this edge as part of a "
+                f"four-node circular SCC."
+            )
+
+    def test_known_prohibited_edges_match_documented_set(self) -> None:
+        """Self-check: the prohibited-edge table on this class is the
+        inverse of the four-node SCC the previous test guards. A
+        developer who adds/removes an entry below must also update
+        the matching documented pair so the two halves stay in sync.
+        """
+        from itertools import permutations
+
+        documented_pairs = {
+            (a, b)
+            for pair in (
+                (
+                    "katrain.core.ai",
+                    "katrain.core.batch.orchestration",
+                ),
+                (
+                    "katrain.core.ai",
+                    "katrain.core.game.facade",
+                ),
+                (
+                    "katrain.core.ai",
+                    "katrain.core.reports.karte.sections.metadata",
+                ),
+            )
+            for a, b in permutations(pair, 2)
+        }
+        assert documented_pairs == self._PROHIBITED_EDGES, (
+            "_PROHIBITED_EDGES drifted from the documented four-node SCC set; update both sides in lockstep."
+        )

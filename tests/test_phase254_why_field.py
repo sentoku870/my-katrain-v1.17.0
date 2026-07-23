@@ -1,184 +1,116 @@
-"""Phase 254: beginner-hint :why field is rendered in the GUI.
+"""Tests for the beginner-hint ``:why`` rendering (Phase 254, refactored Phase E).
 
-Before Phase 254, the i18n keys ``beginner_hint:*:why`` were translated
-in jp + en but had no consumer — the GUI's ``_format_beginner_hint``
-only emitted ``title`` + ``body``. This test locks the new behaviour:
-the formatted text contains a second line with the localized :why
-text, prefixed by a `→` arrow so it's clearly secondary information.
+Phase 254 added the second ``→ why`` line to beginner hints. Phase E
+moved the rendering logic into the Kivy-independent helper
+:func:`katrain.core.beginner.format_hint.format_beginner_hint`,
+which both the GUI wrapper and this test import directly. The
+previous version of this file inlined a private ``_format`` copy
+that had already drifted from the production code; the AST guard
+in ``tests/test_phase256_kifunarabe_summary_suppression.py`` is the
+appropriate place to verify the production wiring.
+
+This file focuses on the **rendering contract** of the pure helper:
+
+- raw ``beginner_hint:*`` i18n keys fall back to English fallbacks;
+- ``[Hint]`` prefix fallback applies when ``beginner-hint:prefix``
+  i18n key is missing;
+- the ``→ why`` line is appended only when the :why key resolved
+  to a non-empty, non-raw string.
 """
 
 from __future__ import annotations
 
-import ast
-from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
-
-# ---------------------------------------------------------------------------
-# Replica of the render function (kept in sync with controlspanel.py)
-# ---------------------------------------------------------------------------
+from katrain.core.beginner.format_hint import format_beginner_hint
 
 
-def _format(category, fallback_title, fallback_body, i18n):
-    """Replicate ControlsPanel._format_beginner_hint logic without Kivy.
-
-    Args:
-        category: stub with .i18n_namespace property
-        fallback_title: English fallback when i18n misses
-        fallback_body: same
-        i18n: a gettext-like callable that takes a key and returns
-            the translation (or the raw key when missing)
-    """
-    namespace = category.i18n_namespace
-    title = i18n(f"{namespace}:title")
-    body = i18n(f"{namespace}:body")
-    why = i18n(f"{namespace}:why")
-
-    if title.startswith("beginner_hint:"):
-        title = fallback_title
-        body = fallback_body
-        why = ""
-
-    if why and not why.startswith("beginner_hint:"):
-        return f"[Hint] {title}: {body}\n→ {why}"
-    return f"[Hint] {title}: {body}"
+def _category(
+    i18n_namespace: str = "beginner_hint:self_atari", *, title: str = "Dangerous Move", body: str = "Body text"
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        i18n_namespace=i18n_namespace,
+        fallback_title=title,
+        fallback_body=body,
+    )
 
 
-def _category(value: str):
-    """Simple stub with .i18n_namespace == 'beginner_hint:<value>'."""
-    return SimpleNamespace(i18n_namespace=f"beginner_hint:{value}")
+class TestFormatBeginnerHintWhyField:
+    """Phase 254 contract: ``→ why`` line is appended when :why resolves."""
 
-
-# ---------------------------------------------------------------------------
-# Behavioural tests
-# ---------------------------------------------------------------------------
-
-
-class TestFormatHintWithWhy:
-    """Phase 254: :why is rendered as a 2nd line with a `→` prefix."""
-
-    def test_all_three_keys_translated_appends_why(self):
-        cat = _category("self_atari")
-        gettext = lambda key: {  # noqa: E731
-            "beginner_hint:self_atari:title": "Dangerous Move",
-            "beginner_hint:self_atari:body": "Playing here puts your group in atari.",
-            "beginner_hint:self_atari:why": "A move that puts your own stones in atari can be captured next.",
-        }.get(key, key)
-        result = _format(cat, "FB Title", "FB Body", gettext)
-        # Three components visible: title, body, why.
+    def test_all_three_keys_translated_appends_why(self) -> None:
+        """All three keys resolve to real strings → both lines rendered."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Playing here puts your group in atari.",
+            why="A move that puts your own stones in atari can be captured next.",
+            prefix="[Hint]",
+            fallback_title="FB Title",
+            fallback_body="FB Body",
+        )
         assert "[Hint] Dangerous Move: Playing here puts your group in atari." in result
         assert "→ A move that puts your own stones in atari can be captured next." in result
-        # Two lines: title/body on line 1, why on line 2.
         assert result.count("\n") == 1
 
-    def test_why_key_missing_omits_why_line(self):
-        """When :why is missing from .po, only the title:body line is rendered."""
-        cat = _category("self_atari")
-        gettext = lambda key: {  # noqa: E731
-            "beginner_hint:self_atari:title": "Dangerous Move",
-            "beginner_hint:self_atari:body": "Body",
-            # :why is absent → raw key returned
-        }.get(key, key)
-        result = _format(cat, "FB Title", "FB Body", gettext)
-        # Only one line, no arrow.
+    def test_why_key_missing_omits_why_line(self) -> None:
+        """When :why is missing from .po (returns raw key or empty), no
+        second line is rendered."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Body",
+            why="beginner_hint:self_atari:why",  # raw key (missing translation)
+            prefix="[Hint]",
+            fallback_title="FB Title",
+            fallback_body="FB Body",
+        )
         assert result == "[Hint] Dangerous Move: Body"
         assert "→" not in result
 
-    def test_why_key_returns_raw_key_omits_why_line(self):
-        """If :why key returns the raw key (missing from .po), it must
-        not leak into the rendered text."""
-        cat = _category("self_atari")
-        gettext = lambda key: {  # noqa: E731
-            "beginner_hint:self_atari:title": "Dangerous Move",
-            "beginner_hint:self_atari:body": "Body",
-            "beginner_hint:self_atari:why": "beginner_hint:self_atari:why",  # raw key
-        }.get(key, key)
-        result = _format(cat, "FB Title", "FB Body", gettext)
+    def test_title_key_missing_uses_fallbacks(self) -> None:
+        """When title resolves to the raw key, the English fallback is used.
+
+        The :why line is suppressed when the master gate fires (title
+        raw key) because the :why translation has no programmatic
+        fallback (it only lives in .po files).
+        """
+        result = format_beginner_hint(
+            category=_category(title="FB Title", body="FB Body"),
+            title="beginner_hint:self_atari:title",  # raw key
+            body="beginner_hint:self_atari:body",  # raw key
+            why="A reason",
+            prefix="[Hint]",
+            fallback_title="FB Title",
+            fallback_body="FB Body",
+        )
+        # Both fallbacks applied; :why suppressed by design.
+        assert "[Hint] FB Title: FB Body" in result
+        assert "→ A reason" not in result
+
+    def test_empty_why_omits_arrow_line(self) -> None:
+        """Empty :why produces a single-line output."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Body",
+            why="",
+            prefix="[Hint]",
+            fallback_title="FB Title",
+            fallback_body="FB Body",
+        )
         assert result == "[Hint] Dangerous Move: Body"
-        assert "beginner_hint:self_atari:why" not in result
-
-    def test_title_missing_uses_english_fallback(self):
-        """When title is missing, the :why key is not consulted (it
-        lives in the .po files; no programmatic fallback)."""
-        cat = _category("self_atari")
-        gettext = lambda key: {  # noqa: E731
-            "beginner_hint:self_atari:title": "beginner_hint:self_atari:title",  # raw
-            "beginner_hint:self_atari:body": "beginner_hint:self_atari:body",
-            "beginner_hint:self_atari:why": "An explanatory sentence",
-        }.get(key, key)
-        result = _format(cat, "FB Title", "FB Body", gettext)
-        # Fallback title/body, no :why (intentionally blanked out).
-        assert result == "[Hint] FB Title: FB Body"
         assert "→" not in result
 
-    def test_why_empty_string_omits_why_line(self):
-        """An explicit empty :why (e.g. .po has ``msgstr ""``) is
-        treated as missing — no second line."""
-        cat = _category("self_atari")
-        gettext = lambda key: {  # noqa: E731
-            "beginner_hint:self_atari:title": "Title",
-            "beginner_hint:self_atari:body": "Body",
-            "beginner_hint:self_atari:why": "",
-        }.get(key, key)
-        result = _format(cat, "FB Title", "FB Body", gettext)
-        assert result == "[Hint] Title: Body"
-        assert "→" not in result
-
-    @pytest.mark.parametrize(
-        "category_value",
-        [
-            "self_atari",
-            "cut_risk",
-            "low_liberties",
-            "self_capture_like",
-            "mistake_blunder",
-            "curator_weak_axis",
-        ],
-    )
-    def test_all_categories_support_why(self, category_value):
-        """Every hint category should support the :why field uniformly."""
-        cat = _category(category_value)
-        gettext = lambda key: "Why text" if key.endswith(":why") else "T" if key.endswith(":title") else "B"  # noqa: E731
-        result = _format(cat, "FB", "FB", gettext)
-        assert "→ Why text" in result
-
-
-# ---------------------------------------------------------------------------
-# AST guard: production code must reference :why
-# ---------------------------------------------------------------------------
-
-
-class TestProductionCodeUsesWhy:
-    """Locks the production contract so a future refactor cannot
-    silently drop the :why rendering."""
-
-    @pytest.fixture
-    def controlspanel_source(self) -> str:
-        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
-        return path.read_text(encoding="utf-8")
-
-    def test_format_function_references_why_key(self, controlspanel_source):
-        """_format_beginner_hint must construct an i18n key ending in
-        ``:why`` and include the resulting text in the output."""
-        tree = ast.parse(controlspanel_source)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "_format_beginner_hint":
-                src = ast.unparse(node)
-                assert ":why" in src, "production render fn must read :why key"
-                assert "→" in src, "production render fn must include the arrow prefix"
-                return
-        pytest.fail("_format_beginner_hint not found")
-
-    def test_no_why_key_does_not_leak_raw_key(self, controlspanel_source):
-        """When the :why key is missing, the render fn must not embed
-        the raw ``beginner_hint:...:why`` key in the output text."""
-        tree = ast.parse(controlspanel_source)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "_format_beginner_hint":
-                src = ast.unparse(node)
-                # The check is `not why.startswith("beginner_hint:")`
-                # — the raw-key sentinel.
-                assert "startswith('beginner_hint:')" in src
-                return
-        pytest.fail("_format_beginner_hint not found")
+    def test_multiline_body_newline_preserved(self) -> None:
+        """Body newlines are preserved verbatim in the rendered output."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="T",
+            body="line1\nline2",
+            why="reason",
+            prefix="[Hint]",
+            fallback_title="FB",
+            fallback_body="FB",
+        )
+        assert result == "[Hint] T: line1\nline2\n→ reason"

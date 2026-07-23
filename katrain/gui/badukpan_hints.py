@@ -36,16 +36,8 @@ from katrain.core.beginner.hints import (
 from katrain.core.constants import (
     OUTPUT_DEBUG,
     STATUS_TEACHING,
-    TOP_MOVE_DELTA_SCORE,
-    TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_NOTHING,
     TOP_MOVE_OPTIONS,
-    TOP_MOVE_OWNERSHIP,
-    TOP_MOVE_POLICY,
-    TOP_MOVE_SCORE,
-    TOP_MOVE_SCORE_STDEV,
-    TOP_MOVE_VISITS,
-    TOP_MOVE_WINRATE,
 )
 from katrain.core.game import Move
 from katrain.core.lang import i18n
@@ -472,36 +464,23 @@ def draw_kata_hint_marker(
                 + "}[/size]"
             )
 
+        from katrain.core.gui_utils.top_move_keys import assemble_top_move_keys
         from katrain.gui.badukpan_drawing import format_loss_str
 
-        keys[TOP_MOVE_DELTA_SCORE] = format_loss_str(widget, -move_dict.get("pointsLost", 0.0))
-        keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict.get('scoreLead', 0):.1f}"
-        winrate = move_dict.get("winrate", 0.5) if player_sign == 1 else 1 - move_dict.get("winrate", 0.5)
-        keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
-        keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict.get('winrateLost', 0.0):+.1%}"
-        keys[TOP_MOVE_VISITS] = format_visits(move_dict.get("visits", 0))
-        # Phase 259 (I-11): three new optional columns.
-        # scoreStdev is the per-move KataGo uncertainty for this move;
-        # 0 (or missing) means the position is quiet.
-        score_stdev = move_dict.get("scoreStdev", 0.0) or 0.0
-        keys[TOP_MOVE_SCORE_STDEV] = f"{score_stdev:.1f}"
-        # prior is KataGo's policy-network probability for this specific
-        # move (0.0 - 1.0); displayed as percent.
-        prior = move_dict.get("prior", 0.0) or 0.0
-        keys[TOP_MOVE_POLICY] = f"{prior * 100:.1f}%"
-        # ownership is the position-level predicted territory skew
-        # (same value for every candidate on this node, since it does
-        # not depend on which move is played). KataGo provides
-        # ``current_node.analysis["ownership"]`` as a list[float] of
-        # per-cell ownership values in ``[-1.0, +1.0]`` (Black-positive);
-        # some KataGo builds also expose a pre-aggregated scalar at
-        # ``move_dict["ownership"]``. We accept both shapes and reduce
-        # to a single scalar in ``[-1.0, +1.0]`` for display.
-        ownership = _resolve_ownership_scalar(move_dict, current_node)
-        if ownership >= 0:
-            keys[TOP_MOVE_OWNERSHIP] = f"B{ownership * 100:.0f}"
-        else:
-            keys[TOP_MOVE_OWNERSHIP] = f"W{-ownership * 100:.0f}"
+        # Phase E: the key-population logic is in the Kivy-independent
+        # helper ``assemble_top_move_keys``. The GUI still owns the two
+        # theme-specific formatters (format_loss_str, format_visits)
+        # and feeds the resulting strings back into the core helper.
+        delta_score_fmt = format_loss_str(widget, -move_dict.get("pointsLost", 0.0))
+        visits_fmt = format_visits(move_dict.get("visits", 0))
+        keys.update(
+            assemble_top_move_keys(
+                move_dict,
+                player_sign=player_sign,
+                delta_score_formatted=delta_score_fmt,
+                visits_formatted=visits_fmt,
+            )
+        )
 
         Color(*Theme.HINT_TEXT_COLOR)
         draw_text(

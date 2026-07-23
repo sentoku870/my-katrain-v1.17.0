@@ -57,6 +57,11 @@ def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[int
     size if the window dimensions are not yet known (e.g. in headless
     tests).
 
+    The pure-Python sizing logic lives in
+    :mod:`katrain.core.gui_utils.popup_math` so it can be unit-tested
+    without importing Kivy. This wrapper merely injects the live
+    ``Window`` dimensions.
+
     Args:
         requested: ``[width, height]`` in dp / px.
         max_ratio: Maximum fraction of the window dimension the popup
@@ -68,15 +73,16 @@ def clamp_popup_size(requested: list[float], max_ratio: float = 0.9) -> list[int
     """
     from kivy.core.window import Window
 
-    width = float(requested[0])
-    height = float(requested[1])
+    from katrain.core.gui_utils.popup_math import compute_clamped_popup_size
+
     win_w = getattr(Window, "width", None)
     win_h = getattr(Window, "height", None)
-    if win_w and win_w > 0:
-        width = min(width, win_w * max_ratio)
-    if win_h and win_h > 0:
-        height = min(height, win_h * max_ratio)
-    return [int(round(width)), int(round(height))]
+    return compute_clamped_popup_size(
+        requested,
+        window_width=win_w,
+        window_height=win_h,
+        max_ratio=max_ratio,
+    )
 
 
 class I18NPopup(Popup):

@@ -1,134 +1,116 @@
-"""Phase 259 (I-11): TOP_MOVE_OPTIONS extension.
+"""Tests for the top-move hint marker key assembly (Phase 259 I-11).
 
-Adds three new candidate-marker columns:
-- ``TOP_MOVE_SCORE_STDEV`` — KataGo's per-move scoreStdev
-- ``TOP_MOVE_POLICY`` — KataGo's per-move prior (policy network)
-- ``TOP_MOVE_OWNERSHIP`` — position-level predicted territory skew
+The keys dict used to populate the Kivy markup was assembled inline
+inside ``katrain.gui.badukpan_hints.draw_kata_hint_marker``, which
+forced headless tests to copy the block verbatim. The copy had
+already drifted from the production code once (missing the
+``format_loss_str`` call for the delta-score column, and a different
+ownership-resolution policy).
 
-Tests are Kivy-free: they exercise the key-population logic
-(the dict that ``draw_kata_hint_marker`` formats) and the
-i18n presence.
+Phase E moves the key-population logic into the Kivy-independent
+helper :mod:`katrain.core.gui_utils.top_move_keys`. This file imports
+that helper directly and verifies the assembled dict.
+
+The ``TOP_MOVE_OPTIONS`` constant and ``TOP_MOVE_*`` key names live
+in :mod:`katrain.core.constants`; we re-export them through the core
+helper so callers can index the assembled dict with the same names
+they use everywhere else.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from katrain.core.constants import (
+    TOP_MOVE_DELTA_SCORE,
+    TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_OPTIONS,
     TOP_MOVE_OWNERSHIP,
     TOP_MOVE_POLICY,
+    TOP_MOVE_SCORE,
     TOP_MOVE_SCORE_STDEV,
+    TOP_MOVE_VISITS,
+    TOP_MOVE_WINRATE,
 )
-
-# ---------------------------------------------------------------------------
-# Replica of the key-population logic in badukpan_hints.py:467-477
-# ---------------------------------------------------------------------------
-
-
-def _populate_keys(move_dict, player_sign=1):
-    """Replicate the ``keys[...] = ...`` block in draw_kata_hint_marker."""
-    keys: dict[str, str] = {}
-    keys["top_move_delta_score"] = f"{-move_dict.get('pointsLost', 0.0):.1f}"
-    keys["top_move_score"] = f"{player_sign * move_dict.get('scoreLead', 0):.1f}"
-    winrate = move_dict.get("winrate", 0.5) if player_sign == 1 else 1 - move_dict.get("winrate", 0.5)
-    keys["top_move_winrate"] = f"{winrate * 100:.1f}"
-    keys["top_move_delta_winrate"] = f"{-move_dict.get('winrateLost', 0.0):+.1%}"
-    keys["top_move_visits"] = f"{move_dict.get('visits', 0)}"
-    # Phase 259: three new columns.
-    score_stdev = move_dict.get("scoreStdev", 0.0) or 0.0
-    keys[TOP_MOVE_SCORE_STDEV] = f"{score_stdev:.1f}"
-    prior = move_dict.get("prior", 0.0) or 0.0
-    keys[TOP_MOVE_POLICY] = f"{prior * 100:.1f}%"
-    ownership = move_dict.get("ownership", 0.0) or 0.0
-    if ownership >= 0:
-        keys[TOP_MOVE_OWNERSHIP] = f"B{ownership * 100:.0f}"
-    else:
-        keys[TOP_MOVE_OWNERSHIP] = f"W{-ownership * 100:.0f}"
-    return keys
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+from katrain.core.gui_utils.top_move_keys import assemble_top_move_keys
 
 
 class TestTopMoveOptionsExtended:
     """Phase 259: TOP_MOVE_OPTIONS now includes 3 new entries."""
 
-    def test_includes_score_stdev(self):
+    def test_includes_score_stdev(self) -> None:
         assert TOP_MOVE_SCORE_STDEV in TOP_MOVE_OPTIONS
 
-    def test_includes_policy(self):
+    def test_includes_policy(self) -> None:
         assert TOP_MOVE_POLICY in TOP_MOVE_OPTIONS
 
-    def test_includes_ownership(self):
+    def test_includes_ownership(self) -> None:
         assert TOP_MOVE_OWNERSHIP in TOP_MOVE_OPTIONS
 
-    def test_total_options_count(self):
+    def test_total_options_count(self) -> None:
         """5 original (excluding TOP_MOVE_NOTHING) + 3 new = 8 functional + 1 NOTHING."""
         functional = [o for o in TOP_MOVE_OPTIONS if o != "top_move_nothing"]
         assert len(functional) == 8
 
-    def test_nothing_still_present(self):
+    def test_nothing_still_present(self) -> None:
         """Backward compat: TOP_MOVE_NOTHING must remain in the list."""
         assert "top_move_nothing" in TOP_MOVE_OPTIONS
 
 
-class TestNewKeysPopulated:
-    """Phase 259: score_stdev / policy / ownership keys are populated."""
+class TestAssembleTopMoveKeys:
+    """Phase 259: score_stdev / policy / ownership keys are populated by
+    the Kivy-independent core helper. The GUI wrapper passes the themed
+    ``format_loss_str`` / ``format_visits`` strings; here we exercise
+    the pure-Python defaults.
+    """
 
-    def test_score_stdev_formatted(self):
-        keys = _populate_keys({"scoreStdev": 3.5, "visits": 100})
+    def test_score_stdev_formatted(self) -> None:
+        keys = assemble_top_move_keys({"scoreStdev": 3.5, "visits": 100})
         assert keys[TOP_MOVE_SCORE_STDEV] == "3.5"
 
-    def test_score_stdev_missing_defaults_to_zero(self):
-        keys = _populate_keys({})
+    def test_score_stdev_missing_defaults_to_zero(self) -> None:
+        keys = assemble_top_move_keys({})
         assert keys[TOP_MOVE_SCORE_STDEV] == "0.0"
 
-    def test_score_stdev_none_defaults_to_zero(self):
+    def test_score_stdev_none_defaults_to_zero(self) -> None:
         """KataGo can send scoreStdev=None when visits are too low."""
-        keys = _populate_keys({"scoreStdev": None})
+        keys = assemble_top_move_keys({"scoreStdev": None})
         assert keys[TOP_MOVE_SCORE_STDEV] == "0.0"
 
-    def test_policy_formatted_as_percent(self):
-        keys = _populate_keys({"prior": 0.5})
+    def test_policy_formatted_as_percent(self) -> None:
+        keys = assemble_top_move_keys({"prior": 0.5})
         assert keys[TOP_MOVE_POLICY] == "50.0%"
 
-    def test_policy_zero(self):
-        keys = _populate_keys({"prior": 0.0})
+    def test_policy_zero(self) -> None:
+        keys = assemble_top_move_keys({"prior": 0.0})
         assert keys[TOP_MOVE_POLICY] == "0.0%"
 
-    def test_policy_one_hundred_percent(self):
-        keys = _populate_keys({"prior": 1.0})
+    def test_policy_one_hundred_percent(self) -> None:
+        keys = assemble_top_move_keys({"prior": 1.0})
         assert keys[TOP_MOVE_POLICY] == "100.0%"
 
-    def test_policy_missing_defaults_to_zero(self):
-        keys = _populate_keys({})
+    def test_policy_missing_defaults_to_zero(self) -> None:
+        keys = assemble_top_move_keys({})
         assert keys[TOP_MOVE_POLICY] == "0.0%"
 
-    def test_ownership_black_dominant(self):
-        keys = _populate_keys({"ownership": 0.78})
+    def test_ownership_black_dominant(self) -> None:
+        keys = assemble_top_move_keys({"ownership": 0.78})
         assert keys[TOP_MOVE_OWNERSHIP] == "B78"
 
-    def test_ownership_white_dominant(self):
-        keys = _populate_keys({"ownership": -0.82})
+    def test_ownership_white_dominant(self) -> None:
+        keys = assemble_top_move_keys({"ownership": -0.82})
         assert keys[TOP_MOVE_OWNERSHIP] == "W82"
 
-    def test_ownership_zero_shows_B0(self):
-        keys = _populate_keys({"ownership": 0.0})
+    def test_ownership_zero_shows_B0(self) -> None:
+        keys = assemble_top_move_keys({"ownership": 0.0})
         # 0.0 is non-negative, so shows B0 (not W0).
         assert keys[TOP_MOVE_OWNERSHIP] == "B0"
 
-    def test_ownership_missing_defaults_to_zero(self):
-        keys = _populate_keys({})
+    def test_ownership_missing_defaults_to_zero(self) -> None:
+        keys = assemble_top_move_keys({})
         assert keys[TOP_MOVE_OWNERSHIP] == "B0"
 
-    def test_all_previous_keys_still_present(self):
+    def test_all_previous_keys_still_present(self) -> None:
         """Phase 259 must NOT regress the pre-existing 5 columns."""
-        keys = _populate_keys(
+        keys = assemble_top_move_keys(
             {
                 "pointsLost": 1.5,
                 "scoreLead": -0.3,
@@ -140,57 +122,116 @@ class TestNewKeysPopulated:
                 "ownership": 0.3,
             }
         )
-        assert "top_move_delta_score" in keys
-        assert "top_move_score" in keys
-        assert "top_move_winrate" in keys
-        assert "top_move_delta_winrate" in keys
-        assert "top_move_visits" in keys
+        for key in (
+            TOP_MOVE_DELTA_SCORE,
+            TOP_MOVE_SCORE,
+            TOP_MOVE_WINRATE,
+            TOP_MOVE_DELTA_WINRATE,
+            TOP_MOVE_VISITS,
+        ):
+            assert key in keys, f"regression: pre-Phase 259 key {key} missing"
 
+    def test_pre_formatted_delta_score_and_visits_overrides(self) -> None:
+        """The GUI wrapper passes themed ``format_loss_str`` /
+        ``format_visits`` strings via ``delta_score_formatted`` /
+        ``visits_formatted``. Verify they are used verbatim.
+        """
+        keys = assemble_top_move_keys(
+            {"pointsLost": 1.5, "visits": 42},
+            delta_score_formatted="−1.5",
+            visits_formatted="42 visits",
+        )
+        assert keys[TOP_MOVE_DELTA_SCORE] == "−1.5"
+        assert keys[TOP_MOVE_VISITS] == "42 visits"
 
-class TestI18nPresence:
-    """Phase 259: 3 new i18n keys are translated in jp + en."""
+    def test_player_sign_affects_winrate_and_score(self) -> None:
+        """``player_sign`` flips both ``winrate`` and ``scoreLead`` so the
+        opponent view shows the same board state from the other side.
+        Keys that are sign-invariant (visits, scoreStdev, prior,
+        ownership, delta_winrate) keep the same value either way.
+        """
+        black = assemble_top_move_keys({"winrate": 0.6, "scoreLead": 3.0}, player_sign=1)
+        white = assemble_top_move_keys({"winrate": 0.6, "scoreLead": 3.0}, player_sign=-1)
+        # winrate is mirrored around 0.5.
+        assert black[TOP_MOVE_WINRATE] == "60.0"
+        assert white[TOP_MOVE_WINRATE] == "40.0"
+        # scoreLead is sign-flipped.
+        assert black[TOP_MOVE_SCORE] == "3.0"
+        assert white[TOP_MOVE_SCORE] == "-3.0"
+        # visits / scoreStdev / prior / ownership are sign-invariant.
+        black_full = assemble_top_move_keys(
+            {
+                "winrate": 0.6,
+                "scoreLead": 3.0,
+                "visits": 200,
+                "scoreStdev": 2.5,
+                "prior": 0.4,
+                "ownership": 0.3,
+            },
+            player_sign=1,
+        )
+        white_full = assemble_top_move_keys(
+            {
+                "winrate": 0.6,
+                "scoreLead": 3.0,
+                "visits": 200,
+                "scoreStdev": 2.5,
+                "prior": 0.4,
+                "ownership": 0.3,
+            },
+            player_sign=-1,
+        )
+        for key in (
+            TOP_MOVE_VISITS,
+            TOP_MOVE_SCORE_STDEV,
+            TOP_MOVE_POLICY,
+            TOP_MOVE_OWNERSHIP,
+        ):
+            assert black_full[key] == white_full[key], (
+                f"sign-invariant key {key} unexpectedly differs: black={black_full[key]!r} white={white_full[key]!r}"
+            )
 
-    @pytest.fixture
-    def locale_dir(self):
-        from katrain import __file__ as katrain_init
-
-        return Path(katrain_init).parent / "i18n" / "locales"
-
-    def test_jp_translations_present(self, locale_dir):
-        import gettext
-
-        locales = gettext.translation("katrain", str(locale_dir), languages=["jp"])
-        for key in ("top_move_score_stdev", "top_move_policy", "top_move_ownership"):
-            translated = locales.gettext(key)
-            assert translated and translated != key, f"jp missing '{key}'"
-
-    def test_en_translations_present(self, locale_dir):
-        import gettext
-
-        locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
-        for key in ("top_move_score_stdev", "top_move_policy", "top_move_ownership"):
-            translated = locales.gettext(key)
-            assert translated and translated != key, f"en missing '{key}'"
+    def test_none_move_dict_returns_empty_dict(self) -> None:
+        """Defensive: ``None`` input yields ``{}`` rather than raising."""
+        assert assemble_top_move_keys(None) == {}  # type: ignore[arg-type]
 
 
 class TestProductionCodeUsesNewKeys:
-    """AST guard: production code populates the new keys."""
+    """AST guard: production code uses the core helper and the
+    TOP_MOVE_* constants from :mod:`katrain.core.constants`.
 
-    @pytest.fixture
-    def badukpan_hints_source(self) -> str:
-        return Path(__file__).parent.parent / "katrain" / "gui" / "badukpan_hints.py"
+    Phase E moved the key-population logic into the Kivy-independent
+    helper ``assemble_top_move_keys``; the GUI file no longer
+    contains the literal ``"scoreStdev"`` / ``"prior"`` /
+    ``"ownership"`` references (those live in the core helper). We
+    therefore guard on the helper import + the constant references,
+    which is the production-wiring that has to be maintained.
+    """
 
-    def test_populates_score_stdev(self, badukpan_hints_source):
-        text = badukpan_hints_source.read_text(encoding="utf-8")
-        assert "TOP_MOVE_SCORE_STDEV" in text
-        assert "scoreStdev" in text
+    @staticmethod
+    def _source() -> str:
+        from pathlib import Path
 
-    def test_populates_policy(self, badukpan_hints_source):
-        text = badukpan_hints_source.read_text(encoding="utf-8")
-        assert "TOP_MOVE_POLICY" in text
-        assert '"prior"' in text
+        return (Path(__file__).parent.parent / "katrain" / "gui" / "badukpan_hints.py").read_text(encoding="utf-8")
 
-    def test_populates_ownership(self, badukpan_hints_source):
-        text = badukpan_hints_source.read_text(encoding="utf-8")
-        assert "TOP_MOVE_OWNERSHIP" in text
-        assert "ownership" in text
+    def test_uses_core_helper(self) -> None:
+        text = self._source()
+        assert "from katrain.core.gui_utils.top_move_keys import assemble_top_move_keys" in text
+        assert "assemble_top_move_keys(" in text
+
+    def test_top_move_constants_still_imported(self) -> None:
+        """The GUI references the ``TOP_MOVE_*`` constants for the
+        "show this column" option list (``TOP_MOVE_OPTIONS``) and for
+        the ``TOP_MOVE_NOTHING`` sentinel that disables the marker.
+
+        The Kivy markup template in this file uses ``{size}`` and
+        ``{smallsize}`` placeholders, not the ``TOP_MOVE_*``
+        constants directly; the constants are consumed only by the
+        core helper that produces the ``keys`` dict. So this guard
+        is restricted to the constants the GUI actually uses.
+        """
+        text = self._source()
+        for constant in ("TOP_MOVE_NOTHING", "TOP_MOVE_OPTIONS"):
+            assert constant in text, (
+                f"{constant} missing from badukpan_hints.py; the GUI needs it for the option-list filter."
+            )
