@@ -176,34 +176,57 @@ jobs:
         uses: ./.github/actions/setup-python-uv
 
       - name: Build executables with PyInstaller
-        run: uv run pyinstaller spec/katrain.spec --clean --noconfirm
+        run: uv run pyinstaller spec/KaTrain.spec --clean --noconfirm
         shell: powershell
 
+      # Verify the build produced the expected artifacts before any
+      # subsequent packaging/uploading step. Earlier the optional
+      # 'Create archives' / 'Upload Windows artifacts' steps silently
+      # succeeded even when PyInstaller produced nothing — the copy/
+      # compress guarded by Test-Path would skip, and the workflow
+      # still exited 0. Without this hard guard, a regression in the
+      # spec/hiddenimports surface would ship as a "green" CI.
+      - name: Verify PyInstaller outputs exist
+        shell: powershell
+        run: |
+          $exit = 0
+          if (-not (Test-Path "dist/KaTrain.exe")) {
+              Write-Host "::error::dist/KaTrain.exe was not produced by PyInstaller."
+              $exit = 1
+          }
+          if (-not (Test-Path "dist/KaTrain")) {
+              Write-Host "::error::dist/KaTrain folder was not produced by PyInstaller."
+              $exit = 1
+          }
+          exit $exit
+
+      # Only build archives and upload artifacts on manual release runs
+      # (workflow_dispatch with create_release=true). Pull-request runs
+      # still execute PyInstaller to catch hiddenimports / spec breakage,
+      # but they intentionally do NOT retain the ~448MB artifact.
       - name: Create archives
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
         run: |
           New-Item -ItemType Directory -Path "windows_exe" -Force
 
           # Copy the standalone KaTrain.exe
-          if (Test-Path "dist/KaTrain.exe") {
-              Copy-Item "dist/KaTrain.exe" "windows_exe/KaTrain.exe"
-          }
+          Copy-Item "dist/KaTrain.exe" "windows_exe/KaTrain.exe"
 
-          # Create KaTrain.zip with debug executable inside
-          if (Test-Path "dist/KaTrain") {
-              # Copy the debug executable into the main KaTrain folder
-              if (Test-Path "dist/DebugKaTrain/KaTrain.exe") {
-                  Copy-Item "dist/DebugKaTrain/KaTrain.exe" "dist/KaTrain/debugkatrain.exe"
-              }
-              # Create the zip file
-              Compress-Archive -Path "dist/KaTrain" -DestinationPath "windows_exe/KaTrain.zip"
+          # Copy the debug executable into the main KaTrain folder
+          if (Test-Path "dist/DebugKaTrain/KaTrain.exe") {
+              Copy-Item "dist/DebugKaTrain/KaTrain.exe" "dist/KaTrain/debugkatrain.exe"
           }
+          # Create the zip file
+          Compress-Archive -Path "dist/KaTrain" -DestinationPath "windows_exe/KaTrain.zip"
         shell: powershell
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows artifacts (release runs only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: KaTrainWindows-${{ env.KATRAIN_VERSION }}
           path: windows_exe
+          if-no-files-found: error
 
   # This job creates a draft release on GitHub.
   create-release:

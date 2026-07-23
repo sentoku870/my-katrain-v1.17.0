@@ -189,7 +189,8 @@ docs/
 - 大規模な棋譜管理 DB
 - 対局支援（チート用途）
 - 「最善手当てクイズ」を目的化した訓練
-- PyPI 公開（`KaTrain` パッケージ名は本家のものを尊重。`scripts/`/wheel/sdist は clone 配布のため）
+- PyPI 公開（`KaTrain` パッケージ名は本家のものを尊重するため、wheel/sdist は clone + uv sync で配布する想定）
+- GitHub Actions artifact の大量保持（PR ごとに約 448MB の Windows バイナリを 90 日保管する運用は廃止し、`workflow_dispatch`（`create_release=true`）時のみ release 用 artifact をアップロードする）
 
 ---
 
