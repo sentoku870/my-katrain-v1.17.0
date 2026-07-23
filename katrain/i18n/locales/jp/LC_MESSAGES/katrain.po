@@ -902,9 +902,6 @@ msgstr "to move"
 msgid "limit to moves"
 msgstr "Limit to moves"
 
-msgid "engine:humanlike_model"
-msgstr "Path to human-like model"
-
 msgid "mykatrain:export-karte"
 msgstr "カルテ出力"
 
@@ -2254,25 +2251,6 @@ msgstr "その他: {name}"
 
 msgid "model:none"
 msgstr "（モデル未選択）"
-
-#. Phase 88: human-like Toggle
-msgid "humanlike:toggle_label"
-msgstr "人間らしいモード（実験）を有効にする"
-
-msgid "humanlike:status_off"
-msgstr "通常の解析（推奨）"
-
-msgid "humanlike:status_on"
-msgstr "人間らしい傾向を優先（精度が変わる可能性）"
-
-msgid "humanlike:no_path_warning"
-msgstr "human-likeモデルファイルを先に選択してください"
-
-msgid "humanlike:path_not_found"
-msgstr "以前のhuman-likeモデルファイルが見つかりません"
-
-msgid "humanlike:forced_off"
-msgstr "human-likeモードを無効化しました（有効なパスなし）"
 
 #. Phase 88: Details
 msgid "details:title"
