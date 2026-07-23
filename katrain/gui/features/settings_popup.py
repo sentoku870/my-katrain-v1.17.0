@@ -399,6 +399,10 @@ def apply_search_filter(searchable_widgets: list[dict[str, Any]], query: str) ->
     truly disappear from the layout, then reports the hit count so the
     UI can show "N of M hits" feedback.
 
+    The matching predicate is delegated to
+    :func:`katrain.core.gui_utils.search_filter.compute_matching_indices`
+    so the index set can be unit-tested without importing Kivy.
+
     Args:
         searchable_widgets: List of dicts with ``label_text`` (str) and
             ``widget`` (the row BoxLayout) keys.
@@ -407,18 +411,24 @@ def apply_search_filter(searchable_widgets: list[dict[str, Any]], query: str) ->
     Returns:
         ``(hits, total)`` count tuple.
     """
-    q = (query or "").strip().lower()
-    hits = 0
-    total = 0
+    from katrain.core.gui_utils.search_filter import compute_matching_indices
+
+    # Compute the matching indices purely, ignoring the widget half.
+    labels: list[str] = []
+    widget_by_index: list[Any] = []
     for item in searchable_widgets:
         widget = item.get("widget")
         if widget is None:
             continue
-        total += 1
-        label_text = (item.get("label_text", "") or "").lower()
-        match = (not q) or (q in label_text)
-        if match:
-            hits += 1
+        labels.append(item.get("label_text", "") or "")
+        widget_by_index.append(widget)
+
+    matching_indices, total = compute_matching_indices(labels, query)
+    matching_set = set(matching_indices)
+    hits = len(matching_indices)
+
+    for idx, widget in enumerate(widget_by_index):
+        if idx in matching_set:
             # Restore the row to its natural height + interactivity.
             widget.opacity = 1.0
             widget.disabled = False

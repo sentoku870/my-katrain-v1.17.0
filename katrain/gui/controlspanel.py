@@ -464,12 +464,17 @@ class ControlsPanel(BoxLayout):
         hint (vs. the *what* in the body). Now the user gets the
         "why" as a 2nd line in the info panel.
 
+        Phase E: the rendering logic itself lives in the
+        Kivy-independent helper :func:`format_beginner_hint`; this
+        wrapper merely resolves the i18n keys and delegates.
+
         Args:
             hint: BeginnerHint instance
 
         Returns:
             Formatted string for display
         """
+        from katrain.core.beginner.format_hint import format_beginner_hint
         from katrain.core.lang import i18n
 
         category = hint.category
@@ -478,31 +483,17 @@ class ControlsPanel(BoxLayout):
         title = i18n._(f"{namespace}:title")
         body = i18n._(f"{namespace}:body")
         why = i18n._(f"{namespace}:why")
-
-        # If i18n key is not found (returns the raw key), use English
-        # fallback. The same sentinel check works for all three keys
-        # because they share a common prefix.
-        if title.startswith("beginner_hint:"):
-            title = category.fallback_title
-            body = category.fallback_body
-            # The :why key has no programmatic fallback (it lives in
-            # the .po files). Leave it empty so the second line is
-            # not rendered for users whose .po is missing the key.
-            why = ""
-
-        # Phase 254: only append the "why" line when the i18n key
-        # resolved to a non-empty, non-raw-key string. Falls back
-        # silently for languages whose .po is missing the :why key.
-        # Phase 255: the [Hint] prefix is now an i18n key so jp users
-        # see "ヒント" instead of the English word. Falls back to the
-        # raw "[Hint]" string when the .po is missing the key.
         prefix = i18n._("beginner-hint:prefix")
-        if prefix.startswith("beginner-hint:"):
-            prefix = "[Hint]"
 
-        if why and not why.startswith("beginner_hint:"):
-            return f"{prefix} {title}: {body}\n→ {why}"
-        return f"{prefix} {title}: {body}"
+        return format_beginner_hint(
+            category=category,
+            title=title,
+            body=body,
+            why=why,
+            prefix=prefix,
+            fallback_title=category.fallback_title,
+            fallback_body=category.fallback_body,
+        )
 
     @staticmethod
     def _ensure_time_used_initialized(node: Any) -> None:
