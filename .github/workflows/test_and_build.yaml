@@ -11,11 +11,6 @@ on:
         required: true
         default: false
         type: boolean
-      publish_pypi:
-        description: "Publish to PyPI"
-        required: true
-        default: false
-        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -209,37 +204,6 @@ jobs:
         with:
           name: KaTrainWindows-${{ env.KATRAIN_VERSION }}
           path: windows_exe
-
-  # This job publishes the package to PyPI.
-  publish-pypi:
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_pypi == 'true'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Python and uv
-        uses: ./.github/actions/setup-python-uv
-        with:
-          sync-groups: dev
-
-      # Phase 230: the legacy ``i18n.py`` helper was removed (Feb 2026
-      # cleanup). The compiled ``.mo`` files now live under
-      # ``katrain/i18n/locales/*/LC_MESSAGES/`` and are regenerated as
-      # part of the development workflow (see docs/i18n-workflow.md).
-      # We still re-validate the .mo freshness here so a stale build
-      # cannot ship.
-      - name: Verify i18n .mo files are up to date
-        run: uv run pytest tests/test_i18n.py::TestBatchAnalyzeI18n::test_mo_files_are_up_to_date -v
-
-      - name: Build and publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          uv build
-          uv publish --verbose
 
   # This job creates a draft release on GitHub.
   create-release:

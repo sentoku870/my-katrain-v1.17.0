@@ -47,7 +47,11 @@ uv run python -m katrain
 初回起動時に KataGo 実行ファイル・モデル・`analysis_config.cfg` を指定するダイアログが表示されます。
 
 > **`pipx install katrain` / `brew install katrain` は本家 KaTrain** をインストールします。  
-> 本 fork を動かす場合は clone + `uv sync` を利用してください。
+> 本 fork を動かす場合は clone + `uv sync` を利用してください。  
+> 
+> **PyPI 公開について**: 本 fork は PyPI へ公開しません（`KaTrain` パッケージ名は本家のもの）。  
+> 配布は clone + `uv sync` / `uv build` で生成した wheel/sdist を手動配布する想定です。  
+> Windows 用バイナリは GitHub Actions の `Test, Build, and Release` ワークフロー（`workflow_dispatch` で `create_release=true`）で生成・ダウンロードできます。
 
 ## 4. 開発者向けコマンド
 
