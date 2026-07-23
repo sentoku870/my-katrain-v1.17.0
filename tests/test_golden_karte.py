@@ -548,8 +548,9 @@ class TestKarteFromSGF:
         "panda": SGF_DIR / "panda1.sgf",
     }
 
+    @classmethod
     @pytest.fixture(scope="class")
-    def mock_katrain(self):
+    def mock_katrain(cls):
         """Create a mock KaTrain instance.
 
         Scope=class to reuse across tests, reducing Kivy reinitialization overhead.
@@ -558,8 +559,9 @@ class TestKarteFromSGF:
 
         return KaTrainBase(force_package_config=True, debug_level=0)
 
+    @classmethod
     @pytest.fixture(scope="class")
-    def mock_engine(self):
+    def mock_engine(cls):
         """Create a mock engine.
 
         Scope=class to reuse across tests.
