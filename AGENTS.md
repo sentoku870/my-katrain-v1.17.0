@@ -194,6 +194,21 @@ docs/
 
 ---
 
+## 7.5 CI と main ブランチ保護（2026-07-23〜）
+
+- ワークフロー: `.github/workflows/test_and_build.yaml`
+  - トリガー: `pull_request`、`push:main`、`workflow_dispatch`（`create_release`）
+  - ジョブ: `prepare → {lint, typecheck, test, coverage, build-windows} → quality-gate → create-release`
+  - `quality-gate` は lint/mypy/test×3/coverage/build-windows の全て成功時のみ成功扱い
+- main ブランチ保護の必須チェックには **`quality-gate` 1件だけを登録**してください。
+  - 個別ジョブ（`test (3.11)`、`test (3.12)`、ほか）を必須化すると、ジョブ追加のたびに保護設定を更新する必要があり、運用ミスが増える
+- GitHub リポジトリの Settings → Branches → Branch protection rules → `main`:
+  - ☑ Require status checks to pass before merging
+    - 必須チェック: `quality-gate` (sources を `test_and_build` ワークフローから)
+  - ☑ Require linear history（任意の PR squash / rebase）
+  - ☑ Do not allow forcing pushes
+- ローカルで CI 完全再現: `uv sync && uv run pytest tests && uv run ruff check katrain tests && uv run mypy katrain`
+
 ## 8. シェル権限ルール（opencode.jsonc）
 
 `opencode.jsonc` の bash 権限パターン。**設定変更後は opencode の再起動が必要**（起動時 1 回のみ読み込み）。

@@ -4,6 +4,8 @@ name: Test, Build, and Release
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       create_release:
@@ -14,6 +16,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  # Cancel superseded PR runs (fast feedback). For push:main and manual
+  # runs we wait for completion; cancellation there would risk leaving
+  # main in an inconsistent state.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -258,3 +263,26 @@ jobs:
           files: ./artifacts/*
           draft: true
           prerelease: false
+
+  # Aggregator job used as the GitHub branch-protection required
+  # check. It runs only after the canonical quality gates (lint, mypy,
+  # test on every supported Python, coverage gate, windows PyInstaller
+  # build) all succeed. By gating only this job in branch protection,
+  # we avoid the maintenance burden of registering six individual
+  # checks (PR authors won't notice when we add a new quality job).
+  #
+  # Phase C-main-protection.
+  quality-gate:
+    name: quality-gate
+    needs: [lint, typecheck, test, coverage, build-windows]
+    runs-on: ubuntu-latest
+    if: always() && needs.lint.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success' && needs.coverage.result == 'success' && needs.build-windows.result == 'success'
+    steps:
+      - name: All quality checks passed
+        run: |
+          echo "lint:        ${{ needs.lint.result }}"
+          echo "typecheck:   ${{ needs.typecheck.result }}"
+          echo "test:        ${{ needs.test.result }}"
+          echo "coverage:    ${{ needs.coverage.result }}"
+          echo "build-windows: ${{ needs.build-windows.result }}"
+          echo "All required checks succeeded; safe to merge."

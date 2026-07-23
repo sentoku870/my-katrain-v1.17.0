@@ -81,6 +81,7 @@ uv run ruff format katrain tests
 ```
 
 CI では Python 3.11 / 3.12 / 3.13 のマトリクスを実行し、coverage 60% を gate としています。  
+main ブランチは **lint / mypy / test (3.11/3.12/3.13) / coverage / build-windows** を全て成功させた `quality-gate` ジョブのみで保護しています。  
 Windows バイナリは PR でも PyInstaller で生成されますが、artifact の保持は `workflow_dispatch` の `create_release=true` 実行時のみです。release 方法は「Release 方法」を参照。
 
 ## 5. AI 対局
