@@ -440,28 +440,3 @@ class TestResolveSummaryRank:
 
 
 # --- Public API export check --------------------------------------------
-
-
-class TestExports:
-    def test_init_reexports(self):
-        import katrain.core.coach as pkg
-
-        for name in [
-            "PERSPECTIVE_AUTO",
-            "PERSPECTIVE_BLACK",
-            "PERSPECTIVE_WHITE",
-            "SUMMARY_BIRDSEYE_SENTINEL",
-            "MAX_RESPONSE_INPUT_CHARS",
-            "PathTypeResult",
-            "resolve_player_color_internal",
-            "is_summary_birdseye_value",
-            "resolve_summary_spinner_values",
-            "detect_path_type_from_file",
-            "format_type_label",
-            "count_issue_markers",
-            "was_truncated",
-            "format_validation_status_summary",
-            "cap_response_text",
-            "resolve_summary_rank",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"

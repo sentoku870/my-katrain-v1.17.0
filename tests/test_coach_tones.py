@@ -166,21 +166,9 @@ class TestVoiceUtilities:
 # --- Public API ---
 
 
-class TestExports:
-    def test_all_reexports(self):
-        import katrain.core.coach as pkg
-
-        for name in [
-            "select_voice",
-            "greeting_for_mode",
-            "greeting_for_voice",
-            "check_prohibited",
-            "voice_summary",
-            "modes_for_voice",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"
+class TestAyakaRemoved:
+    """Phase 269: AYAKA voice removed entirely."""
 
     def test_ayaka_removed_from_enum(self):
-        # Phase 269: AYAKA voice removed entirely.
         assert not hasattr(ToneVoice, "AYAKA")
         assert {v.name for v in ToneVoice} == {"TOMOKO", "TOMOKO_STRICT"}

@@ -505,60 +505,19 @@ class TestSummaryPromptContainer:
 # --- Phase 228-B: Real-shape player stats in the prompt body ---
 
 
-def real_shape_summary() -> dict:
-    """A summary JSON shaped like the real ``summary_json_export.py`` output.
-
-    Used by the Phase 228-B tests below to verify that the prompt
-    body populates the Player Mistake Distribution and Player Phase
-    Loss Distribution sections.
-    """
-    return {
-        "schema_version": "3.4",
-        "meta": {"games_analyzed": 3, "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0}},
-        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
-        "players": {
-            "sentoku870": {
-                "mistakes": {
-                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
-                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
-                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
-                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
-                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
-                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
-                },
-            },
-            "opponent1": {
-                "mistakes": {
-                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
-                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
-                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
-                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
-                },
-            },
-        },
-        "loss_progression": {"all": [{"mistake_count": 5}] * 3},
-    }
-
-
 class TestResolveFocusedPlayer:
     """Phase 228-B: ``_resolve_focused_player`` picks which player
     to show in the per-player stat blocks."""
 
-    def test_configured_player_matching(self):
+    def test_configured_player_matching(self, real_shape_summary):
         from katrain.core.coach.summary_prompt_builder import (
             _resolve_focused_player,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         assert _resolve_focused_player(data, "sentoku870") == "sentoku870"
 
-    def test_configured_player_unknown_falls_back_to_birdseye(self):
+    def test_configured_player_unknown_falls_back_to_birdseye(self, real_shape_summary):
         # Phase 228-B: when the configured player doesn't match any
         # key in ``players``, fall back to birdseye mode (None)
         # rather than auto-picking a player (which would mislead the LLM
@@ -567,10 +526,10 @@ class TestResolveFocusedPlayer:
             _resolve_focused_player,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         assert _resolve_focused_player(data, "NonExistent") is None
 
-    def test_no_player_configured_returns_none_for_birdseye(self):
+    def test_no_player_configured_returns_none_for_birdseye(self, real_shape_summary):
         # Phase 228-B: when no player is configured (birdseye), the
         # resolver returns ``None`` so the section header renders
         # "全体俯瞰" rather than auto-picking a player.
@@ -578,7 +537,7 @@ class TestResolveFocusedPlayer:
             _resolve_focused_player,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         assert _resolve_focused_player(data, None) is None
 
     def test_no_players_block_returns_none(self):
@@ -600,13 +559,13 @@ class TestFormatPlayerMistakesBlock:
     """Phase 228-B: ``_format_player_mistakes_block`` renders the
     Player Mistake Distribution section."""
 
-    def test_focused_player_full_breakdown(self):
+    def test_focused_player_full_breakdown(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_mistakes
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_mistakes_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         mistakes = extract_summary_player_mistakes(data)
         block = _format_player_mistakes_block(mistakes, "sentoku870")
         # All 4 categories rendered
@@ -615,13 +574,13 @@ class TestFormatPlayerMistakesBlock:
         assert "**inaccuracy**: 51/388 (13.1%) - avg_loss 3.11" in block
         assert "**good**: 310/388 (79.9%) - avg_loss 0.28" in block
 
-    def test_severity_order(self):
+    def test_severity_order(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_mistakes
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_mistakes_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         mistakes = extract_summary_player_mistakes(data)
         block = _format_player_mistakes_block(mistakes, "sentoku870")
         # blunder should come before mistake, which comes before good
@@ -639,13 +598,13 @@ class TestFormatPlayerMistakesBlock:
         block = _format_player_mistakes_block({}, "any_player")
         assert "mistakes データがありません" in block
 
-    def test_birdseye_shows_per_player_top_category(self):
+    def test_birdseye_shows_per_player_top_category(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_mistakes
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_mistakes_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         mistakes = extract_summary_player_mistakes(data)
         block = _format_player_mistakes_block(mistakes, None)
         # Should show one line per player (top category only)
@@ -654,13 +613,13 @@ class TestFormatPlayerMistakesBlock:
         # Bird's-eye line shows the top (most severe) category per player
         assert "top=blunder" in block
 
-    def test_unknown_focused_player_falls_back_to_birdseye(self):
+    def test_unknown_focused_player_falls_back_to_birdseye(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_mistakes
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_mistakes_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         mistakes = extract_summary_player_mistakes(data)
         block = _format_player_mistakes_block(mistakes, "NonExistent")
         # Falls back to per-player overview
@@ -671,13 +630,13 @@ class TestFormatPlayerPhasesBlock:
     """Phase 228-B: ``_format_player_phases_block`` renders the
     Player Phase Loss Distribution section."""
 
-    def test_focused_player_phases_sorted_by_total_loss_desc(self):
+    def test_focused_player_phases_sorted_by_total_loss_desc(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_phase_losses
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_phases_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         phases = extract_summary_player_phase_losses(data)
         block = _format_player_phases_block(phases, "sentoku870")
         # middle (370.78) should come before endgame (48.6) which
@@ -688,13 +647,13 @@ class TestFormatPlayerPhasesBlock:
         assert middle_pos < endgame_pos < opening_pos
         assert middle_pos >= 0
 
-    def test_focused_player_shows_all_three_phases(self):
+    def test_focused_player_shows_all_three_phases(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_phase_losses
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_phases_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         phases = extract_summary_player_phase_losses(data)
         block = _format_player_phases_block(phases, "sentoku870")
         assert "173手" in block
@@ -710,13 +669,13 @@ class TestFormatPlayerPhasesBlock:
         block = _format_player_phases_block({}, "any_player")
         assert "phases データがありません" in block
 
-    def test_birdseye_shows_per_player_worst_phase(self):
+    def test_birdseye_shows_per_player_worst_phase(self, real_shape_summary):
         from katrain.core.coach.json_type import extract_summary_player_phase_losses
         from katrain.core.coach.summary_prompt_builder import (
             _format_player_phases_block,
         )
 
-        data = real_shape_summary()
+        data = real_shape_summary
         phases = extract_summary_player_phase_losses(data)
         block = _format_player_phases_block(phases, None)
         # Bird's-eye line shows the worst phase per player
@@ -731,47 +690,47 @@ class TestPlayerSectionsInPromptBody:
     """Phase 228-B: end-to-end verification that the prompt body
     contains the new sections when the real-shape data is available."""
 
-    def test_player_mistakes_section_present(self):
+    def test_player_mistakes_section_present(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         assert "### Player Mistake Distribution (sentoku870)" in prompt.body_markdown
 
-    def test_player_mistakes_section_values(self):
+    def test_player_mistakes_section_values(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # The key metrics from the real JSON should appear verbatim
         assert "5/388 (1.3%)" in prompt.body_markdown  # blunder
         assert "22/388 (5.7%)" in prompt.body_markdown  # mistake
         assert "370.78" in prompt.body_markdown  # middle phase total_loss
 
-    def test_player_phases_section_present(self):
+    def test_player_phases_section_present(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         assert "### Player Phase Loss Distribution (sentoku870)" in prompt.body_markdown
 
-    def test_player_phases_sorted_with_middle_first(self):
+    def test_player_phases_sorted_with_middle_first(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # Middle should appear first (worst phase by total_loss)
         body = prompt.body_markdown
         player_phases_idx = body.find("### Player Phase Loss Distribution")
@@ -782,37 +741,37 @@ class TestPlayerSectionsInPromptBody:
         opening_pos = phase_block.find("**opening**")
         assert middle_pos < endgame_pos < opening_pos
 
-    def test_birdseye_label_in_sections(self):
+    def test_birdseye_label_in_sections(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name=None,
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # Bird's-eye: header shows "(全体俯瞰)"
         assert "### Player Mistake Distribution (全体俯瞰)" in prompt.body_markdown
         assert "### Player Phase Loss Distribution (全体俯瞰)" in prompt.body_markdown
 
-    def test_system_instruction_updated_for_player_blocks(self):
+    def test_system_instruction_updated_for_player_blocks(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # The system instruction should mention the new section as a
         # valid source of weakness patterns.
         assert "Player Mistake Distribution" in prompt.system_instruction
 
-    def test_weakness_patterns_use_pct_for_shape_b(self):
+    def test_weakness_patterns_use_pct_for_shape_b(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # Shape B patterns should NOT show misleading 1700% frequency
         assert "1700.0%" not in prompt.body_markdown
         assert "733.3%" not in prompt.body_markdown
@@ -845,14 +804,14 @@ class TestPlayerSectionsInPromptBody:
         assert "mistakes データがありません" in prompt.body_markdown
         assert "phases データがありません" in prompt.body_markdown
 
-    def test_player_name_section_label(self):
+    def test_player_name_section_label(self, real_shape_summary):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
             games_analyzed=3,
             player_name="sentoku870",
         )
-        prompt = build_summary_weakness_prompt(real_shape_summary(), cfg)
+        prompt = build_summary_weakness_prompt(real_shape_summary, cfg)
         # Section labels include the player name
         assert "### Player Mistake Distribution (sentoku870)" in prompt.body_markdown
         assert "### Player Phase Loss Distribution (sentoku870)" in prompt.body_markdown

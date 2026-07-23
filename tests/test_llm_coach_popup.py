@@ -23,6 +23,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_karte_with_player_info
+
 # Phase 226-D (D1): skip the popup logic tests only when Kivy itself
 # is unimportable. Previously the file was gated on the ``CI``
 # environment variable, which silently skipped ~50 tests on every CI
@@ -661,16 +663,7 @@ class TestPhase2256RankAutoFill:
         # Simulate karte with player_info
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "4d"},
-                            "white": {"name": "P2", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "4d", "P2", "3d")),
             encoding="utf-8",
         )
         content.ids["karte_path_input"].text = str(karte)
@@ -685,16 +678,7 @@ class TestPhase2256RankAutoFill:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "4d"},
-                            "white": {"name": "P2", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "4d", "P2", "3d")),
             encoding="utf-8",
         )
         content.ids["karte_path_input"].text = str(karte)
@@ -707,16 +691,7 @@ class TestPhase2256RankAutoFill:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "4d"},
-                            "white": {"name": "P2", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "4d", "P2", "3d")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -834,16 +809,7 @@ class TestPhase226IGuiAutoDetectFeedback:
         karte = tmp_path / "k.json"
         # Karte has player info but the mykatrain setting is empty.
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "AnyUser", "rank": "4d"},
-                            "white": {"name": "Opponent", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("AnyUser", "4d", "Opponent", "3d")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -860,16 +826,7 @@ class TestPhase226IGuiAutoDetectFeedback:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "4d"},
-                            "white": {"name": "P2", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "4d", "P2", "3d")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -888,16 +845,7 @@ class TestPhase226IGuiAutoDetectFeedback:
         # status line itself doesn't change.
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "5k"},
-                            "white": {"name": "P2", "rank": "6k"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "5k", "P2", "6k")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -915,16 +863,7 @@ class TestPhase226IGuiAutoDetectFeedback:
         # should be used (Phase 225.8 fallback).
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": None},
-                            "white": {"name": "P2", "rank": None},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", None, "P2", None)),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -1082,16 +1021,7 @@ class TestPhase2257AutoDetectSummary:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "4d"},
-                            "white": {"name": "P2", "rank": "3d"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "4d", "P2", "3d")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -1129,16 +1059,7 @@ class TestPhase2258DefaultUserRankFallback:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": None},
-                            "white": {"name": "P2", "rank": None},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", None, "P2", None)),
             encoding="utf-8",
         )
         content.katrain = MagicMock()
@@ -1153,16 +1074,7 @@ class TestPhase2258DefaultUserRankFallback:
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
-            json.dumps(
-                {
-                    "meta": {
-                        "player_info": {
-                            "black": {"name": "P1", "rank": "5k"},
-                            "white": {"name": "P2", "rank": "5k"},
-                        }
-                    }
-                }
-            ),
+            json.dumps(make_karte_with_player_info("P1", "5k", "P2", "5k")),
             encoding="utf-8",
         )
         content.katrain = MagicMock()

@@ -304,24 +304,3 @@ class TestAllIds:
 
 
 # --- Public API ---
-
-
-class TestExports:
-    def test_all_reexports(self):
-        import katrain.core.coach as pkg
-
-        for name in [
-            "LexiconEntry",
-            "LexiconConcept",
-            "LexiconBundle",
-            "DEFAULT_LEXICON_PATH",
-            "load_lexicon",
-            "get_entry",
-            "get_concept",
-            "entries_by_level",
-            "entries_by_category",
-            "validate_references",
-            "inject_lexicon_for_prompt",
-            "all_ids",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"

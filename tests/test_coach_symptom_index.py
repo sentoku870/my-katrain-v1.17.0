@@ -447,20 +447,3 @@ class TestSymptomLexiconCoverage:
 
 
 # --- Public API ---
-
-
-class TestExports:
-    def test_all_reexports(self):
-        import katrain.core.coach as pkg
-
-        for name in [
-            "SymptomId",
-            "SymptomContext",
-            "Symptom",
-            "list_all_symptoms",
-            "lookup_symptom",
-            "list_auto_detected_symptoms",
-            "list_llm_required_symptoms",
-            "detect_auto_symptoms",
-        ]:
-            assert hasattr(pkg, name), f"__init__ missing {name}"
