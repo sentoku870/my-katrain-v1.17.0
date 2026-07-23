@@ -6,6 +6,8 @@ and don't appear as raw keys in the UI.
 """
 
 import gettext
+import os
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -73,7 +75,16 @@ class TestBatchAnalyzeI18n:
             )
 
     def test_mo_files_are_up_to_date(self, locale_dir):
-        """Compiled .mo files should be newer than or same age as .po files."""
+        """Compiled ``.mo`` files must match what ``polib`` would rebuild.
+
+        The legacy mtime comparison was unreliable on fresh checkouts
+        (git does not preserve mtimes, so a stale ``.mo`` would pass).
+        Compare the on-disk ``.mo`` bytes against the bytes produced
+        by ``polib.pofile(...).save_as_mofile(...)`` so any drift is
+        caught regardless of timestamps.
+        """
+        import polib
+
         for lang in ["en", "jp"]:
             po_file = locale_dir / lang / "LC_MESSAGES" / "katrain.po"
             mo_file = locale_dir / lang / "LC_MESSAGES" / "katrain.mo"
@@ -81,15 +92,22 @@ class TestBatchAnalyzeI18n:
             assert po_file.exists(), f"PO file not found: {po_file}"
             assert mo_file.exists(), f"MO file not found: {mo_file}"
 
-            # MO file should not be older than PO file
-            po_mtime = po_file.stat().st_mtime
-            mo_mtime = mo_file.stat().st_mtime
+            with tempfile.NamedTemporaryFile(suffix=".mo", delete=False) as tmp:
+                tmp_path = tmp.name
+            try:
+                polib.pofile(str(po_file)).save_as_mofile(tmp_path)
+                rebuilt = Path(tmp_path).read_bytes()
+            finally:
+                os.unlink(tmp_path)
 
-            # Allow 1 second tolerance for filesystem timing
-            assert mo_mtime >= po_mtime - 1, (
-                f"MO file for {lang} is older than PO file. Recompile with "
-                f"`python -c \"import polib; polib.pofile('{po_file}').save_as_mofile('{mo_file}')\"` "
-                f"or `uv run pytest tests/test_i18n.py` after editing the .po."
+            current = mo_file.read_bytes()
+            assert rebuilt == current, (
+                f"MO file for {lang} is out of sync with its PO source. "
+                f"Recompile with:\n"
+                f'    python -c "import polib; '
+                f"polib.pofile('{po_file}').save_as_mofile('{mo_file}')\"\n"
+                f"or run the workflow's Verify i18n step in "
+                f"docs/i18n-workflow.md."
             )
 
     def test_all_batch_keys_translated(self, locale_dir):
@@ -283,26 +301,31 @@ class TestImportantMovesLevelI18n:
             assert translated != key, f"Key '{key}' is not translated in 'jp'"
 
     def test_mo_files_are_up_to_date(self, locale_dir):
-        """Same as :class:`TestBatchAnalyzeI18n.test_mo_files_are_up_to_date`,
+        """Same byte-level comparison as :class:`TestBatchAnalyzeI18n.test_mo_files_are_up_to_date`,
         scoped to the new keys.
 
-        Includes a 1-second tolerance for filesystem timing — the
-        ``TestBatchAnalyzeI18n`` version uses the same tolerance so
-        the two tests cannot disagree.
+        Relies on the canonical ``polib`` rebuild rather than mtime
+        so the check survives fresh clones and parallel CI clones.
         """
+        import polib
+
         for lang in ("en", "jp"):
             po = locale_dir / lang / "LC_MESSAGES" / "katrain.po"
             mo = locale_dir / lang / "LC_MESSAGES" / "katrain.mo"
             if not po.exists() or not mo.exists():
                 pytest.skip(f"Missing po/mo for {lang}")
-            po_mtime = po.stat().st_mtime
-            mo_mtime = mo.stat().st_mtime
-            # MO file should not be older than PO file (with 1s tolerance).
-            if mo_mtime < po_mtime - 1:
+            with tempfile.NamedTemporaryFile(suffix=".mo", delete=False) as tmp:
+                tmp_path = tmp.name
+            try:
+                polib.pofile(str(po)).save_as_mofile(tmp_path)
+                rebuilt = Path(tmp_path).read_bytes()
+            finally:
+                os.unlink(tmp_path)
+            current = mo.read_bytes()
+            if rebuilt != current:
                 pytest.fail(
-                    f"{lang}/katrain.mo is older than katrain.po "
-                    f"({mo_mtime:.0f} < {po_mtime:.0f}). "
-                    f"Run `polib` (or `pybabel compile`) to refresh."
+                    f"{lang}/katrain.mo is out of sync with katrain.po. "
+                    f"Run `polib.pofile('{po}').save_as_mofile('{mo}')` to refresh."
                 )
 
     def test_active_focus_keys_have_star_in_en(self, locale_dir):

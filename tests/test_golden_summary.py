@@ -23,7 +23,7 @@ _CI_SKIP = pytest.mark.skipif(
     os.environ.get("CI", "").lower() == "true", reason="Requires display - cannot import KaTrainGui on headless CI"
 )
 
-from tests.conftest import load_golden, normalize_output, save_golden
+from tests.conftest import GOLDEN_DIR, load_golden, normalize_output, save_golden
 
 # ---------------------------------------------------------------------------
 # Helper to create synthetic stats for testing
@@ -260,13 +260,12 @@ class TestSummaryGolden:
             save_golden(self.GOLDEN_FILE, normalized)
             pytest.skip("Golden file updated")
 
-        # 5. Compare with golden file
-        try:
-            expected = load_golden(self.GOLDEN_FILE)
-        except FileNotFoundError:
-            # First run: save the golden file
-            save_golden(self.GOLDEN_FILE, normalized)
-            pytest.skip(f"Golden file created: {self.GOLDEN_FILE}")
+        # 5. Compare with golden file. Missing goldens are an error
+        # state -- only ``--update-goldens`` may create them. This
+        # mirrors the behaviour of tests/test_golden_karte.py.
+        if not (GOLDEN_DIR / self.GOLDEN_FILE).exists():
+            pytest.fail(f"Golden file missing: {self.GOLDEN_FILE}. Re-run with --update-goldens to create it.")
+        expected = load_golden(self.GOLDEN_FILE)
 
         assert normalized == expected, (
             f"Summary output differs from golden file.\n"
@@ -554,12 +553,10 @@ class TestSummaryFromSGF:
         # Update golden if requested
         update_golden_if_requested(golden_name, normalized, request)
 
-        # Load and compare
-        try:
-            expected = load_golden(golden_name)
-        except FileNotFoundError:
-            save_golden(golden_name, normalized)
-            pytest.skip(f"Golden file created: {golden_name}")
+        # Load and compare (missing goldens are a hard error; re-run with --update-goldens).
+        if not (GOLDEN_DIR / golden_name).exists():
+            pytest.fail(f"Golden file missing: {golden_name}. Re-run with --update-goldens to create it.")
+        expected = load_golden(golden_name)
 
         assert normalized == expected, (
             "Summary output does not match golden file.\nRun with --update-goldens to update the expected output."
@@ -587,12 +584,10 @@ class TestSummaryFromSGF:
         # Update golden if requested
         update_golden_if_requested(golden_name, normalized, request)
 
-        # Load and compare
-        try:
-            expected = load_golden(golden_name)
-        except FileNotFoundError:
-            save_golden(golden_name, normalized)
-            pytest.skip(f"Golden file created: {golden_name}")
+        # Load and compare (missing goldens are a hard error; re-run with --update-goldens).
+        if not (GOLDEN_DIR / golden_name).exists():
+            pytest.fail(f"Golden file missing: {golden_name}. Re-run with --update-goldens to create it.")
+        expected = load_golden(golden_name)
 
         assert normalized == expected, (
             f"Summary output for {sgf_key} does not match golden file.\n"

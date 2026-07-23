@@ -159,12 +159,12 @@ class TestSummarySnapshot:
             expected_path.write_text(normalized, encoding="utf-8")
             pytest.skip("Snapshot updated")
 
-        # Normal mode: compare with expected
+        # Normal mode: compare with expected. A missing snapshot fixture
+        # is treated as a hard error -- the developer must run with
+        # UPDATE_SNAPSHOT=1 to create it -- rather than silently
+        # passing on a fresh checkout.
         if not expected_path.exists():
-            # First run: create the fixture
-            expected_path.parent.mkdir(parents=True, exist_ok=True)
-            expected_path.write_text(normalized, encoding="utf-8")
-            pytest.skip("Snapshot fixture created for first time")
+            pytest.fail(f"Snapshot fixture missing: {expected_path}. Re-run with UPDATE_SNAPSHOT=1 to create it.")
 
         expected = normalize_summary(expected_path.read_text(encoding="utf-8"))
         assert normalized == expected, "Summary output changed unexpectedly"

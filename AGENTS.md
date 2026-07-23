@@ -102,6 +102,19 @@ uv run ruff format --check katrain tests
 uv run ruff format katrain tests
 ```
 
+### 3.1.1 `uv --locked` / `--frozen` 運用ルール（PR-F 2026-07-23〜）
+
+CI の `.github/actions/setup-python-uv/action.yml` は **`uv sync --locked`** で固定されています。`pyproject.toml` と `uv.lock` が乖離した状態で PR を開くと CI が即座に失敗する設計です。
+
+| ケース | 対処 |
+|---|---|
+| 依存追加・更新を PR に含めたい | **ローカルで先に** `uv lock` を実行し、`uv.lock` をコミットしてから `uv sync --frozen` で適用 |
+| CI が「`uv.lock` is out of date」とだけ失敗した | ブランチで `uv lock && git add uv.lock && git commit --amend --no-edit` で更新を反映 |
+| 自分の環境だけ `.venv` が壊れた | `uv sync --frozen --reinstall` でロックに従い再構築 |
+| ローカルで `uv sync` を素で叩きたくなった | 危険（lock を **暗黙に再生成** する）。代わりに `uv sync --frozen` |
+
+`uv run --frozen ...` は wheel metadata の再検証を省略する素の wrapper。CI の matrix セルではこちらを使うので、cache hit が安定します。
+
 ### 3.2 トークン削減ルール
 
 - **Grep → Read パターン**: まず検索で場所を特定、次に範囲読み込み
