@@ -125,6 +125,11 @@ MDI_TO_PNG_FALLBACK: dict[str, str] = {
     "robot-happy-outline": "ai.png",
     "file-export-outline": "Save-Game.png",
     "chat-processing-outline": "Teaching-Settings.png",
+    # Phase SABAKI-1: coordinate toggle button.  The icon name ``grid``
+    # matches Material Design Icons (``grid``); the PNG fallback is a
+    # dedicated file that needs to live in ``katrain/img/`` (or be
+    # supplied by the user in ``~/.katrain``).
+    "grid": "Coordinates.png",
 }
 
 

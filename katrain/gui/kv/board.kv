@@ -111,6 +111,10 @@
             icon: 'rotate-right'
             tooltip_text: i18n._('ui:tooltip:rotate')
             on_press: root.katrain('rotate')
+        NavIconButton:
+            icon: 'grid'
+            tooltip_text: i18n._('ui:tooltip:coordinates')
+            on_press: root.katrain('toggle-coordinates')
     ClickableLabel:
         pos_hint: {'center_x': 0.85,'center_y':0.5}
         size_hint: None, 1
