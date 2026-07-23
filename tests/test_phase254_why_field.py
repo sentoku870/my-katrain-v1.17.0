@@ -5,9 +5,9 @@ moved the rendering logic into the Kivy-independent helper
 :func:`katrain.core.beginner.format_hint.format_beginner_hint`,
 which both the GUI wrapper and this test import directly. The
 previous version of this file inlined a private ``_format`` copy
-that had already drifted from the production code; the AST guard
-in ``tests/test_phase256_kifunarabe_summary_suppression.py`` is the
-appropriate place to verify the production wiring.
+that had already drifted from the production code; integration
+tests in ``tests/test_state_notifier.py`` and the surrounding
+controlspanel suite verify the production wiring.
 
 This file focuses on the **rendering contract** of the pure helper:
 

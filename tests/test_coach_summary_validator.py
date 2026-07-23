@@ -818,19 +818,6 @@ class TestValidationGameId:
         assert "g3" in report.referenced_game_ids
 
 
-class TestValidationTone:
-    # Phase 269: tone consistency check removed. AYAKA voice is gone and
-    # TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle appearance.
-    # This class is intentionally empty — see test_coach_llm_validator.py
-    # for the parallel contract test in the karte validator.
-    def test_tone_check_removed(self):
-        from katrain.core.coach.llm_validator import ValidationSeverity
-
-        # Reserved / unused kinds — never produced by the validator.
-        for kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko"):
-            assert kind not in ValidationSeverity.__members__
-
-
 # --- Report properties ---
 
 
