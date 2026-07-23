@@ -19,7 +19,13 @@
 
 KataGo 解析を元に「カルテ（Karte）」を生成し、LLM 囲碁コーチングで的確な改善提案を引き出す。
 
-### 1.3 主要機能
+### 1.3 配布方針（重要）
+
+- 本 fork は **PyPI へ公開しない**。`KaTrain` というパッケージ名は本家の PyPI 登録と衝突するため。
+- 配布手段: clone + `uv sync`、あるいは GitHub Actions の `Test, Build, and Release` ワークフロー（`create_release=true`）で生成した Windows バイナリ（draft release 添付）を手動ダウンロード。
+- CI の `publish-pypi` ジョブは 2026-07-23 に削除済み（PR #466 想定）。`PYPI_TOKEN` Secret も不要なため削除してよい。
+
+### 1.4 主要機能
 
 | 機能 | 詳細 |
 |------|------|
@@ -183,6 +189,7 @@ docs/
 - 大規模な棋譜管理 DB
 - 対局支援（チート用途）
 - 「最善手当てクイズ」を目的化した訓練
+- PyPI 公開（`KaTrain` パッケージ名は本家のものを尊重。`scripts/`/wheel/sdist は clone 配布のため）
 
 ---
 
