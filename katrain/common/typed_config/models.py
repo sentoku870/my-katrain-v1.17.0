@@ -213,8 +213,6 @@ class EngineConfig:
         katago: KataGo実行ファイルのパス
         altcommand: 代替コマンド
         model: モデルファイルのパス
-        humanlike_model: 人間らしいモデルのパス
-        humanlike_model_last: 直前に使用した人間らしいモデルのパス
         config: KataGo設定ファイルのパス
         max_visits: 最大訪問回数
         fast_visits: 高速解析時の訪問回数
@@ -232,8 +230,6 @@ class EngineConfig:
     katago: str | None = None
     altcommand: str | None = None
     model: str | None = None
-    humanlike_model: str | None = None
-    humanlike_model_last: str | None = None
     config: str | None = None
     max_visits: int = 500
     fast_visits: int = 25
@@ -279,8 +275,6 @@ class EngineConfig:
             katago=normalize_path(d.get("katago")),
             altcommand=normalize_path(d.get("altcommand")),
             model=normalize_path(d.get("model")),
-            humanlike_model=normalize_path(d.get("humanlike_model")),
-            humanlike_model_last=normalize_path(d.get("humanlike_model_last")),
             config=normalize_path(d.get("config")),
             max_visits=safe_int(d.get("max_visits"), 500),
             fast_visits=safe_int(d.get("fast_visits"), 25),

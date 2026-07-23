@@ -1016,9 +1016,6 @@ msgstr "Leave blank to use included executable"
 msgid "engine:model"
 msgstr "Path to KataGo model"
 
-msgid "engine:humanlike_model"
-msgstr "Path to human-like model"
-
 msgid "engine:config"
 msgstr "Path to KataGo config file"
 
@@ -2309,25 +2306,6 @@ msgstr "Other: {name}"
 
 msgid "model:none"
 msgstr "(No model selected)"
-
-#. Phase 88: human-like Toggle
-msgid "humanlike:toggle_label"
-msgstr "Enable human-like mode (experimental)"
-
-msgid "humanlike:status_off"
-msgstr "Normal analysis (recommended)"
-
-msgid "humanlike:status_on"
-msgstr "Human-like tendencies active (accuracy may vary)"
-
-msgid "humanlike:no_path_warning"
-msgstr "Please select a human-like model file first"
-
-msgid "humanlike:path_not_found"
-msgstr "Previous human-like model file not found"
-
-msgid "humanlike:forced_off"
-msgstr "Human-like mode disabled (no valid model path)"
 
 #. Phase 88: Details
 msgid "details:title"

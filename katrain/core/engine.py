@@ -261,24 +261,9 @@ class KataGoEngine(BaseEngine):
             if not exe:
                 return
 
-            # Add human model to command if provided
-            if config.get("humanlike_model", ""):
-                human_model_path = find_package_resource(config.get("humanlike_model", ""))
-                if os.path.isfile(human_model_path):
-                    self.command = shlex.split(
-                        f'"{exe}" analysis -model "{model}" -human-model "{human_model_path}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
-                    )
-                else:
-                    self.katrain.log(f"Human model not found at {human_model_path}", -1)
-                    # Fall back to regular command without human model
-                    self.command = shlex.split(
-                        f'"{exe}" analysis -model "{model}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
-                    )
-            else:
-                # Regular command without human model
-                self.command = shlex.split(
-                    f'"{exe}" analysis -model "{model}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
-                )
+            self.command = shlex.split(
+                f'"{exe}" analysis -model "{model}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
+            )
         self.start()
 
     def on_error(self, message: str, code: str | None = None, allow_popup: bool = True) -> None:

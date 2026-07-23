@@ -4,7 +4,7 @@ Covers previously untested paths in katrain/core/engine.py:
 - BaseEngine.get_rules() (str / JSON str / dict / unknown)
 - BaseEngine.get_engine_path() (empty exe / katrain/... / PATH / not found)
 - BaseEngine.advance_showing_game() / status() defaults
-- KataGoEngine.__init__ (altcommand shell mode, humanlike_model paths)
+- KataGoEngine.__init__ (altcommand shell mode)
 - on_new_game / terminate_queries / stop_pondering / _stop_pondering_unlocked
 - restart / check_alive (code 3221225781, code 1, None process)
 - wait_to_finish (timeout, dead process, complete)
@@ -179,7 +179,7 @@ class TestBaseEngineDefaults:
 
 
 # ---------------------------------------------------------------------------
-# KataGoEngine.__init__ (no-katago path: altcommand + humanlike_model)
+# KataGoEngine.__init__ (no-katago path: altcommand)
 # ---------------------------------------------------------------------------
 
 
