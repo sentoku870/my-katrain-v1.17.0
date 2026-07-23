@@ -110,17 +110,29 @@ class TestCallSitesMigrated:
 
     def test_short_hash_centralised(self) -> None:
         """A single shared module defines the helper; no per-site
-        re-implementations."""
+        re-implementations.
 
-        # Only one definition of ``short_hash`` in the whole codebase.
-        import subprocess
+        Walks ``katrain/`` from the repository root using
+        ``Path.rglob`` so the test does not depend on a Unix
+        ``grep`` binary (the project supports Windows).
+        """
+        from pathlib import Path
 
-        result = subprocess.run(
-            ["grep", "-r", "--include=*.py", "def short_hash", "katrain"],
-            capture_output=True,
-            text=True,
+        repo_root = Path(__file__).resolve().parent.parent
+        count = 0
+        canonical_path: str | None = None
+        for py_file in repo_root.joinpath("katrain").rglob("*.py"):
+            try:
+                text = py_file.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            if "def short_hash" not in text:
+                continue
+            count += 1
+            if canonical_path is None and py_file.name == "short_hash.py" and "common" in py_file.parts:
+                canonical_path = str(py_file.relative_to(repo_root))
+
+        assert count == 1, f"Expected exactly 1 'def short_hash' definition, found {count}."
+        assert canonical_path == "katrain/common/short_hash.py", (
+            f"The canonical helper must live at katrain/common/short_hash.py, found {canonical_path!r}."
         )
-        # The single definition in katrain/common/short_hash.py
-        assert result.stdout.strip().count("def short_hash") == 1
-        # And it lives in the common package.
-        assert "katrain/common/short_hash.py" in result.stdout

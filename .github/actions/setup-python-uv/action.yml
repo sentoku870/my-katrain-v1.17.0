@@ -45,8 +45,14 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
+        # ``--locked`` makes uv refuse to silently rewrite uv.lock when
+        # pyproject.toml drifts from the committed lock. CI must fail
+        # fast in that case so the dev who opened the PR is forced to
+        # regenerate and commit uv.lock on their machine first
+        # (``uv lock``). This is the documented escape hatch in
+        # AGENTS.md §3.1 'uv --locked / --frozen'.
         if [ -n "${{ inputs.sync-groups }}" ]; then
-          uv sync --group ${{ inputs.sync-groups }}
+          uv sync --locked --group ${{ inputs.sync-groups }}
         else
-          uv sync
+          uv sync --locked
         fi

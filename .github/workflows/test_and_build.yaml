@@ -80,8 +80,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Phase 274-ci: add 3.13 to match .python-version / AGENTS.md primary env
+        # Phase 274-ci: add 3.13 to match .python-version / AGENTS.md primary env.
+        # The Python 3.13 cell also carries the coverage gate (primary
+        # dev env), so we run pytest --cov only there.
         python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - python-version: "3.13"
+            coverage: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -131,50 +136,26 @@ jobs:
           # server is required. Xvfb is preinstalled on ubuntu-latest.
           # SDL_VIDEODRIVER and DISPLAY are intentionally NOT set here:
           # xvfb-run -a provides a real display and manages DISPLAY itself.
-          xvfb-run -a uv run python -X faulthandler -m pytest tests -v --tb=short 2>&1
+          #
+          # ``--frozen`` skips the lock-vs-pyproject freshness check
+          # entirely (we already ran ``uv sync --locked`` in the
+          # composite action), so cached wheel metadata is not
+          # revalidated on every matrix cell.
+          xvfb-run -a uv run --frozen python -X faulthandler -m pytest tests -v --tb=short ${{ matrix.coverage && '--cov=katrain --cov-fail-under=60' || '' }} 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true
           echo "Exit code: $exit_code"
           exit $exit_code
 
-  # Phase 138-D: Coverage measurement (initial gate: 50%, raise over time)
-  coverage:
-    needs: prepare
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Python and uv
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          sync-groups: dev
-
-      - name: Measure coverage and enforce gate
-        env:
-          KIVY_NO_FILELOG: 1
-          KIVY_NO_CONSOLELOG: 1
-          KIVY_NO_ENV_CONFIG: 1
-          KIVY_NO_WINDOW: 1
-          KIVY_GL_BACKEND: mock
-          SDL_AUDIODRIVER: dummy
-          PYTHONUNBUFFERED: 1
-          PYTEST_FAULTHANDLER: 1
-        run: |
-          # Phase 138-D: Initial coverage gate at 40% (baseline observed: 46.87%)
-          # Phase 138-D follow-up: Raise to 50% / 60% / 70% incrementally
-          # Phase A-11: raise gate from 40% to 60% (observed coverage: 65%)
-          # Run under Xvfb (virtual X server) for the same reason as the
-          # test job: SDL_VIDEODRIVER=dummy + kivymd's module-level dp()
-          # require a real (virtual) display on headless GHA runners.
-          xvfb-run -a uv run python -X faulthandler -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
-          echo "Exit code: $?"
-
-      - name: Check package can be built
-        run: uv build
+# Coverage was historically a separate job that re-ran the entire
+  # pytest suite under Python 3.11 with --cov. After PR-F the
+  # coverage gate runs inside the Python 3.13 cell of the test job
+  # (which is also the project's primary dev env per AGENTS.md /
+  # .python-version), so this standalone job would only duplicate
+  # work. Removed. If we ever want a dedicated coverage dashboard
+  # later, prefer uploading coverage.xml from the test job rather
+  # than re-running the suite.
 
   build-windows:
     needs: [prepare, test, typecheck, lint]
@@ -192,6 +173,14 @@ jobs:
       - name: Build executables with PyInstaller
         run: uv run pyinstaller spec/KaTrain.spec --clean --noconfirm
         shell: powershell
+
+      # PR-F: the previous 'coverage' job used to also run ``uv build``
+      # to confirm the wheel/sdist were buildable. That job was
+      # removed (coverage runs inside the 3.13 test matrix now), so
+      # the smoke build is folded into the windows run.
+      - name: Smoke-check wheel/sdist build (Linux)
+        if: runner.os != 'Windows'
+        run: uv build
 
       # Verify the build produced the expected artifacts before any
       # subsequent packaging/uploading step. Earlier the optional
@@ -275,23 +264,23 @@ jobs:
 
   # Aggregator job used as the GitHub branch-protection required
   # check. It runs only after the canonical quality gates (lint, mypy,
-  # test on every supported Python, coverage gate, windows PyInstaller
-  # build) all succeed. By gating only this job in branch protection,
-  # we avoid the maintenance burden of registering six individual
-  # checks (PR authors won't notice when we add a new quality job).
+  # test on every supported Python, coverage gate inside the 3.13
+  # cell, windows PyInstaller build) all succeed. By gating only
+  # this job in branch protection, we avoid the maintenance burden
+  # of registering six individual checks (PR authors won't notice
+  # when we add a new quality job).
   #
   # Phase C-main-protection.
   quality-gate:
     name: quality-gate
-    needs: [lint, typecheck, test, coverage, build-windows]
+    needs: [lint, typecheck, test, build-windows]
     runs-on: ubuntu-latest
-    if: always() && needs.lint.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success' && needs.coverage.result == 'success' && needs.build-windows.result == 'success'
+    if: always() && needs.lint.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success' && needs.build-windows.result == 'success'
     steps:
       - name: All quality checks passed
         run: |
           echo "lint:        ${{ needs.lint.result }}"
           echo "typecheck:   ${{ needs.typecheck.result }}"
           echo "test:        ${{ needs.test.result }}"
-          echo "coverage:    ${{ needs.coverage.result }}"
           echo "build-windows: ${{ needs.build-windows.result }}"
           echo "All required checks succeeded; safe to merge."

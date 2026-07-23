@@ -145,20 +145,23 @@ class TestImportSitesReferenceSpecEntries:
 
     def test_checkbox_imported_everywhere_in_source(self):
         """All kivy.uix.checkbox import sites in the codebase remain
-        consistent (used as ground truth to detect subtle regressions)."""
-        import subprocess
+        consistent (used as ground truth to detect subtle regressions).
 
-        from katrain import __file__ as _  # noqa: F401  (ensure package importable)
+        Walks ``katrain/`` via ``Path.rglob`` and inspects file
+        contents with a plain ``str`` search; previously this relied
+        on ``grep -rln``, which is not available on stock Windows.
+        """
+        files: list[str] = []
+        needle = "from kivy.uix.checkbox import"
+        for py_file in REPO_ROOT.joinpath("katrain").rglob("*.py"):
+            try:
+                text = py_file.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            if needle in text:
+                files.append(str(py_file.relative_to(REPO_ROOT)))
 
-        result = subprocess.run(
-            ["grep", "-rln", "from kivy.uix.checkbox import", "katrain/"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-        )
-        # The check is informational; do not fail unless the list is empty.
-        files = sorted(line.strip() for line in result.stdout.splitlines() if line.strip())
-        assert files, "Expected at least one file to import kivy.uix.checkbox; grep returned none."
+        assert files, "Expected at least one file to import kivy.uix.checkbox; rglob returned none."
         assert any("batch_ui.py" in f for f in files), (
             f"batch_ui.py should be among the files importing kivy.uix.checkbox; found: {files}"
         )
