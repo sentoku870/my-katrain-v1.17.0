@@ -1389,66 +1389,10 @@ class TestPopulateSummaryPerspective:
         assert content.ids["rank_input"].text == "3k"
 
 
-class TestSummaryIndexToInternal:
-    """Phase 227-D: ``_summary_index_to_internal`` is a pure helper
-    that maps a spinner index to a player name or ``None``.
-
-    Phase 241-D: bird's-eye now returns the dedicated sentinel
-    string (``__birdseye__``) instead of ``None`` so callers can
-    distinguish a deliberate "no focus" choice from out-of-range
-    (which still returns ``None`` as a defensive bug indicator).
-    """
-
-    def test_index_zero_is_birdseye(self):
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(0, [("p1", "4d"), ("p2", "3d")])
-        # Phase 241-D: bird's-eye is the dedicated sentinel.
-        assert result == "__birdseye__"
-
-    def test_is_summary_birdseye_helper(self):
-        from katrain.gui.popups.llm_coach_popup import (
-            _SUMMARY_BIRDSEYE_SENTINEL,
-            is_summary_birdseye,
-        )
-
-        assert is_summary_birdseye(_SUMMARY_BIRDSEYE_SENTINEL) is True
-        assert is_summary_birdseye(None) is False  # None is a bug state, not birdseye
-        assert is_summary_birdseye("__birdseye__") is True
-        assert is_summary_birdseye("alice") is False
-        assert is_summary_birdseye("") is False
-
-    def test_index_one_maps_to_first_player(self):
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(1, [("p1", "4d"), ("p2", "3d")])
-        assert result == "p1"
-
-    def test_index_out_of_range_returns_none(self):
-        # Phase 241-D: out-of-range is a bug state, returns None
-        # (not the birdseye sentinel) so callers can tell the two apart.
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(99, [("p1", "4d")])
-        assert result is None
-
-    def test_index_n_maps_to_nth_player(self):
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(2, [("p1", "4d"), ("p2", "3d")])
-        assert result == "p2"
-
-    def test_out_of_range_returns_none(self):
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(5, [("p1", "4d")])
-        assert result is None
-
-    def test_empty_players_returns_none(self):
-        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
-
-        result = _summary_index_to_internal(1, [])
-        assert result is None
+# Phase 3: ``TestSummaryIndexToInternal`` and the bird's-eye helper
+# previously duplicated tests/test_coach_popup_logic.py. See:
+#   - tests/test_coach_popup_logic.py::TestIsSummaryBirdseye
+#   - tests/test_coach_popup_logic.py::TestSummaryIndexToInternal
 
 
 class TestOnGenerateSummary:

@@ -1,21 +1,19 @@
-"""Tests for the beginner-hint ``:why`` rendering (Phase 254, refactored Phase E).
+"""Tests for :func:`katrain.core.beginner.format_hint.format_beginner_hint`.
 
-Phase 254 added the second ``→ why`` line to beginner hints. Phase E
-moved the rendering logic into the Kivy-independent helper
-:func:`katrain.core.beginner.format_hint.format_beginner_hint`,
-which both the GUI wrapper and this test import directly. The
-previous version of this file inlined a private ``_format`` copy
-that had already drifted from the production code; integration
-tests in ``tests/test_state_notifier.py`` and the surrounding
-controlspanel suite verify the production wiring.
+Phase 254 (``→ why`` line) and Phase 255 (``[Hint]`` prefix i18n) were
+originally split into two test files. They exercise the same pure
+helper, so Phase 3 of the test-suite audit consolidates them here.
 
-This file focuses on the **rendering contract** of the pure helper:
+Coverage:
 
-- raw ``beginner_hint:*`` i18n keys fall back to English fallbacks;
-- ``[Hint]`` prefix fallback applies when ``beginner-hint:prefix``
-  i18n key is missing;
-- the ``→ why`` line is appended only when the :why key resolved
-  to a non-empty, non-raw string.
+- :class:`TestFormatBeginnerHintWhyField` (Phase 254)
+  ``→ why`` is appended only when the :why translation resolves to a
+  real string; raw-key or empty inputs suppress the arrow line.
+- :class:`TestFormatBeginnerHintPrefix` (Phase 255)
+  Localised prefix takes precedence; raw key or empty falls back to
+  the legacy ``[Hint]`` literal.
+- :class:`TestFormatBeginnerHintBodyNewline`
+  Body newlines are preserved verbatim.
 """
 
 from __future__ import annotations
@@ -102,8 +100,70 @@ class TestFormatBeginnerHintWhyField:
         assert result == "[Hint] Dangerous Move: Body"
         assert "→" not in result
 
+
+class TestFormatBeginnerHintPrefix:
+    """Phase 255 contract: localised prefix takes precedence; missing
+    translation falls back to the legacy ``[Hint]`` string."""
+
+    def test_translated_prefix_appears_in_output(self) -> None:
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Body text",
+            why="Why text",
+            prefix="ヒント",
+            fallback_title="FB",
+            fallback_body="FB",
+        )
+        assert result.startswith("ヒント ")
+        assert "→ Why text" in result
+
+    def test_english_prefix(self) -> None:
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Body text",
+            why="Why text",
+            prefix="Hint",
+            fallback_title="FB",
+            fallback_body="FB",
+        )
+        assert result.startswith("Hint ")
+        assert "→ Why text" in result
+
+    def test_missing_prefix_key_uses_legacy_default(self) -> None:
+        """When ``beginner-hint:prefix`` is missing from .po, the
+        legacy ``[Hint]`` string is used as a silent fallback."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="Dangerous Move",
+            body="Body",
+            why="",
+            prefix="beginner-hint:prefix",  # raw key (missing translation)
+            fallback_title="FB",
+            fallback_body="FB",
+        )
+        assert result == "[Hint] Dangerous Move: Body"
+
+    def test_no_why_omits_arrow(self) -> None:
+        """Sanity: the prefix change is independent of the :why logic."""
+        result = format_beginner_hint(
+            category=_category(),
+            title="T",
+            body="B",
+            why="",
+            prefix="Tipp",
+            fallback_title="FB",
+            fallback_body="FB",
+        )
+        assert result == "Tipp T: B"
+        assert "→" not in result
+
+
+class TestFormatBeginnerHintBodyNewline:
+    """Body newlines are preserved verbatim in the rendered output."""
+
     def test_multiline_body_newline_preserved(self) -> None:
-        """Body newlines are preserved verbatim in the rendered output."""
         result = format_beginner_hint(
             category=_category(),
             title="T",

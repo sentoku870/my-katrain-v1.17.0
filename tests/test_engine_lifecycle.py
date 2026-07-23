@@ -800,31 +800,7 @@ class TestPendingCounter:
 
 
 # ---------------------------------------------------------------------------
-# _ensure_str module function
+# _ensure_str coverage lives in tests/test_engine_io.py::TestEnsureStr
+# (Phase 3 consolidation; engine._ensure_str and engine_io._ensure_str have
+# identical implementations, so a single test class suffices).
 # ---------------------------------------------------------------------------
-
-
-class TestEnsureStr:
-    def test_ensure_str_none(self):
-        from katrain.core.engine import _ensure_str
-
-        assert _ensure_str(None) == ""
-
-    def test_ensure_str_bytes(self):
-        from katrain.core.engine import _ensure_str
-
-        assert _ensure_str(b"hello") == "hello"
-
-    def test_ensure_str_str(self):
-        from katrain.core.engine import _ensure_str
-
-        assert _ensure_str("hello") == "hello"
-
-    def test_ensure_str_bytes_with_replacement(self):
-        from katrain.core.engine import _ensure_str
-
-        # Invalid UTF-8 bytes → replacement
-        result = _ensure_str(b"\xff\xfe")
-        assert isinstance(result, str)
-        # The replacement char may be one or more chars
-        assert len(result) >= 1
