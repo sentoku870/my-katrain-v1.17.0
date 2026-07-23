@@ -80,7 +80,8 @@ uv run ruff format --check katrain tests
 uv run ruff format katrain tests
 ```
 
-CI では Python 3.11 / 3.12 / 3.13 のマトリクスを実行し、coverage 60% を gate としています。
+CI では Python 3.11 / 3.12 / 3.13 のマトリクスを実行し、coverage 60% を gate としています。  
+Windows バイナリは PR でも PyInstaller で生成されますが、artifact の保持は `workflow_dispatch` の `create_release=true` 実行時のみです。release 方法は「Release 方法」を参照。
 
 ## 5. AI 対局
 
@@ -91,6 +92,15 @@ CI では Python 3.11 / 3.12 / 3.13 のマトリクスを実行し、coverage 60
 
 旧 KaTrain 風のスタイル AI（Calibrated Rank Bot / ScoreLoss / KataJigo 等）は廃止しています。  
 KataGo の **raw analysis** をそのまま使い、ヒント生成・メニュー・LLM Coach で教育機能を強化する方針です。
+
+## 5.5 Release 方法（Windows バイナリ配布）
+
+GitHub Actions の **Run workflow** から手動実行します。
+
+1. `Actions` タブ → `Test, Build, and Release` → `Run workflow`
+2. `create_release` を **true** にする
+3. 完了後、`KaTrainWindows-<version>` artifact がダウンロード可能（draft release にも添付）
+4. リリース公開前に `<https://github.com/sentoku870/my-katrain-v1.17.0/releases>` で draft 状態のままレビュー → Publish
 
 ## 6. ドキュメント入口
 
