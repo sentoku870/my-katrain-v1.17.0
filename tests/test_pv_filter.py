@@ -22,6 +22,7 @@ from katrain.core.analysis import (
     get_effective_pv_filter_info,
     get_pv_filter_config,
 )
+from katrain.core.analysis.logic_pv import _scale_for_board
 
 # =============================================================================
 # Fixtures
@@ -879,3 +880,100 @@ class TestFilterCompositeSort:
         # Should not crash; should use the default 3-key sort
         result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
         assert [c["order"] for c in result] == [0, 1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# Phase 262: PV filter board-size scaling on 2/5/7 lane boards
+# ---------------------------------------------------------------------------
+
+
+class TestScaleForBoardSmallLanes:
+    """Phase 262 (I-21): ``_scale_for_board`` extends to 5路/7路.
+
+    Lower guard was relaxed from ``< 5`` to ``< 2`` so 2/5/7 lane boards
+    use the same linear scaling as 9/13/19. 19路 remains the canonical
+    pass-through. Invalid sizes (None / 0 / 1 / 26+) return the original
+    config unchanged.
+    """
+
+    def test_scale_5_lane(self) -> None:
+        """5路: scale = 5/19 ≈ 0.263, max_pv_length は min 1 保証."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=5)
+        assert scaled is not None
+        assert scaled is not config, "5路では元の config をそのまま返してはいけない"
+        assert scaled.max_pv_length >= 1
+        assert scaled.max_pv_length <= config.max_pv_length
+
+    def test_scale_7_lane(self) -> None:
+        """7路: scale = 7/19 ≈ 0.368."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=7)
+        assert scaled is not None
+        assert scaled is not config
+        assert scaled.max_pv_length >= 1
+        assert scaled.max_pv_length <= config.max_pv_length
+
+    def test_scale_5_vs_7_monotonic(self) -> None:
+        """5路は 7路より小さいか等しい max_pv_length."""
+        config = PV_FILTER_CONFIGS["medium"]
+        s5 = _scale_for_board(config, board_size=5)
+        s7 = _scale_for_board(config, board_size=7)
+        assert s5 is not None and s7 is not None
+        assert s5.max_pv_length <= s7.max_pv_length
+
+    def test_scale_9_lane_unchanged(self) -> None:
+        """9路は Phase 246-D のまま."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=9)
+        assert scaled is not None
+        assert 1 <= scaled.max_pv_length <= config.max_pv_length
+
+    def test_scale_13_lane_unchanged(self) -> None:
+        """13路は Phase 246-D のまま."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=13)
+        assert scaled is not None
+        assert 1 <= scaled.max_pv_length <= config.max_pv_length
+
+    def test_scale_19_lane_canonical(self) -> None:
+        """19路は canonical なので元の config がそのまま返る."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=19)
+        assert scaled is config
+
+    def test_scale_rejects_too_small(self) -> None:
+        """1路以下は scaling しない (元の config パススルー)."""
+        config = PV_FILTER_CONFIGS["medium"]
+        assert _scale_for_board(config, board_size=1) is config
+        assert _scale_for_board(config, board_size=0) is config
+
+    def test_scale_rejects_too_large(self) -> None:
+        """26路以上は scaling しない (元の config パススルー)."""
+        config = PV_FILTER_CONFIGS["medium"]
+        assert _scale_for_board(config, board_size=26) is config
+        assert _scale_for_board(config, board_size=99) is config
+
+    def test_scale_rejects_none_and_falsy(self) -> None:
+        """None / 0 / False は元の config パススルー."""
+        config = PV_FILTER_CONFIGS["medium"]
+        assert _scale_for_board(config, board_size=None) is config
+        assert _scale_for_board(config, board_size=0) is config
+
+    def test_scale_preserves_loss_and_cap_for_small_boards(self) -> None:
+        """scaling は max_pv_length のみ。他フィールドは触らない."""
+        config = PV_FILTER_CONFIGS["medium"]
+        s5 = _scale_for_board(config, board_size=5)
+        s7 = _scale_for_board(config, board_size=7)
+        assert s5 is not None and s7 is not None
+        assert s5.max_candidates == config.max_candidates
+        assert s5.max_points_lost == config.max_points_lost
+        assert s7.max_candidates == config.max_candidates
+        assert s7.max_points_lost == config.max_points_lost
+
+    def test_scale_2_lane_in_range(self) -> None:
+        """2路は下限 (>= 2) に入るので scaling される."""
+        config = PV_FILTER_CONFIGS["medium"]
+        scaled = _scale_for_board(config, board_size=2)
+        assert scaled is not config
+        assert scaled.max_pv_length >= 1

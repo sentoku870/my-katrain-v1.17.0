@@ -43,38 +43,13 @@ from katrain.core.engine import (
     MAX_PENDING_QUERIES,
     BaseEngine,
     KataGoEngine,
-    _ensure_str,
     _identity_scheduler,
 )
 
 # ---------------------------------------------------------------------------
-# Section 1: _ensure_str (pure utility)
+# _ensure_str coverage lives in tests/test_engine_io.py::TestEnsureStr
+# (Phase 3 consolidation; the implementation is identical here).
 # ---------------------------------------------------------------------------
-
-
-class TestEnsureStr:
-    """Normalise a subprocess line to ``str`` for downstream parsing."""
-
-    def test_none_returns_empty_string(self) -> None:
-        assert _ensure_str(None) == ""
-
-    def test_str_passes_through(self) -> None:
-        assert _ensure_str("hello") == "hello"
-
-    def test_empty_str_preserved(self) -> None:
-        assert _ensure_str("") == ""
-
-    def test_bytes_decoded_as_utf8(self) -> None:
-        assert _ensure_str(b"hello") == "hello"
-
-    def test_bytes_with_invalid_utf8_replaced(self) -> None:
-        # Lone surrogate-ish sequences are replaced rather than raised.
-        result = _ensure_str(b"\xff\xfeabc")
-        # Should not raise, just replace.
-        assert "abc" in result
-
-    def test_str_with_weird_chars_preserved(self) -> None:
-        assert _ensure_str("こんにちは") == "こんにちは"
 
 
 # ---------------------------------------------------------------------------
@@ -145,40 +120,9 @@ class TestBaseEngineInit:
 
 
 # ---------------------------------------------------------------------------
-# Section 3: BaseEngine.get_rules (static)
+# BaseEngine.get_rules coverage lives in tests/test_engine_lifecycle.py
+# (Phase 3 consolidation; TestBaseEngineGetRules is the canonical set).
 # ---------------------------------------------------------------------------
-
-
-class TestGetRules:
-    """Normalise a ruleset reference into a canonical form."""
-
-    def test_known_abbreviation(self) -> None:
-        assert BaseEngine.get_rules("jp") == "japanese"
-
-    def test_known_full_name(self) -> None:
-        assert BaseEngine.get_rules("new zealand") == "new zealand"
-
-    def test_known_abbreviation_case_insensitive(self) -> None:
-        assert BaseEngine.get_rules("JP") == "japanese"
-
-    def test_unknown_abbreviation_defaults_to_japanese(self) -> None:
-        assert BaseEngine.get_rules("xx") == "japanese"
-
-    def test_dict_passes_through(self) -> None:
-        rules = {"ko": {"tax": 6.5}}
-        assert BaseEngine.get_rules(rules) == rules
-
-    def test_json_string_parsed(self) -> None:
-        rules_json = '{"ko": {"tax": 6.5}}'
-        result = BaseEngine.get_rules(rules_json)
-        assert result == {"ko": {"tax": 6.5}}
-
-    def test_invalid_json_string_falls_back_to_abbreviation(self) -> None:
-        # Looks like JSON but isn't; fallback to the alias lookup.
-        # ``"{not json}"`` is unparseable, treated as a literal ruleset key.
-        result = BaseEngine.get_rules("{not json}")
-        # Not a valid key - default to "japanese".
-        assert result == "japanese"
 
 
 # ---------------------------------------------------------------------------

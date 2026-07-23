@@ -260,6 +260,9 @@ class TestRenderValidationReport:
 # Phase 241-G: ``find_latest_karte`` was removed. The popup switched
 # to ``find_latest_llm_input_for_ctx`` in Phase 227-D and there are
 # no remaining production callers. See
+# tests/test_coach_llm_report_renderer.py::TestRenderValidationReport
+# for the canonical coverage of ``_render_validation_report`` (Phase 3
+# consolidation).
 # ``katrain/gui/features/llm_coach.py`` for the migration note.
 
 
