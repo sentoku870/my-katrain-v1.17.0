@@ -273,26 +273,6 @@ class TestPointsLostCheck:
         assert loss_issues == []
 
 
-# --- Tone consistency ---
-
-
-# Phase 269: tone consistency check removed. AYAKA voice is gone and
-# TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle appearance.
-# The TestToneConsistency class is empty; the entire class can be
-# deleted in a follow-up if no other tone-related tests are added.
-class TestToneConsistency:
-    def test_tone_check_removed(self):
-        # Placeholder so the class is not silently empty. The actual
-        # contract is: no ValidationIssue with kind
-        # "tone_inconsistency_ayaka" or "tone_inconsistency_tomoko"
-        # is ever produced (those kinds are reserved for future
-        # extensions and currently unused).
-        from katrain.core.coach.llm_validator import ValidationSeverity
-
-        for kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko"):
-            assert kind not in ValidationSeverity.__members__, f"validation kind {kind!r} should be reserved / unused"
-
-
 # --- Summary line ---
 
 
