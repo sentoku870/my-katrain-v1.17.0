@@ -94,10 +94,19 @@ jobs:
 
       - name: Run tests
         env:
+          # Force UTF-8 stdout/IO so .po/.mo/.kv files containing
+          # Japanese glyphs are printable in CI logs without encoding
+          # tricks. Pair with ``conftest.py`` setting the same vars.
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+          # Skip Kivy's user-config dir (and silent mkdir of ~/.kivy)
+          # BEFORE the KivyMD stub loader kicks in. KIVY_NO_CONFIG is
+          # the single most effective env var for headless CI.
+          KIVY_NO_CONFIG: 1
+          KIVY_NO_ARGS: 1
           KIVY_NO_FILELOG: 1
           KIVY_NO_CONSOLELOG: 1
           KIVY_NO_ENV_CONFIG: 1
-          KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
           # GHA runners have no audio device. Without an explicit null
           # driver, SDL2's audio probe can abort hard (C-level, no Python
