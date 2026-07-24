@@ -48,7 +48,7 @@ class BadukPanWidget(Widget):
         self.stone_size: float = 0
         self.selecting_region_of_interest: bool = False
         self.region_of_interest: list[Any] = []
-        self.draw_coords_enabled: bool = True
+        self.draw_coords_enabled: bool = False
 
         self.active_pv_moves: list[Any] = []
         self.animating_pv: Any = None

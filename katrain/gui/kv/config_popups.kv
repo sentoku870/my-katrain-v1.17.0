@@ -4,14 +4,14 @@
 #:import TOP_MOVE_OPTIONS katrain.core.constants.metadata.TOP_MOVE_OPTIONS
 #:import I18NFileBrowser katrain.gui.widgets.filebrowser.I18NFileBrowser
 
-<LoadSGFPopup@I18NPopup>:
+<LoadSGFPopup>:
     filesel: filesel
     I18NFileBrowser:
         id: filesel
         filters: ['*.sgf', '*.gib', '*.ngf']
         on_success: root.dispatch('on_success')
 
-<SaveSGFPopup@I18NPopup>:
+<SaveSGFPopup>:
     filesel: filesel
     I18NFileBrowser:
         id: filesel

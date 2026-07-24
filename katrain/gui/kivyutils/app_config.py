@@ -49,7 +49,7 @@ def apply_kivy_log_config(debug_level: int) -> None:
     ``core/base_katrain.py`` (Phase 142 以前):
 
     - Default (``debug_level < OUTPUT_DEBUG``):
-        - ``kivy.log_level = "warning"``
+        - ``kivy.log_level = "error"``
     - Debug (``debug_level >= OUTPUT_DEBUG``):
         - ``kivy.log_enable = 1``
         - ``kivy.log_level = "debug"`
@@ -67,7 +67,7 @@ def apply_kivy_log_config(debug_level: int) -> None:
 
     from katrain.core.constants.output import OUTPUT_DEBUG
 
-    Config.set("kivy", "log_level", "warning")
+    Config.set("kivy", "log_level", "error")
     if debug_level >= OUTPUT_DEBUG:
         Config.set("kivy", "log_enable", 1)
         Config.set("kivy", "log_level", "debug")
