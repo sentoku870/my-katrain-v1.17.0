@@ -305,7 +305,7 @@ class TestOnGenerateSummary:
         content.path_type = "summary"
         with (
             patch("katrain.gui.features.llm_coach.build_summary_llm_prompt") as mock_build,
-            patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip,
+            patch("katrain.gui.popups._llm_coach_summary.Clipboard") as mock_clip,
         ):
             mock_build.return_value = (True, "# Summary prompt\n**3 局**")
             content.on_generate_and_copy()

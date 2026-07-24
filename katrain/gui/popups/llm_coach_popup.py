@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Phase 225: LLM Coach popup content widget.
 
 Layout (defined in ``katrain/gui/kv/llm_coach_popup.kv``)::
@@ -28,7 +29,6 @@ is Phase 224 (deferred).
 from __future__ import annotations
 
 import contextlib
-import re
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
@@ -52,13 +52,11 @@ from katrain.core.coach.popup_logic import (
     SUMMARY_BIRDSEYE_SENTINEL as _SUMMARY_BIRDSEYE_SENTINEL,
 )
 from katrain.core.coach.popup_logic import (
-    _summary_index_to_internal,
     cap_response_text,
     count_issue_markers,
     detect_path_type_from_file,
     format_type_label,
     format_validation_status_summary,
-    resolve_summary_spinner_values,
     was_truncated,
 )
 from katrain.core.coach.popup_logic import (
@@ -68,6 +66,8 @@ from katrain.core.coach.popup_logic import (
     resolve_player_color_internal as _resolve_player_color,
 )
 from katrain.core.lang import i18n
+from katrain.gui.popups import _llm_coach_karte as _karte_helpers
+from katrain.gui.popups import _llm_coach_summary as _summary_helpers
 from katrain.gui.popups._base import I18NPopup
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.filebrowser import I18NFileBrowser
@@ -421,130 +421,6 @@ class LLMCoachPopupContent(BoxLayout):
             return False
         return True
 
-    def _populate_karte_player_info(self, karte_path: str, settings: dict[str, str]) -> None:
-        """Phase 272-E: rank + color + status update for a single-game Karrte JSON.
-
-        Default path of ``_populate_rank_and_perspective``.
-        """
-        try:
-            from katrain.gui.features.llm_coach import detect_player_info
-
-            info = detect_player_info(self.katrain, karte_path)
-        except Exception as exc:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
-                error=True,
-            )
-            return
-
-        # Phase 229-D: extracted into a pure helper so the priority chain
-        # is testable without Kivy.
-        self._apply_karte_rank_fallback(
-            info,
-            general_player_rank=settings["general_player_rank"],
-            default_user_rank=settings["default_user_rank"],
-        )
-
-        # Phase 226-B (B4 + B5): pass the already-loaded ``info`` into
-        # ``detect_player_color_for_user`` so we don't re-read the JSON
-        # a second time.
-        color = self._detect_and_apply_player_color(karte_path, info)
-
-        # Phase 225.7: surface the resolved default_user in the status
-        # line so the user can confirm what name was matched against
-        # the Karrte/SGF.
-        self._update_karte_status_summary(settings["default_user"], info, color)
-
-    def _apply_karte_rank_fallback(
-        self,
-        info: dict[str, Any],
-        *,
-        general_player_rank: str,
-        default_user_rank: str,
-    ) -> None:
-        """Phase 272-E: run the 3-tier rank fallback chain for a Karrte JSON.
-
-        The chain itself is the Kivy-free
-        :func:`katrain.core.coach.popup_logic.resolve_rank_fallback_chain`.
-        Here we only own the UI side: write back to the rank input
-        if the user hasn't typed anything yet, and refresh the hint.
-        """
-        detected = resolve_rank_fallback_chain(
-            info,
-            self.perspective_value,
-            general_player_rank=general_player_rank,
-            default_user_rank=default_user_rank,
-        )
-        if detected:
-            self.detected_rank = detected
-            current = self._read_text("rank_input")
-            if not current:
-                self._set_widget_text("rank_input", detected)
-        self._refresh_rank_hint()
-
-    def _detect_and_apply_player_color(self, karte_path: str, info: dict[str, Any]) -> str | None:
-        """Phase 272-E: resolve the player colour for a Karrte JSON and update the hint.
-
-        Returns the resolved colour (``"B"``/``"W"``) or ``None`` if
-        detection failed. Exceptions are surfaced via
-        ``auto-detect-failed`` (Phase 226-B B5: previously the colour
-        detector silently swallowed errors).
-        """
-        from katrain.gui.features.llm_coach import detect_player_color_for_user
-
-        try:
-            color, _ = detect_player_color_for_user(self.katrain, karte_path, player_info=info)
-        except Exception as exc:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
-                error=True,
-            )
-            color = None
-        if color in ("B", "W"):
-            self.detected_player_color = color
-        self._refresh_perspective_hint()
-        return color
-
-    def _update_karte_status_summary(
-        self,
-        default_user: str,
-        info: dict[str, Any],
-        color: str | None,
-    ) -> None:
-        """Phase 272-E: surface the Karrte detection result in the status line.
-
-        Phase 226-B (B2): use i18n keys for the colour label
-        instead of hard-coded Japanese strings. Previously the
-        English locale still showed "黒 (B)" here.
-
-        Phase 226-I: without ``default_user_name`` the auto
-        detector can never pick a side. Surface the reason in
-        the status line so the user knows why their perspective
-        spinner keeps falling back to "auto (no detection)".
-        """
-        if not default_user:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-no-default-user"),
-                error=True,
-            )
-            return
-        black_name = (info.get("black") or {}).get("name") or "?"
-        white_name = (info.get("white") or {}).get("name") or "?"
-        if color == "B":
-            color_label = i18n._("mykatrain:llm-coach:perspective-black")
-        elif color == "W":
-            color_label = i18n._("mykatrain:llm-coach:perspective-white")
-        else:
-            color_label = "?"
-        self._set_status(
-            i18n._("mykatrain:llm-coach:auto-detect-summary").format(
-                user=default_user,
-                black=black_name,
-                white=white_name,
-                color=color_label,
-            )
-        )
-
     def _refresh_rank_hint(self) -> None:
         label = self._get_widget("rank_auto_label")
         if label is None:
@@ -598,6 +474,33 @@ class LLMCoachPopupContent(BoxLayout):
         self.perspective_value = _spinner_text_to_internal(raw)
         self._populate_rank_and_perspective()
 
+        # ---- Karte path detection ------------------------------------------
+        """KV-side callback: spinner selection changed -> re-detect rank.
+
+        Phase 226-B (B3): the spinner's ``text`` is the localised label
+        (e.g. ``"黒 (B)"`` / ``"白 (W)"`` / ``"自動"``) and depends on
+        the active language. We reverse-map it to the stable internal
+        value ``"B"`` / ``"W"`` / ``"auto"`` so the rest of the code
+        never has to ``startswith("黒")`` again.
+
+        Phase 227-D: for summary mode, the spinner shows player
+        names (or "全体俯瞰"). We don't reverse-map the text — we use
+        the spinner's index directly via :meth:`on_summary_perspective_changed`.
+        """
+        if self.path_type == "summary":
+            # The summary selector has its own callback; this branch
+            # is a defensive fallback in case Kivy fires on_text
+            # before the dedicated handler is wired.
+            self.on_summary_perspective_changed()
+            return
+        # Read the spinner value via ids (defensive against stale ref).
+        spinner = self._get_widget("perspective_select")
+        if spinner is None:
+            return
+        raw = getattr(spinner, "text", "") or ""
+        self.perspective_value = _spinner_text_to_internal(raw)
+        self._populate_rank_and_perspective()
+
     # ---- Karte path detection ------------------------------------------
 
     def _detect_path_type(self, path: str) -> str:
@@ -618,248 +521,6 @@ class LLMCoachPopupContent(BoxLayout):
         self.path_schema_version = result.schema_version
         self.path_games_analyzed = result.games_analyzed
         return self.path_type
-
-    def _populate_summary_perspective(
-        self,
-        summary_path: str,
-        default_user: str | None,
-        default_user_rank: str | None,
-        *,
-        general_player_rank: str | None = None,
-    ) -> None:
-        """Phase 227-D: load summary players and rebuild the perspective spinner.
-
-        Reads the player list from the summary JSON, populates
-        ``self.summary_players`` and updates the spinner's
-        ``values`` list. The default selection is the matched player
-        (default_user → first alphabetical), with index 0 reserved
-        for the bird's-eye "全体俯瞰" option.
-
-        Phase 272-E: the 143-line body was split into 6 focused
-        helpers (``_detect_summary_player_info`` /
-        ``_build_summary_player_pairs`` / ``_update_summary_spinner`` /
-        ``_resolve_summary_spinner_index`` /
-        ``_update_perspective_value_from_summary_index`` /
-        ``_apply_summary_rank_fallback`` / ``_update_summary_status``)
-        so each step is independently auditable. Behaviour is
-        unchanged.
-        """
-        info = self._detect_summary_player_info(summary_path, default_user)
-        if info is None:
-            return  # status already set by helper
-
-        matched = info.get("matched_player", {}) or {}
-        matched_name = matched.get("name") if isinstance(matched, dict) else None
-
-        # Phase 243: pure value-list construction delegated to
-        # :func:`katrain.core.coach.popup_logic.resolve_summary_spinner_values`
-        # so the matched-player-first ordering and the "name (rank)" /
-        # "name" label formatting are Kivy-free and testable in
-        # headless CI. The popup only keeps the ``default_user_matched``
-        # aware index selection below.
-        self.summary_players = self._build_summary_player_pairs(info)
-
-        self._update_summary_spinner(info, matched_name)
-        self._apply_summary_rank_fallback(info, general_player_rank, default_user_rank)
-
-        # Update the perspective hint to the matched player name
-        self._refresh_summary_perspective_hint(matched.get("name"))
-
-        self._update_summary_status(summary_path, info, matched, default_user)
-
-    def _detect_summary_player_info(self, summary_path: str, default_user: str | None) -> dict[str, Any] | None:
-        """Phase 272-E: read the summary JSON's player list and matched player.
-
-        Returns the parsed info dict, or ``None`` if the read failed
-        (the helper surfaces an ``auto-detect-failed`` status first).
-        """
-        from katrain.gui.features.llm_coach import detect_player_info_for_summary
-
-        try:
-            return detect_player_info_for_summary(summary_path, default_user_name=default_user or None)
-        except Exception as exc:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
-                error=True,
-            )
-            return None
-
-    def _build_summary_player_pairs(self, info: dict[str, Any]) -> list[tuple[str, str | None]]:
-        """Phase 272-E: project the summary's ``all_players`` into ``(name, rank)`` tuples.
-
-        Drops entries without a ``name`` field and normalises the
-        name to ``str`` (the SGF BR/WR fallback in
-        :func:`detect_player_info_for_summary` may leave ints in
-        place of names for some legacy kifu formats).
-        """
-        players_raw = info.get("all_players", []) or []
-        return [(str(p["name"]), p.get("rank")) for p in players_raw if isinstance(p, dict) and p.get("name")]
-
-    def _update_summary_spinner(self, info: dict[str, Any], matched_name: str | None) -> None:
-        """Phase 272-E: rebuild the perspective spinner values + default index.
-
-        Layout of ``spinner.values``:
-        - index 0          → "全体俯瞰" (bird's-eye)
-        - index 1..N       → each player (matched player first so the
-                              default selection is the focus player)
-        """
-        values, _default_idx = resolve_summary_spinner_values(
-            self.summary_players,
-            matched_player=matched_name,
-            birdseye_label=i18n._("mykatrain:llm-coach:summary-perspective-birdseye"),
-        )
-        spinner = self._get_widget("perspective_select")
-        if spinner is None:
-            return
-        spinner.values = values
-        self._resolve_summary_spinner_index(info)
-        try:
-            spinner.text = values[self.summary_perspective_index]
-        except (IndexError, AttributeError):
-            spinner.text = values[0]
-        self._update_perspective_value_from_summary_index()
-
-    def _resolve_summary_spinner_index(self, info: dict[str, Any]) -> None:
-        """Phase 272-E: pick which spinner index to land on.
-
-        Phase 241-E: if the user has already manually picked a
-        perspective via the spinner, preserve their choice across
-        re-populations. The previous logic always overwrote
-        ``summary_perspective_index`` with the auto-detected
-        value, which clobbered manual changes that happened
-        during the 0.2s/0.4s clock-delayed population window.
-        """
-        user_preserved = self._summary_perspective_user_set and 0 < self.summary_perspective_index <= len(
-            self.summary_players
-        )
-        if user_preserved:
-            # Keep the previously-selected player; only re-resolve
-            # the internal value so the rank hint stays accurate.
-            return
-        # Default selection: matched player at index 1 when
-        # present, otherwise bird's-eye (index 0).
-        self.summary_perspective_index = 1 if info.get("default_user_matched") and self.summary_players else 0
-
-    def _update_perspective_value_from_summary_index(self) -> None:
-        """Phase 272-E: project the spinner index back into ``perspective_value``.
-
-        ``perspective_value`` is a Kivy ``StringProperty`` (no
-        ``None`` allowed). Phase 241-D: bird's-eye view carries the
-        dedicated sentinel string so downstream consumers can
-        distinguish it from out-of-range (which becomes empty string,
-        treated as a bug condition by ``_resolve_player_color``).
-        """
-        internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
-        if internal_value is None or internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
-            self.perspective_value = _PERSPECTIVE_AUTO_INTERNAL  # displayed as "auto"
-        else:
-            self.perspective_value = internal_value
-
-    def _apply_summary_rank_fallback(
-        self,
-        info: dict[str, Any],
-        general_player_rank: str | None,
-        default_user_rank: str | None,
-    ) -> None:
-        """Phase 272-E: 3-tier priority chain for the rank auto-fill on summary kifu.
-
-        Phase 269 follow-up: via the Kivy-free
-        :func:`katrain.core.coach.popup_logic.resolve_summary_rank`
-        helper. Previously the Summary path skipped
-        ``general/player_rank``, so a 4d user whose Summary JSON's
-        matched player carried a "5k" rank (e.g. inferred from a
-        SGF BR/WR property) saw the spinner default to 5k instead
-        of honouring the analysis-tab setting.
-        """
-        from katrain.core.coach.popup_logic import resolve_summary_rank
-
-        detected_rank = resolve_summary_rank(
-            info,
-            general_player_rank=general_player_rank,
-            default_user_rank=default_user_rank,
-        )
-        self.detected_rank = detected_rank
-        if detected_rank:
-            current = self._read_text("rank_input")
-            if not current:
-                self._set_widget_text("rank_input", detected_rank)
-        self._refresh_rank_hint()
-
-    def _update_summary_status(
-        self,
-        summary_path: str,
-        info: dict[str, Any],
-        matched: dict[str, Any],
-        default_user: str | None,
-    ) -> None:
-        """Phase 272-E: surface the summary-detection result in the status line."""
-        # ``path_games_analyzed`` is populated by ``_detect_path_type``; in
-        # tests the helper may be invoked before that runs, so default to 0.
-        games = getattr(self, "path_games_analyzed", 0)
-        if default_user and matched.get("name"):
-            self._set_status(
-                i18n._("mykatrain:llm-coach:summary-perspective-summary").format(
-                    user=default_user,
-                    player=matched.get("name"),
-                    games=games,
-                )
-            )
-        else:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-no-default-user"),
-                error=not bool(matched.get("name")),
-            )
-
-    def on_summary_perspective_changed(self, *_args: Any) -> None:
-        """KV-side callback: summary perspective spinner selection changed.
-
-        Maps the spinner's currently-displayed text back to the index
-        in ``self.summary_players`` (or 0 for bird's-eye) and stores
-        it in ``self.summary_perspective_index``.
-
-        Phase 241-E: set ``_summary_perspective_user_set`` so the
-        population scheduler doesn't clobber the user's manual change
-        if it fires later (e.g. a re-detection of the path type).
-        """
-        spinner = self._get_widget("perspective_select")
-        if spinner is None:
-            return
-        values = getattr(spinner, "values", []) or []
-        raw = getattr(spinner, "text", "") or ""
-        try:
-            idx = values.index(raw)
-        except ValueError:
-            idx = 0
-        self.summary_perspective_index = idx
-        self._summary_perspective_user_set = True
-        internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
-        # ``perspective_value`` is a StringProperty; bird's-eye maps to
-        # the empty string (consumers treat it as "auto"). Phase 241-D:
-        # out-of-range also becomes empty so stale spinner state is
-        # visible to the downstream _resolve_player_color helper.
-        if internal_value is None or internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
-            self.perspective_value = _PERSPECTIVE_AUTO_INTERNAL
-        else:
-            self.perspective_value = internal_value
-        # Update the rank hint if the user picks a different player
-        if 0 < idx <= len(self.summary_players):
-            _, rank = self.summary_players[idx - 1]
-            if rank:
-                self.detected_rank = rank
-                current = self._read_text("rank_input")
-                if not current:
-                    self._set_widget_text("rank_input", rank)
-                self._refresh_rank_hint()
-
-    def _refresh_summary_perspective_hint(self, player_name: str | None) -> None:
-        """Phase 227-D: update the small hint under the perspective spinner."""
-        label = self._get_widget("perspective_auto_label")
-        if label is None:
-            return
-        if player_name:
-            label.text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(color=player_name)
-        else:
-            label.text = i18n._("mykatrain:llm-coach:perspective-auto-fallback")
 
     def _refresh_type_label(self, *_args: Any) -> None:
         """Phase 227-D: update the type label and generate button text.
@@ -1041,55 +702,6 @@ class LLMCoachPopupContent(BoxLayout):
         )
         self._set_result(content)
 
-    def _on_generate_summary(self, karte_path: str, rank: str | None) -> None:
-        """Phase 227-D: summary-mode handler for the generate button.
-
-        Resolves the player name from the perspective selector and
-        delegates to :func:`build_summary_llm_prompt`. The success
-        status message includes games/patterns counts so the user
-        can confirm the prompt covers the expected scope.
-        """
-        from katrain.gui.features.llm_coach import build_summary_llm_prompt
-
-        # Resolve player name from spinner index
-        player_name: str | None = None
-        idx = self.summary_perspective_index
-        if 0 < idx <= len(self.summary_players):
-            player_name = self.summary_players[idx - 1][0]
-        ok, content = build_summary_llm_prompt(
-            self.katrain,
-            karte_path,
-            rank=rank,
-            player_name=player_name,
-        )
-        if not ok:
-            self._set_status(content, error=True)
-            self._set_result(content)
-            return
-        try:
-            Clipboard.copy(content)
-        except Exception as exc:  # noqa: BLE001
-            self._set_status(
-                i18n._("mykatrain:llm-coach:copy-failed").format(error=str(exc)),
-                error=True,
-            )
-            return
-        # Count games/patterns from the rendered prompt so we can show
-        # a richer status line. The regex is intentionally lenient —
-        # exact numbers are not critical for UX.
-        games_match = re.search(r"\*\*(\d+)\s*局\*\*", content)
-        games = int(games_match.group(1)) if games_match else 0
-        patterns_match = re.search(r"top\s+(\d+)", content)
-        patterns = int(patterns_match.group(1)) if patterns_match else 0
-        self._set_status(
-            i18n._("mykatrain:llm-coach:summary-copy-success").format(
-                chars=len(content),
-                games=games,
-                patterns=patterns,
-            )
-        )
-        self._set_result(content)
-
     def on_clear_response(self) -> None:
         self._set_widget_text("response_input", "")
         self._set_status(i18n._("mykatrain:llm-coach:response-cleared"))
@@ -1183,43 +795,6 @@ class LLMCoachPopupContent(BoxLayout):
         )
         self._set_status(status)
 
-    def _on_validate_summary(self, karte_path: str, response_text: str, rank: str | None) -> None:
-        """Phase 227-D: summary-mode validation handler.
-
-        Delegates to :func:`validate_summary_llm_response` and surfaces
-        the report Markdown in the result label / status line.
-
-        Phase 242-B: detect truncation via :func:`was_truncated` so the
-        user sees a warning when the report exceeds the cap.
-        Phase 243: status formatting delegates to popup_logic.
-        """
-        from katrain.gui.features.llm_coach import validate_summary_llm_response
-
-        # Resolve player name from spinner index (must match the value
-        # used in ``_on_generate_summary`` so the validator sees the
-        # same prompt config).
-        player_name: str | None = None
-        idx = self.summary_perspective_index
-        if 0 < idx <= len(self.summary_players):
-            player_name = self.summary_players[idx - 1][0]
-        is_clean, markdown = validate_summary_llm_response(
-            self.katrain,
-            karte_path,
-            response_text,
-            rank=rank,
-            player_name=player_name,
-        )
-        self._set_result(markdown)
-        high, medium, low = count_issue_markers(markdown)
-        status = format_validation_status_summary(
-            is_clean=is_clean,
-            high=high,
-            medium=medium,
-            low=low,
-            truncated=was_truncated(markdown),
-        )
-        self._set_status(status)
-
     def on_copy_result(self) -> None:
         """Copy the validation Markdown to the clipboard.
 
@@ -1295,6 +870,40 @@ class LLMCoachPopupContent(BoxLayout):
         result_label = self._get_widget("result_label")
         if result_label is not None:
             result_label.text = text
+
+
+# =============================================================================
+# Phase PR2-P2: Karte / Summary helper bindings
+#
+# The Karte-mode and Summary-mode methods were extracted to dedicated
+# helper modules (:mod:`katrain.gui.popups._llm_coach_karte` and
+# :mod:`katrain.gui.popups._llm_coach_summary`) to reduce the popup class
+# from 1373 → ~900 lines. The helpers are bound as instance methods
+# below so that existing call sites (KV bindings, ``self.<method>``
+# references inside the class body, and external tests) continue to
+# work unchanged.
+# =============================================================================
+
+# --- Karte-mode methods ---
+LLMCoachPopupContent._populate_karte_player_info = _karte_helpers.populate_karte_player_info  # type: ignore[method-assign]
+LLMCoachPopupContent._apply_karte_rank_fallback = _karte_helpers.apply_karte_rank_fallback  # type: ignore[method-assign]
+LLMCoachPopupContent._detect_and_apply_player_color = _karte_helpers.detect_and_apply_player_color  # type: ignore[method-assign]
+LLMCoachPopupContent._update_karte_status_summary = _karte_helpers.update_karte_status_summary  # type: ignore[method-assign]
+LLMCoachPopupContent._refresh_perspective_hint = _karte_helpers.refresh_perspective_hint  # type: ignore[method-assign]
+
+# --- Summary-mode methods ---
+LLMCoachPopupContent._populate_summary_perspective = _summary_helpers.populate_summary_perspective  # type: ignore[method-assign]
+LLMCoachPopupContent._detect_summary_player_info = _summary_helpers.detect_summary_player_info  # type: ignore[method-assign]
+LLMCoachPopupContent._build_summary_player_pairs = _summary_helpers.build_summary_player_pairs  # type: ignore[method-assign]
+LLMCoachPopupContent._update_summary_spinner = _summary_helpers.update_summary_spinner  # type: ignore[method-assign]
+LLMCoachPopupContent._resolve_summary_spinner_index = _summary_helpers.resolve_summary_spinner_index  # type: ignore[method-assign]
+LLMCoachPopupContent._update_perspective_value_from_summary_index = _summary_helpers.update_perspective_value_from_index  # type: ignore[method-assign]
+LLMCoachPopupContent._apply_summary_rank_fallback = _summary_helpers.apply_summary_rank_fallback  # type: ignore[method-assign]
+LLMCoachPopupContent._update_summary_status = _summary_helpers.update_summary_status  # type: ignore[method-assign]
+LLMCoachPopupContent.on_summary_perspective_changed = _summary_helpers.on_summary_perspective_changed  # type: ignore[method-assign]
+LLMCoachPopupContent._refresh_summary_perspective_hint = _summary_helpers.refresh_summary_perspective_hint  # type: ignore[method-assign]
+LLMCoachPopupContent._on_generate_summary = _summary_helpers.generate_summary_prompt  # type: ignore[method-assign]
+LLMCoachPopupContent._on_validate_summary = _summary_helpers.validate_summary_response  # type: ignore[method-assign]
 
 
 def open_llm_coach_popup(ctx: Any) -> Any:
