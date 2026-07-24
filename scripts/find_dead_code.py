@@ -43,9 +43,8 @@ def collect_definitions(path: Path) -> dict[str, list[str]]:
     module = to_module(path)
     names: list[str] = []
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if not node.name.startswith("_"):
-                names.append(node.name)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and not node.name.startswith("_"):
+            names.append(node.name)
     if names:
         out[module] = names
     return out
@@ -80,9 +79,8 @@ def collect_references(path: Path, symbols: set[str]) -> set[str]:
                 # unaliased imports: name is the last segment
                 if not alias.asname and alias.name.split(".")[-1] in symbols:
                     referenced.add(alias.name.split(".")[-1])
-        elif isinstance(node, ast.Name):
-            if isinstance(node.ctx, ast.Load) and node.id in symbols:
-                referenced.add(node.id)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id in symbols:
+            referenced.add(node.id)
     return referenced
 
 
@@ -122,10 +120,9 @@ def main(argv: list[str] | None = None) -> int:
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id == "__all__":
-                        if isinstance(node.value, ast.List):
-                            names = {e.value for e in node.value.elts if isinstance(e, ast.Constant)}
-                            definitions[module] = [n for n in definitions[module] if n not in names]
+                    if isinstance(target, ast.Name) and target.id == "__all__" and isinstance(node.value, ast.List):
+                        names = {e.value for e in node.value.elts if isinstance(e, ast.Constant)}
+                        definitions[module] = [n for n in definitions[module] if n not in names]
 
     # 3. Scan all .py files in repo for references
     all_symbols = {s for names in definitions.values() for s in names}

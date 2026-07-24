@@ -1472,3 +1472,75 @@ def _lazy():
         assert not nontrivial, "Runtime cycle detected among engine subsystem modules: " + "; ".join(
             sorted(" -> ".join(scc) for scc in nontrivial)
         )
+
+    def test_analysis_subsystem_has_no_module_level_cycle(self):
+        """``katrain.core.analysis`` パッケージ配下のサブモジュール間に
+        モジュールレベル循環 (import-time cycle) がないこと。
+
+        関数内 lazy import (``from X import Y`` が関数本体内) は
+        import 時には評価されないため、循環依存の打破に用いる正当な
+        パターンである。本テストは module-level のみ検査し、
+        ``_runtime_import_edges`` が関数内 import まで拾ってしまう
+        誤検知を排除する。
+
+        検証対象 (``__init__.py`` は re-export 用のオーケストレータなので除外):
+        - ``katrain.core.analysis.board_context``
+        - ``katrain.core.analysis.critical_moves``
+
+        既存パターン:
+        - ``board_context`` から ``critical_moves`` への参照は関数内
+          ``from katrain.core.analysis.critical_moves import _get_score_stdev_from_node``
+          で、モジュール評価時には実行されない。
+        - ``critical_moves`` から ``katrain.core.analysis`` への参照は
+          関数内 ``from katrain.core.analysis import iter_main_branch_nodes``
+          等で、同様に import 時には実行されない。
+
+        したがって import 時のサブモジュール間循環は存在しない。
+        """
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1] / "katrain" / "core" / "analysis"
+        # __init__.py は re-export 用のオーケストレータなので、サブ
+        # モジュールから見て検査対象外にする。代わりに __init__.py
+        # 自身のサブモジュール import は別テスト
+        # (``TestAnalysisGranularImports``) で検証する。
+        modules = [
+            "board_context.py",
+            "critical_moves.py",
+        ]
+        runtime_edges: set[tuple[str, str]] = set()
+        for fname in modules:
+            fpath = repo / fname
+            if not fpath.exists():
+                continue
+            tree = ast.parse(fpath.read_text(encoding="utf-8"))
+            # Find TYPE_CHECKING line ranges (top-level only, not nested)
+            tc_ranges: list[tuple[int, int]] = [
+                (node.lineno, node.end_lineno or node.lineno)
+                for node in tree.body
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ]
+
+            def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
+                return any(s <= lineno <= e for s, e in _ranges)
+
+            # Walk ONLY top-level ImportFrom/Import statements
+            for node in tree.body:
+                if isinstance(node, ast.ImportFrom):
+                    if inside_tc(node.lineno):
+                        continue
+                    if node.module and (
+                        node.module == "katrain.core.analysis" or node.module.startswith("katrain.core.analysis.")
+                    ):
+                        runtime_edges.add((fname, node.module))
+                elif isinstance(node, ast.Import):
+                    if inside_tc(node.lineno):
+                        continue
+                    for alias in node.names:
+                        if alias.name.startswith("katrain.core.analysis"):
+                            runtime_edges.add((fname, alias.name))
+        assert not runtime_edges, "Module-level runtime import detected in analysis sub-modules: " + "; ".join(
+            f"{src} -> {dst}" for src, dst in sorted(runtime_edges)
+        )
