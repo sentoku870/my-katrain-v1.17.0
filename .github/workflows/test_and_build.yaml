@@ -141,7 +141,7 @@ jobs:
           # entirely (we already ran ``uv sync --locked`` in the
           # composite action), so cached wheel metadata is not
           # revalidated on every matrix cell.
-           xvfb-run -a uv run --frozen python -X faulthandler -m pytest tests -v --tb=short ${{ matrix.coverage && '--cov=katrain --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=60' || '' }} 2>&1
+           xvfb-run -a uv run --frozen python -X faulthandler -m pytest tests -v --tb=short ${{ matrix.coverage && '--cov=katrain --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70' || '' }} 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true

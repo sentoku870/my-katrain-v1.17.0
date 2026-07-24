@@ -220,7 +220,7 @@ docs/
     - 必須チェック: `quality-gate` (sources を `test_and_build` ワークフローから)
   - ☑ Require linear history（任意の PR squash / rebase）
   - ☑ Do not allow forcing pushes
-- ローカルで CI 完全再現: `uv lock --check && uv sync --frozen && uv run --frozen ruff check katrain tests && uv run --frozen ruff format --check katrain tests && uv run --frozen mypy katrain && uv run --frozen pytest tests --cov=katrain --cov-report=term-missing --cov-fail-under=60`
+- ローカルで CI 完全再現: `uv lock --check && uv sync --frozen && uv run --frozen ruff check katrain tests && uv run --frozen ruff format --check katrain tests && uv run --frozen mypy katrain && uv run --frozen pytest tests --cov=katrain --cov-report=term-missing --cov-fail-under=70`
   - なお CI では Linux matrix (3.11/3.12/3.13) 上で `xvfb-run` を使い Kivy 統合テストも実行する。ローカルで Xvfb がない環境では `kivy_headless` marker 以外を `-m "not kivy_headless"` で除外する近似となる。
 
 ## 8. シェル権限ルール（opencode.jsonc）
