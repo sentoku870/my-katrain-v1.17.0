@@ -1,22 +1,28 @@
 """
 Pytest configuration and shared fixtures for KaTrain tests.
 
-This module provides:
-- Common fixtures for MoveEval creation
-- Golden test utilities (normalize_output, load_golden, save_golden)
-- Test configuration
+Phase 8 of the test-suite audit split this file into focused modules:
+
+- :mod:`tests._golden` — normalize_output, load_golden, save_golden,
+  update_golden_if_requested (golden-test helpers).
+- :mod:`tests._factories` — MockKaTrainStub, MockEngine, make_analysis,
+  setup_analyzed_node, make_player_info, make_karte_with_player_info,
+  make_moves (non-fixture helpers used by ``tests._fixtures``).
+- :mod:`tests._fixtures` — pytest fixtures (re-exported below).
+
+This conftest is now responsible only for:
+
+1. Loading the KivyMD .kv stub loader BEFORE any ``katrain.gui.*``
+   import in test code.
+2. Configuring headless Kivy via env vars BEFORE pytest collects
+   test modules.
+3. Adding the ``--update-goldens`` CLI flag.
+4. Re-exporting fixtures from :mod:`tests._fixtures` so they're
+   discoverable by every test module in the suite.
 """
 
 import os
-import re
-from pathlib import Path
-from unittest.mock import MagicMock
 
-import pytest
-
-# Phase 277: install KivyMD 1.2.0 .kv stub loader before any katrain.gui.*
-# import in test code. The loader is idempotent; production code paths
-# (katrain/__main__.py) also call it directly.
 from katrain.gui import _kivymd_kv_loader  # noqa: E402
 
 _kivymd_kv_loader.ensure_kivymd_kv_stubs()
@@ -27,13 +33,6 @@ _kivymd_kv_loader.ensure_kivymd_kv_stubs()
 # open a real window and aborts the process. Setting them at conftest
 # load time (i.e. before pytest collects test modules) gives every
 # test a chance to import the popup layer cleanly.
-#
-# The popup tests already set these at module load time in their
-# own preamble, but conftest-level setup makes the headless mode
-# available to ALL test files — including new ones that import the
-# popup layer transitively. CI runners that lack a display
-# (GitHub Actions Linux, sandboxed agents) get the same code path
-# as developer machines.
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 os.environ.setdefault("KIVY_NO_FILELOG", "1")
 os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
@@ -42,104 +41,6 @@ os.environ.setdefault("KIVY_HEADLESS", "1")
 os.environ.setdefault("KIVY_NO_WINDOW", "1")
 os.environ.setdefault("KIVY_GL_BACKEND", "mock")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
-from katrain.core.analysis.models.move_eval import MoveEval
-from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
-from katrain.core.game import Game
-from katrain.core.game_node import GameNode
-
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
-
-TESTS_DIR = Path(__file__).parent
-FIXTURES_DIR = TESTS_DIR / "fixtures"
-GOLDEN_DIR = FIXTURES_DIR / "golden"
-
-
-# ---------------------------------------------------------------------------
-# Normalization for Golden Tests
-# ---------------------------------------------------------------------------
-
-
-def normalize_output(text: str) -> str:
-    """
-    Normalize Karte/Summary output for golden test comparison.
-
-    Normalizes:
-    1. Line endings → LF only (handles CRLF and CR)
-    2. Timestamps → [TIMESTAMP]
-    3. Absolute paths → [PATH]
-    4. Floating point numbers → 1 decimal place
-    5. Trailing newlines → single trailing newline
-
-    Does NOT normalize:
-    - Order of sections (fixed by code)
-    - Order of moves (deterministic tiebreaks in code)
-    - Evidence order (deterministic tiebreaks in code)
-    """
-    # 1. Normalize line endings first (before other processing)
-    # Order matters: \r\n first, then remaining \r
-    result = text.replace("\r\n", "\n").replace("\r", "\n")
-
-    # 2. Normalize timestamps (various formats)
-    # ISO format: 2025-01-05T12:34:56
-    result = re.sub(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "[TIMESTAMP]", result)
-    # Date format: 2025-01-05
-    result = re.sub(r"\d{4}-\d{2}-\d{2}", "[DATE]", result)
-    # Time format: 12:34:56 (colon-separated)
-    result = re.sub(r"\d{2}:\d{2}:\d{2}", "[TIME]", result)
-    # Time format: 12 34 56 (space-separated, as in game_id from filename)
-    result = re.sub(r"\d{2} \d{2} \d{2}", "[TIME]", result)
-    # Run ID: run_<unix_timestamp>_<8 hex chars> — varies every run
-    result = re.sub(r'"run_id":\s*"run_\d+_[0-9a-f]{8}"', '"run_id": "[RUN_ID]"', result)
-
-    # 3. Normalize absolute paths (Windows and Unix)
-    # Windows: D:\github\... or C:\Users\...
-    result = re.sub(r"[A-Z]:\\[^\s\]]+", "[PATH]", result)
-    # Unix: /home/... or /tmp/...
-    result = re.sub(r"/(?:home|tmp|var|usr)[^\s\]]*", "[PATH]", result)
-
-    # 4. Normalize floating point numbers to 1 decimal place
-    # Match numbers like 3.14159 or -12.345 (but not integers)
-    def round_float(match):
-        num = float(match.group(0))
-        # Keep sign, round to 1 decimal
-        return f"{num:.1f}"
-
-    # Match floats that have decimal points with 2+ digits after
-    result = re.sub(r"-?\d+\.\d{2,}", round_float, result)
-
-    # 5. Normalize trailing newlines (single trailing newline)
-    result = result.rstrip("\n") + "\n"
-
-    return result
-
-
-def load_golden(name: str) -> str:
-    """Load golden file content."""
-    golden_path = GOLDEN_DIR / name
-    if not golden_path.exists():
-        raise FileNotFoundError(f"Golden file not found: {golden_path}")
-    return golden_path.read_text(encoding="utf-8")
-
-
-def save_golden(name: str, content: str) -> None:
-    """Save content to golden file."""
-    GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
-    golden_path = GOLDEN_DIR / name
-    golden_path.write_text(content, encoding="utf-8")
-
-
-def update_golden_if_requested(name: str, content: str, request: pytest.FixtureRequest) -> None:
-    """Update golden file if --update-goldens flag is passed."""
-    if request.config.getoption("--update-goldens", default=False):
-        save_golden(name, content)
-
-
-# ---------------------------------------------------------------------------
-# Pytest Configuration
-# ---------------------------------------------------------------------------
 
 
 def pytest_addoption(parser):
@@ -152,439 +53,32 @@ def pytest_addoption(parser):
     )
 
 
-# ---------------------------------------------------------------------------
-# Fixtures for creating test data
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def make_moves():
-    """Factory fixture to create a list of MoveEval objects."""
-
-    def _make_moves(
-        count: int = 10,
-        *,
-        player: str = "B",
-        visits: int = 500,
-        loss_pattern: list[float] | None = None,
-    ) -> list[MoveEval]:
-        """
-        Create a list of MoveEval objects for testing.
-
-        Args:
-            count: Number of moves to create
-            player: Player for all moves (or alternating if "BW")
-            visits: Root visits for all moves
-            loss_pattern: List of score_loss values (cycled if shorter than count)
-        """
-        moves = []
-        if loss_pattern is None:
-            loss_pattern = [0.5]  # Default: small loss
-
-        for i in range(count):
-            p = player if player in ("B", "W") else ("B" if i % 2 == 0 else "W")
-            loss = loss_pattern[i % len(loss_pattern)]
-
-            move = MoveEval(
-                move_number=i + 1,
-                player=p,
-                gtp=f"D{i + 1}" if i < 19 else f"Q{i - 18}",
-                score_before=0.0,
-                score_after=-loss if p == "B" else loss,
-                delta_score=-loss if p == "B" else loss,
-                winrate_before=0.5,
-                winrate_after=0.5,
-                delta_winrate=0.0,
-                points_lost=loss,
-                realized_points_lost=None,
-                root_visits=visits,
-            )
-            move.score_loss = max(0.0, loss)
-            moves.append(move)
-
-        return moves
-
-    return _make_moves
-
-
-# ---------------------------------------------------------------------------
-# Edge case fixtures for confidence gating tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def all_zero_visits_moves(make_moves):
-    """Fixture: all moves have zero visits."""
-    return make_moves(count=10, visits=0)
-
-
-@pytest.fixture
-def extreme_high_visits_moves(make_moves):
-    """Fixture: all moves have very high visits (2000)."""
-    return make_moves(count=10, visits=2000)
-
-
-@pytest.fixture
-def partial_analysis_suffix_missing(make_moves):
-    """Fixture: first half analyzed, second half missing."""
-    moves = make_moves(count=20, visits=500)
-    for i in range(10, 20):
-        moves[i].root_visits = 0
-    return moves
-
-
-@pytest.fixture
-def partial_analysis_scattered(make_moves):
-    """Fixture: only even-indexed moves have analysis."""
-    moves = make_moves(count=20, visits=300)
-    for i in range(20):
-        if i % 2 == 1:
-            moves[i].root_visits = 0
-    return moves
-
-
-# ---------------------------------------------------------------------------
-# Phase 70: Game/Engine Test Infrastructure
-# ---------------------------------------------------------------------------
-
-
-class MockKaTrainStub:
-    """Lightweight stub for KaTrain.
-
-    Provides minimal interface needed by Game without KaTrainBase inheritance.
-
-    MINIMAL REQUIRED INTERFACE (v6):
-    --------------------------------
-    Attributes:
-        pondering: bool            - Used by STOP mode (set to False)
-        controls: object           - Needs .set_status() method for status messages
-
-    Methods:
-        config(key, default=None)  - Used by Game for thresholds/rules lookup
-        log(*args, **kwargs)       - Called for debug output (can be no-op)
-    """
-
-    def __init__(self):
-        self.pondering = False
-        self.controls = MagicMock()
-        self._config = {
-            "trainer/eval_thresholds": [0, 0.5, 1.0, 2.0, 5.0],
-            "game/handicap": 0,
-            "game/rules": "japanese",
-        }
-        self.players_info = {
-            "B": MagicMock(name="B_player", player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL),
-            "W": MagicMock(name="W_player", player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL),
-        }
-        # State notifier is optional; tests that need it should set it explicitly
-
-    def update_state(self, *args, **kwargs):
-        """No-op update_state for tests that don't need state propagation."""
-        pass
-
-    def config(self, key, default=None):
-        return self._config.get(key, default)
-
-    def log(self, *args, **kwargs):
-        pass
-
-
-class MockEngine:
-    """Mock engine with call tracking.
-
-    MINIMAL REQUIRED INTERFACE (v7):
-    --------------------------------
-    Attributes:
-        config: dict               - Needs "max_visits", "fast_visits" keys
-
-    Methods:
-        request_analysis(*args, **kwargs)  - Called by node.analyze()
-        stop_pondering()                   - Called by STOP mode
-        terminate_queries()                - Called by STOP mode
-        has_query_capacity(headroom)       - Called by analyze_all_nodes() for throttling
-
-    Tracking (test-only):
-        stop_pondering_called: bool
-        terminate_queries_called: bool
-        request_analysis_calls: list[dict]
-        reset_tracking()
-    """
-
-    def __init__(self, config=None):
-        self.config = config or {"max_visits": 100, "fast_visits": 50}
-        self.stop_pondering_called = False
-        self.terminate_queries_called = False
-        self.request_analysis_calls = []
-
-    def request_analysis(self, *args, **kwargs):
-        """Track analysis requests for assertion."""
-        self.request_analysis_calls.append({"args": args, "kwargs": kwargs})
-
-    def stop_pondering(self):
-        self.stop_pondering_called = True
-
-    def terminate_queries(self):
-        self.terminate_queries_called = True
-
-    def has_query_capacity(self, headroom: int = 10) -> bool:
-        """Mock always has capacity (no throttling in tests)."""
-        return True
-
-    def check_alive(self, *args, **kwargs):
-        """Mock engine is always alive (used by AI strategies)."""
-        return True
-
-    def reset_tracking(self):
-        """Reset call tracking for fresh assertions."""
-        self.stop_pondering_called = False
-        self.terminate_queries_called = False
-        self.request_analysis_calls = []
-
-
-# ---------------------------------------------------------------------------
-# Analysis State Factories (v6)
-# ---------------------------------------------------------------------------
-
-
-def make_analysis(
-    *,
-    root_present: bool = True,
-    completed: bool = True,
-    moves: dict = None,
-    score: float = 0.0,
-    visits: int = 500,
-) -> dict:
-    """Factory for creating analysis dict with explicit state control.
-
-    Args:
-        root_present: If True, include "root" dict; if False, set to None
-        completed: Value for "completed" flag
-        moves: Dict of move candidates (default: {"D4": {...}})
-        score: scoreLead value (used if root_present=True)
-        visits: visits value for root and moves
-
-    Returns:
-        Analysis dict matching GameNode.analysis structure
-
-    Examples:
-        # Complete analysis with moves
-        make_analysis(score=5.0)
-
-        # Incomplete analysis (analysis_complete=False)
-        make_analysis(completed=False)
-
-        # No root (analysis_exists=False when root is None)
-        make_analysis(root_present=False)
-
-        # Empty moves (triggers LOCAL mode bug)
-        make_analysis(moves={})
-    """
-    if moves is None:
-        moves = {"D4": {"visits": visits // 5, "scoreLead": score}}
-
-    return {
-        "root": {"scoreLead": score, "visits": visits} if root_present else None,
-        "moves": moves,
-        "completed": completed,
-        "ownership": None,
-        "policy": None,
-    }
-
-
-def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
-    """Setup analysis data on a node for testing.
-
-    For points_lost to work correctly, both node and parent need analysis.
-
-    BEHAVIOR (v6 - fixed):
-    - Always sets node.analysis
-    - Only sets parent.analysis if:
-      a) parent_score is provided, AND
-      b) parent exists, AND
-      c) parent.analysis is not already set (or force_parent=True)
-
-    Args:
-        node: GameNode to setup
-        score: scoreLead for this node
-        parent_score: scoreLead for parent (optional)
-        force_parent: If True, overwrite parent.analysis even if already set
-
-    Example:
-        # Simple: just set node analysis
-        setup_analyzed_node(node, score=5.0)
-
-        # With parent for points_lost calculation
-        setup_analyzed_node(node, score=5.0, parent_score=0.0)
-
-        # Chain setup (preserves earlier parent analysis)
-        setup_analyzed_node(node1, score=0.0)
-        setup_analyzed_node(node2, score=3.0, parent_score=0.0)  # Sets node2's parent
-        setup_analyzed_node(node3, score=5.0)  # node2 already has analysis, not overwritten
-    """
-    node.analysis = make_analysis(score=score)
-
-    if node.parent and parent_score is not None:
-        # Only set parent analysis if not already set (or forced)
-        parent_has_analysis = (
-            node.parent.analysis.get("root") is not None if isinstance(node.parent.analysis, dict) else False
-        )
-        if force_parent or not parent_has_analysis:
-            node.parent.analysis = make_analysis(score=parent_score, moves={})
-
-
-# ---------------------------------------------------------------------------
-# Karte / Summary shared fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def real_shape_summary() -> dict:
-    """Canonical Shape-B Summary JSON used by the coach validator, prompt
-    builder, and Shape-B extractor test suites.
-
-    The data mirrors what ``katrain.core.reports.summary_json_export``
-    actually emits: a ``players.<name>.{mistakes,phases}`` layout (no
-    top-level ``weaknesses`` or ``phase_x_mistake`` arrays). Tests that
-    want fewer mistakes or phases should deep-copy and mutate the dict
-    rather than edit this fixture in place.
-
-    Function-scoped so each test gets a fresh dict; mutation never leaks.
-    """
-    return {
-        "schema_version": "3.4",
-        "meta": {
-            "games_analyzed": 3,
-            "date_range": ["2025-10-31", "2025-11-06"],
-            "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0},
-        },
-        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
-        "players": {
-            "sentoku870": {
-                "mistakes": {
-                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
-                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
-                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
-                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
-                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
-                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
-                },
-            },
-            "opponent1": {
-                "mistakes": {
-                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
-                    "inaccuracy": {"count": 28, "pct": 7.2, "denominator": 388, "avg_loss": 2.95},
-                    "mistake": {"count": 8, "pct": 2.1, "denominator": 388, "avg_loss": 5.5},
-                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
-                },
-                "phases": {
-                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
-                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
-                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
-                },
-            },
-        },
-        "loss_progression": {"all": [{"mistake_count": 5}] * 3},
-    }
-
-
-def make_player_info(
-    black_name: str = "P1",
-    black_rank: str | None = "4d",
-    white_name: str = "P2",
-    white_rank: str | None = "3d",
-) -> dict:
-    """Build a ``player_info`` dict for Karte meta / detect_player_info().
-
-    Returns:
-        ``{"black": {"name": ..., "rank": ...}, "white": {"name": ..., "rank": ...}}``
-    """
-    return {
-        "black": {"name": black_name, "rank": black_rank},
-        "white": {"name": white_name, "rank": white_rank},
-    }
-
-
-def make_karte_with_player_info(
-    black_name: str = "P1",
-    black_rank: str | None = "4d",
-    white_name: str = "P2",
-    white_rank: str | None = "3d",
-) -> dict:
-    """Build a minimal Karte JSON dict with ``meta.player_info`` populated.
-
-    Convenience wrapper for the file-write pattern:
-
-        karte.write_text(json.dumps(make_karte_with_player_info()), encoding="utf-8")
-    """
-    return {"meta": {"player_info": make_player_info(black_name, black_rank, white_name, white_rank)}}
-
-
-# ---------------------------------------------------------------------------
-# Game/Engine Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def mock_katrain():
-    """Lightweight KaTrain stub."""
-    return MockKaTrainStub()
-
-
-@pytest.fixture
-def mock_engine():
-    """Single mock engine."""
-    return MockEngine()
-
-
-@pytest.fixture
-def mock_engines():
-    """Separate engines for B and W (for STOP mode tests)."""
-    return {"B": MockEngine(), "W": MockEngine()}
-
-
-@pytest.fixture
-def root_node():
-    """Create a root GameNode (19x19)."""
-    return GameNode(properties={"SZ": 19})
-
-
-@pytest.fixture
-def root_node_9x9():
-    """Create a root GameNode (9x9)."""
-    return GameNode(properties={"SZ": 9})
-
-
-@pytest.fixture
-def game(mock_katrain, mock_engine, root_node):
-    """Create a Game instance for testing.
-
-    Note: Game.__init__ converts single engine to {"B": engine, "W": engine}
-    """
-    # Reset tracking (Game.__init__ calls stop_pondering)
-    mock_engine.reset_tracking()
-    g = Game(mock_katrain, mock_engine, move_tree=root_node)
-    mock_engine.reset_tracking()  # Reset again after init
-    return g
-
-
-@pytest.fixture
-def game_with_separate_engines(mock_katrain, mock_engines, root_node):
-    """Create a Game with separate B/W engines for STOP mode tests."""
-    for e in mock_engines.values():
-        e.reset_tracking()
-    g = Game(mock_katrain, mock_engines, move_tree=root_node)
-    for e in mock_engines.values():
-        e.reset_tracking()
-    return g
-
-
-@pytest.fixture
-def game_9x9(mock_katrain, mock_engine, root_node_9x9):
-    """Create a 9x9 Game instance."""
-    mock_engine.reset_tracking()
-    g = Game(mock_katrain, mock_engine, move_tree=root_node_9x9)
-    mock_engine.reset_tracking()
-    return g
+# Re-export fixtures so they're discoverable by every test module.
+# Pytest fixtures must be defined in a conftest.py or imported there.
+from tests._factories import (  # noqa: E402,F401  (re-export — non-fixture helpers)
+    make_karte_with_player_info,
+    make_player_info,
+)
+from tests._fixtures import (  # noqa: E402,F401  (re-export)
+    all_zero_visits_moves,
+    extreme_high_visits_moves,
+    game,
+    game_9x9,
+    game_with_separate_engines,
+    make_moves,
+    mock_engine,
+    mock_engines,
+    mock_katrain,
+    partial_analysis_scattered,
+    partial_analysis_suffix_missing,
+    real_shape_summary,
+    root_node,
+    root_node_9x9,
+)
+from tests._golden import (  # noqa: E402,F401  (re-export — golden helpers)
+    GOLDEN_DIR,
+    load_golden,
+    normalize_output,
+    save_golden,
+    update_golden_if_requested,
+)
