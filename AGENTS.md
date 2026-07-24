@@ -211,8 +211,8 @@ docs/
 
 - ワークフロー: `.github/workflows/test_and_build.yaml`
   - トリガー: `pull_request`、`push:main`、`workflow_dispatch`（`create_release`）
-  - ジョブ: `prepare → {lint, typecheck, test, coverage, build-windows} → quality-gate → create-release`
-  - `quality-gate` は lint/mypy/test×3/coverage/build-windows の全て成功時のみ成功扱い
+  - ジョブ: `prepare → {lint, typecheck, test×3, build-windows} → quality-gate → create-release`
+  - Python 3.13のtest jobでcoverage gateと`coverage.xml` artifact保存を実行
 - main ブランチ保護の必須チェックには **`quality-gate` 1件だけを登録**してください。
   - 個別ジョブ（`test (3.11)`、`test (3.12)`、ほか）を必須化すると、ジョブ追加のたびに保護設定を更新する必要があり、運用ミスが増える
 - GitHub リポジトリの Settings → Branches → Branch protection rules → `main`:
@@ -220,7 +220,8 @@ docs/
     - 必須チェック: `quality-gate` (sources を `test_and_build` ワークフローから)
   - ☑ Require linear history（任意の PR squash / rebase）
   - ☑ Do not allow forcing pushes
-- ローカルで CI 完全再現: `uv sync && uv run pytest tests && uv run ruff check katrain tests && uv run mypy katrain`
+- ローカルで CI 完全再現: `uv lock --check && uv sync --frozen && uv run --frozen ruff check katrain tests && uv run --frozen ruff format --check katrain tests && uv run --frozen mypy katrain && uv run --frozen pytest tests --cov=katrain --cov-report=term-missing --cov-fail-under=60`
+  - なお CI では Linux matrix (3.11/3.12/3.13) 上で `xvfb-run` を使い Kivy 統合テストも実行する。ローカルで Xvfb がない環境では `kivy_headless` marker 以外を `-m "not kivy_headless"` で除外する近似となる。
 
 ## 8. シェル権限ルール（opencode.jsonc）
 

@@ -13,15 +13,9 @@ Key principles:
 3. Use --update-goldens flag to update expected output
 """
 
-import os
 from unittest.mock import MagicMock
 
 import pytest
-
-# Skip tests that require KaTrainGui import on CI (no display available)
-_CI_SKIP = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true", reason="Requires display - cannot import KaTrainGui on headless CI"
-)
 
 from tests.conftest import GOLDEN_DIR, load_golden, normalize_output, save_golden
 
@@ -237,7 +231,7 @@ def create_mock_katrain_gui():
 # ---------------------------------------------------------------------------
 
 
-@_CI_SKIP
+@pytest.mark.kivy_headless
 class TestSummaryGolden:
     """Golden tests for summary output."""
 
@@ -316,7 +310,7 @@ class TestSummaryGolden:
 # ---------------------------------------------------------------------------
 
 
-@_CI_SKIP
+@pytest.mark.kivy_headless
 class TestSummaryStructure:
     """Tests verifying summary report structure."""
 
@@ -404,7 +398,7 @@ class TestSummaryStructure:
 # ---------------------------------------------------------------------------
 
 
-@_CI_SKIP
+@pytest.mark.kivy_headless
 class TestSummaryReasonTags:
     """Tests for reason tags in summary."""
 
