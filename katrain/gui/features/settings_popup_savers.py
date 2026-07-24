@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from katrain.core.constants import STATUS_ERROR
+from katrain.core.constants.output import STATUS_ERROR
 from katrain.core.lang import i18n
 
 if TYPE_CHECKING:

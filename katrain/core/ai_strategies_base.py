@@ -19,11 +19,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
 
-from katrain.core.constants import (
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    PRIORITY_EXTRA_AI_QUERY,
-)
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR
+from katrain.core.constants.priorities import PRIORITY_EXTRA_AI_QUERY
 from katrain.core.game import Game, Move
 
 # =============================================================================

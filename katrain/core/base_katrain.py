@@ -16,17 +16,9 @@ from katrain.common.typed_config import (
 )
 from katrain.core.ai import ai_rank_estimation
 from katrain.core.ai.constants import AI_DEFAULT
-from katrain.core.constants import (
-    CONFIG_MIN_VERSION,
-    DATA_FOLDER,
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    OUTPUT_INFO,
-    PLAYER_AI,
-    PLAYER_HUMAN,
-    PLAYING_NORMAL,
-    PLAYING_TEACHING,
-)
+from katrain.core.constants.metadata import CONFIG_MIN_VERSION, DATA_FOLDER
+from katrain.core.constants.modes import PLAYER_AI, PLAYER_HUMAN, PLAYING_NORMAL, PLAYING_TEACHING
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.log_buffer import LogBuffer
 from katrain.core.state import Event, EventType, StateNotifier
 

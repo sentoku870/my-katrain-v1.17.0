@@ -969,6 +969,87 @@ class TestKivyIsolation:
         )
 
 
+class TestConstantsGranularImports:
+    """Phase A-1 (P1): ``katrain.core.constants`` パッケージルートからの
+    シンボル import を禁止する。すべての import は granular
+    サブモジュール (``output``/``modes``/``priorities``/``metadata``) を
+    通すこと。
+    """
+
+    FORBIDDEN_PREFIX = "from katrain.core.constants import"
+    ALLOWED_FROM_SUBMODULE = (
+        "from katrain.core.constants.metadata import",
+        "from katrain.core.constants.modes import",
+        "from katrain.core.constants.output import",
+        "from katrain.core.constants.priorities import",
+    )
+
+    def test_no_root_imports_in_production(self):
+        """katrain/ 配下で ``from katrain.core.constants import X`` を
+        検出したら失敗する。"""
+        violations: list[str] = []
+        scan_root = _PROJECT_ROOT / "katrain"
+        for py_file in scan_root.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            rel_path = str(py_file.relative_to(_PROJECT_ROOT)).replace("\\", "/")
+            for lineno, line in enumerate(py_file.read_text(encoding="utf-8").splitlines(), 1):
+                stripped = line.lstrip()
+                if not stripped.startswith(self.FORBIDDEN_PREFIX):
+                    continue
+                # function-internal lazy import is also forbidden
+                violations.append(f"{rel_path}:{lineno}: {stripped}")
+        assert not violations, (
+            "Found imports from katrain.core.constants package root. "
+            "Use the granular sub-modules instead:\n"
+            "  - katrain.core.constants.metadata\n"
+            "  - katrain.core.constants.modes\n"
+            "  - katrain.core.constants.output\n"
+            "  - katrain.core.constants.priorities\n\n" + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_no_root_imports_in_tests(self):
+        """tests/ 配下でも ``from katrain.core.constants import X`` を
+        検出したら失敗する。テストも本コードと同じ規約に従う。
+
+        ただし ``tests/test_architecture.py`` 自体は除外する（test
+        fixture 文字列として ``from katrain.core.constants import ...``
+        を含むため）。
+        """
+        violations: list[str] = []
+        scan_root = _PROJECT_ROOT / "tests"
+        for py_file in scan_root.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            rel_path = str(py_file.relative_to(_PROJECT_ROOT)).replace("\\", "/")
+            if rel_path == "tests/test_architecture.py":
+                continue
+            for lineno, line in enumerate(py_file.read_text(encoding="utf-8").splitlines(), 1):
+                stripped = line.lstrip()
+                if not stripped.startswith(self.FORBIDDEN_PREFIX):
+                    continue
+                violations.append(f"{rel_path}:{lineno}: {stripped}")
+        assert not violations, (
+            "Found tests importing from katrain.core.constants package root. "
+            "Use the granular sub-modules instead:\n" + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_package_root_has_no_reexports(self):
+        """``katrain/core/constants/__init__.py`` がシンボルを
+        再エクスポートしていないこと。"""
+        init_path = _PROJECT_ROOT / "katrain" / "core" / "constants" / "__init__.py"
+        source = init_path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        reexport_count = 0
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("katrain.core.constants."):
+                reexport_count += len(node.names)
+        assert reexport_count == 0, (
+            f"katrain/core/constants/__init__.py still re-exports {reexport_count} "
+            "symbol(s). Phase A-1 (P1) requires the package root to be empty."
+        )
+
+
 class TestKivyHeadlessIsolation:
     """Phase 146: ヘッドレステスト基盤が production code を侵食していないことを検証
 

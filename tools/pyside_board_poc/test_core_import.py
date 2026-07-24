@@ -92,7 +92,7 @@ def test_a4_game_node_import():
 
 def test_a5_constants_import():
     """Test A5: constants.py imports (no Kivy deps)."""
-    from katrain.core.constants import PROGRAM_NAME, VERSION
+    from katrain.core.constants.metadata import PROGRAM_NAME, VERSION
 
     assert PROGRAM_NAME == "KaTrain"
     print("[OK] A5: constants.py imports successfully")

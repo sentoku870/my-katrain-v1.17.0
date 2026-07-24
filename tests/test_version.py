@@ -5,7 +5,7 @@ except ImportError:
 
 from pathlib import Path
 
-from katrain.core.constants import VERSION
+from katrain.core.constants.metadata import VERSION
 
 
 def test_version_consistency():

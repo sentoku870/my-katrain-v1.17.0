@@ -20,7 +20,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from katrain.core.analysis.models.move_eval import MoveEval
-from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
+from katrain.core.constants.modes import PLAYER_HUMAN, PLAYING_NORMAL
 
 # ---------------------------------------------------------------------------
 # Game/Engine stub classes

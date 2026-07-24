@@ -6,7 +6,7 @@ Kivy完全非依存:
 - 内部状態（_popups等）へのアクセスを避け、ブラックボックステストを実現
 """
 
-from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.constants.output import OUTPUT_DEBUG
 from katrain.gui.managers.popup_manager import PopupManager
 
 

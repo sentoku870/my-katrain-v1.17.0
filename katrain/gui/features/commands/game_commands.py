@@ -25,7 +25,7 @@ def do_undo(ctx: KaTrainGui, n_times: int | str = 1) -> None:
         ctx: KaTrainGui instance
         n_times: Number of moves to undo, or "smart" for automatic detection
     """
-    from katrain.core.constants import MODE_PLAY
+    from katrain.core.constants.modes import MODE_PLAY
 
     if n_times == "smart":
         n_times = 1
@@ -124,7 +124,7 @@ def do_ai_move(ctx: KaTrainGui, node: Any = None) -> None:
     """
     from katrain.core.ai import generate_ai_move
     from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
-    from katrain.core.constants import OUTPUT_ERROR
+    from katrain.core.constants.output import OUTPUT_ERROR
 
     if not ctx.game or (node is None or ctx.game.current_node == node):
         mode = ctx.next_player_info.strategy
@@ -153,7 +153,7 @@ def do_play(ctx: KaTrainGui, coords: Any) -> None:
         ctx: KaTrainGui instance
         coords: Board coordinates (tuple) or None for pass
     """
-    from katrain.core.constants import STATUS_ERROR
+    from katrain.core.constants.output import STATUS_ERROR
     from katrain.core.game import IllegalMoveException
     from katrain.core.lang import i18n
     from katrain.core.sgf_parser import Move
@@ -182,7 +182,7 @@ def do_tsumego_frame(ctx: KaTrainGui, ko: bool, margin: int) -> None:
         ko: Whether the tsumego allows ko
         margin: Margin around the tsumego
     """
-    from katrain.core.constants import MODE_PLAY
+    from katrain.core.constants.modes import MODE_PLAY
     from katrain.core.tsumego_frame import tsumego_frame_from_katrain_game
 
     if not ctx.game or not ctx.game.stones:
@@ -222,7 +222,7 @@ def do_new_game(
         analyze_fast: Whether to use fast analysis
         sgf_filename: Optional SGF filename
     """
-    from katrain.core.constants import MODE_ANALYZE, MODE_PLAY, PLAYER_HUMAN, PLAYING_NORMAL
+    from katrain.core.constants.modes import MODE_ANALYZE, MODE_PLAY, PLAYER_HUMAN, PLAYING_NORMAL
     from katrain.core.game import Game
 
     ctx.pondering = False

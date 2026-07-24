@@ -25,7 +25,7 @@ from katrain.core.analysis.cluster_classifier import (
 from katrain.core.analysis.critical_moves import select_critical_moves
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
 from katrain.core.batch.stats import get_area_from_gtp
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_INFO
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval

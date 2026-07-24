@@ -26,7 +26,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
 from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
-from katrain.core.constants import STATUS_ERROR
+from katrain.core.constants.output import STATUS_ERROR
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
 from katrain.gui.popups import I18NPopup

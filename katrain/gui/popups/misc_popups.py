@@ -14,7 +14,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 
 from katrain.core.ai import game_report
-from katrain.core.constants import PLAYER_HUMAN
+from katrain.core.constants.modes import PLAYER_HUMAN
 from katrain.core.lang import i18n, rank_label
 from katrain.core.sgf_parser import Move
 from katrain.gui.kivyutils import TableCellLabel, TableHeaderLabel, TableStatLabel

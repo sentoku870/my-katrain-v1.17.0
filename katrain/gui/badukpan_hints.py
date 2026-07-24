@@ -33,12 +33,8 @@ from katrain.core.beginner.hints import (
     is_coords_valid,
     should_draw_board_highlight,
 )
-from katrain.core.constants import (
-    OUTPUT_DEBUG,
-    STATUS_TEACHING,
-    TOP_MOVE_NOTHING,
-    TOP_MOVE_OPTIONS,
-)
+from katrain.core.constants.metadata import TOP_MOVE_NOTHING, TOP_MOVE_OPTIONS
+from katrain.core.constants.output import OUTPUT_DEBUG, STATUS_TEACHING
 from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe import build_kifunarabe_options

@@ -25,7 +25,8 @@ from katrain.core.ai_strategies_base import (
     STRATEGY_REGISTRY,
     register_strategy,  # noqa: F401  (re-exported for back-compat)
 )
-from katrain.core.constants import ADDITIONAL_MOVE_ORDER, OUTPUT_DEBUG
+from katrain.core.constants.output import OUTPUT_DEBUG
+from katrain.core.constants.priorities import ADDITIONAL_MOVE_ORDER
 from katrain.core.game import Game, GameNode, Move
 from katrain.core.utils import evaluation_class
 

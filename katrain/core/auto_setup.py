@@ -22,7 +22,7 @@ from katrain.core.analysis_result import (
     EngineTestResult,
     ErrorCategory,
 )
-from katrain.core.constants import DATA_FOLDER
+from katrain.core.constants.metadata import DATA_FOLDER
 
 # =============================================================================
 # Constants

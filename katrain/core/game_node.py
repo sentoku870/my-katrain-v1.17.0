@@ -8,16 +8,15 @@ import random
 from typing import Any
 
 from katrain.common import INFO_PV_COLOR
-from katrain.core.constants import (
-    ADDITIONAL_MOVE_ORDER,
+from katrain.core.constants.metadata import (
     ANALYSIS_FORMAT_VERSION,
-    PRIORITY_DEFAULT,
     PROGRAM_NAME,
     REPORT_DT,
     SGF_INTERNAL_COMMENTS_MARKER,
     SGF_SEPARATOR_MARKER,
     VERSION,
 )
+from katrain.core.constants.priorities import ADDITIONAL_MOVE_ORDER, PRIORITY_DEFAULT
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move, SGFNode
 from katrain.core.utils import evaluation_class, pack_floats, unpack_floats, var_to_grid

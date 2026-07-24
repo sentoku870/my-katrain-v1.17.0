@@ -15,13 +15,9 @@ import threading
 from datetime import datetime
 from typing import Any
 
-from katrain.core.constants import (
-    OUTPUT_DEBUG,
-    PLAYER_AI,
-    PLAYER_HUMAN,
-    PROGRAM_NAME,
-    SGF_INTERNAL_COMMENTS_MARKER,
-)
+from katrain.core.constants.metadata import PROGRAM_NAME, SGF_INTERNAL_COMMENTS_MARKER
+from katrain.core.constants.modes import PLAYER_AI, PLAYER_HUMAN
+from katrain.core.constants.output import OUTPUT_DEBUG
 from katrain.core.engine import KataGoEngine
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n, rank_label

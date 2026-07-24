@@ -27,7 +27,7 @@ from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp, sp
 from kivy.uix.dropdown import DropDown
 
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_ERROR, STATUS_INFO
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_ERROR, STATUS_INFO
 from katrain.core.game import KaTrainSGF
 from katrain.core.lang import i18n
 

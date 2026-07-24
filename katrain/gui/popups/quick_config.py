@@ -27,12 +27,8 @@ from katrain.core.ai.constants import (
     AI_OPTION_VALUES,
     AI_STRATEGIES_RECOMMENDED_ORDER,
 )
-from katrain.core.constants import (
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    OUTPUT_INFO,
-    SGF_INTERNAL_COMMENTS_MARKER,
-)
+from katrain.core.constants.metadata import SGF_INTERNAL_COMMENTS_MARKER
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.lang import i18n, rank_label
 from katrain.gui.kivyutils import BackgroundMixin
 from katrain.gui.popups._base import (
@@ -369,7 +365,7 @@ class EngineRecoveryPopup(QuickConfigGui):
         )
 
     def on_reset_to_auto(self) -> None:
-        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.constants.output import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import reset_to_auto_mode
 
@@ -379,7 +375,7 @@ class EngineRecoveryPopup(QuickConfigGui):
             self.popup.dismiss()
 
     def on_copy_for_llm(self) -> None:
-        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.constants.output import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import copy_for_llm
 
@@ -388,7 +384,7 @@ class EngineRecoveryPopup(QuickConfigGui):
 
     def on_save_diagnostics(self) -> None:
         from katrain.common.file_opener import open_file_in_folder
-        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.constants.output import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import save_diagnostics_zip
 
@@ -398,7 +394,7 @@ class EngineRecoveryPopup(QuickConfigGui):
             open_file_in_folder(result)
 
     def on_copy_log(self) -> None:
-        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.constants.output import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import copy_log_tail
 

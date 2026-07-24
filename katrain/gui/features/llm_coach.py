@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from katrain.core.constants import OUTPUT_ERROR
+from katrain.core.constants.output import OUTPUT_ERROR
 from katrain.core.lang import i18n
 
 if TYPE_CHECKING:

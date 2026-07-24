@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from kivy.clock import Clock
 
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, STATUS_ERROR
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, STATUS_ERROR
 from katrain.core.errors import KaTrainError
 
 if TYPE_CHECKING:

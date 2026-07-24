@@ -16,7 +16,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from katrain.core.constants import OUTPUT_EXTRA_DEBUG
+from katrain.core.constants.output import OUTPUT_EXTRA_DEBUG
 from katrain.gui.features.commands import dispatch
 
 

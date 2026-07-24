@@ -86,7 +86,7 @@ def extract_sgf_statistics(
     Returns:
         統計データ辞書、または None（エラー時）
     """
-    from katrain.core.constants import OUTPUT_ERROR
+    from katrain.core.constants.output import OUTPUT_ERROR
 
     try:
         move_tree = KaTrainSGF.parse_file(path)

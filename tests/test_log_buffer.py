@@ -5,7 +5,7 @@ Phase 29: Diagnostics + Bug Report Bundle.
 
 from concurrent.futures import ThreadPoolExecutor
 
-from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.log_buffer import LogBuffer
 
 

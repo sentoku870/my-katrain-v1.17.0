@@ -26,13 +26,13 @@ import time
 import traceback
 from typing import TYPE_CHECKING, Any
 
-from katrain.core.constants import (
+from katrain.core.constants.metadata import PONDERING_REPORT_DT
+from katrain.core.constants.output import (
     KATAGO_EXCEPTION,
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_EXTRA_DEBUG,
     OUTPUT_KATAGO_STDERR,
-    PONDERING_REPORT_DT,
 )
 from katrain.core.utils import json_truncate_arrays
 

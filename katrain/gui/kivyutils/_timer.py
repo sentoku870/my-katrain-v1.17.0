@@ -10,7 +10,7 @@ from __future__ import annotations
 from kivy.properties import BooleanProperty, ListProperty, StringProperty
 from kivymd.uix.boxlayout import MDBoxLayout
 
-from katrain.core.constants import MODE_PLAY
+from katrain.core.constants.modes import MODE_PLAY
 from katrain.gui.kivyutils._panels import BGBoxLayout
 
 

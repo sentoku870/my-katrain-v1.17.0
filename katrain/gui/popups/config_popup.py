@@ -25,13 +25,8 @@ from kivymd.app import MDApp
 
 from katrain.common.model_labels import classify_model_strength, get_model_basename
 from katrain.common.resource_utils import get_package_path
-from katrain.core.constants import (
-    DATA_FOLDER,
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    OUTPUT_INFO,
-    STATUS_INFO,
-)
+from katrain.core.constants.metadata import DATA_FOLDER
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.lang import i18n
 from katrain.gui.popups.quick_config import QuickConfigGui

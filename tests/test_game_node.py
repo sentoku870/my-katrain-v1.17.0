@@ -24,11 +24,8 @@ import gzip
 import json
 from typing import Any
 
-from katrain.core.constants import (
-    ADDITIONAL_MOVE_ORDER,
-    SGF_INTERNAL_COMMENTS_MARKER,
-    SGF_SEPARATOR_MARKER,
-)
+from katrain.core.constants.metadata import SGF_INTERNAL_COMMENTS_MARKER, SGF_SEPARATOR_MARKER
+from katrain.core.constants.priorities import ADDITIONAL_MOVE_ORDER
 from katrain.core.game_node import GameNode, analysis_dumps
 from katrain.core.sgf_parser import Move
 

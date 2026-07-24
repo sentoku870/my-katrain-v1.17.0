@@ -24,7 +24,7 @@ from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
 from katrain.core import analysis
-from katrain.core.constants import STATUS_INFO
+from katrain.core.constants.output import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.features.settings_popup_io import (  # noqa: F401 (re-export for backward compat)
     _do_export_settings,

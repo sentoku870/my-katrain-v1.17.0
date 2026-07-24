@@ -23,12 +23,8 @@ from katrain.core.board_geometry import (
     compute_initial_gridpos,
     compute_stone_size,
 )
-from katrain.core.constants import (
-    MODE_PLAY,
-    OUTPUT_DEBUG,
-    OUTPUT_EXTRA_DEBUG,
-    STATUS_TEACHING,
-)
+from katrain.core.constants.modes import MODE_PLAY
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_EXTRA_DEBUG, STATUS_TEACHING
 from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.utils import json_truncate_arrays

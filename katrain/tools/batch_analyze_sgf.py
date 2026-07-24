@@ -72,7 +72,7 @@ from katrain.core.batch import (
 
 # Private name aliases (unchanged API for backward compatibility)
 # Stats function private aliases
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.errors import AnalysisTimeoutError, EngineError
 

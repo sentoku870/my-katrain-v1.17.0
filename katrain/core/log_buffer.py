@@ -13,7 +13,7 @@ from collections import deque
 from collections.abc import Callable
 from threading import Lock
 
-from katrain.core.constants import OUTPUT_ERROR
+from katrain.core.constants.output import OUTPUT_ERROR
 
 
 def _default_timestamp() -> str:

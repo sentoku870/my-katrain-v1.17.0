@@ -17,7 +17,7 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 
 from katrain.core.ai.constants import AI_STRATEGIES_RECOMMENDED_ORDER
-from katrain.core.constants import GAME_TYPES, PLAYER_AI, PLAYER_HUMAN, PLAYING_NORMAL, PLAYING_TEACHING
+from katrain.core.constants.modes import GAME_TYPES, PLAYER_AI, PLAYER_HUMAN, PLAYING_NORMAL, PLAYING_TEACHING
 from katrain.core.lang import i18n
 from katrain.gui.kivyutils.mixins import BackgroundMixin
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-from katrain.core.constants import STATUS_ERROR, STATUS_INFO
+from katrain.core.constants.output import STATUS_ERROR, STATUS_INFO
 from katrain.core.game.base import IllegalMoveException
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
