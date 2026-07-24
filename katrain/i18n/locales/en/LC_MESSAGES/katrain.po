@@ -2070,12 +2070,6 @@ msgstr ""
 msgid "ui:kifunarabe:history:critical3"
 msgstr "  critical_3 {correct}/{total} ({rate:.1f}%)"
 
-msgid "mykatrain:diagnostics"
-msgstr "Diagnostics"
-
-msgid "Diagnostics"
-msgstr "Diagnostics"
-
 msgid "Generate Bug Report"
 msgstr "Generate Bug Report"
 

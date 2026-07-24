@@ -147,6 +147,11 @@ class KaTrainGui(Screen, KaTrainBase):
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
         self.engine: Any = None
+        # Phase 2026-07-24 diagnostics: expose app version on the GUI instance
+        # so the diagnostics tab can show e.g. ``Version: 1.17.1`` instead of
+        # ``Version: unknown``. Previously the title bar used VERSION but the
+        # attribute was never assigned, breaking ``getattr(ctx, "version", ...)``.
+        self.version = VERSION
         # Phase 270: ``curator_profile`` was removed.  The Curator
         # weak-axis hint has been deprecated; ``get_beginner_hint_cached``
         # no longer consults a profile loader.
