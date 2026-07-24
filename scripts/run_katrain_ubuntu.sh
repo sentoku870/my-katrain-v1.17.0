@@ -6,7 +6,6 @@
 #   sudo apt install -y xvfb xclip xsel \
 #     libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0 \
 #     libmtdev1t64
-#   uv pip install pygame (in .venv-linux)
 #
 # このスクリプトは Kivy の pygame backend を使って katrain を起動します。
 # まず WSLg (DISPLAY=:0) での起動を試み、失敗時のみ Xvfb にフォールバックします。
@@ -20,15 +19,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # === venv 選択 ===
-VENV_LINUX="$REPO_ROOT/.venv-linux"
-VENV_DEFAULT="$REPO_ROOT/.venv"
+# .venv のみ使用（.venv-linux は廃止: KivyMD 1.2.0 と乖離した古い環境を
+# 優先してしまう問題があった）。CUDA 版 KataGo を使う場合は .venv に
+# NVIDIA パッケージを追加インストールすること。
+VENV_DIR="$REPO_ROOT/.venv"
 
-if [ -d "$VENV_LINUX" ]; then
-  VENV_DIR="$VENV_LINUX"
-elif [ -d "$VENV_DEFAULT" ]; then
-  VENV_DIR="$VENV_DEFAULT"
-else
-  echo "[ERROR] No virtual environment found. Run: uv sync"
+if [ ! -d "$VENV_DIR" ]; then
+  echo "[ERROR] .venv not found. Run: uv sync"
   exit 1
 fi
 
@@ -40,13 +37,6 @@ echo "[INFO] Using venv: $VENV_DIR"
 # libGL_ALWAYS_SOFTWARE=1 は WSLg の GPU パスと相性が悪いので外す
 # export LIBGL_ALWAYS_SOFTWARE=1
 export SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy}
-
-# CUDA 版 KataGo 用: venv の NVIDIA ライブラリを LD_LIBRARY_PATH に追加
-NVIDIA_LIB_DIR="$VENV_DIR/lib/python3.13/site-packages/nvidia"
-if [ -d "$NVIDIA_LIB_DIR/cublas/lib" ]; then
-  export LD_LIBRARY_PATH="$NVIDIA_LIB_DIR/cublas/lib:$NVIDIA_LIB_DIR/cudnn/lib:$NVIDIA_LIB_DIR/cuda_nvrtc/lib:${LD_LIBRARY_PATH:-}"
-  echo "[INFO] NVIDIA CUDA libraries: $NVIDIA_LIB_DIR"
-fi
 
 # === 起動モード選択 ===
 # DISPLAY=:0 (WSLg) が利用可能なら優先 → Windows 側にウィンドウ表示
@@ -93,8 +83,8 @@ if [ "$USE_XVFB" = "yes" ]; then
   echo "[INFO] Starting with Xvfb virtual display"
   unset DISPLAY
   unset WAYLAND_DISPLAY
-  exec xvfb-run -a uv run --no-sync python /tmp/_katrain_pygame_wrapper.py "$@"
+  exec xvfb-run -a uv run --frozen python /tmp/_katrain_pygame_wrapper.py "$@"
 else
   echo "[INFO] Starting with DISPLAY=$DISPLAY (WSLg)"
-  exec uv run --no-sync python /tmp/_katrain_pygame_wrapper.py "$@"
+  exec uv run --frozen python /tmp/_katrain_pygame_wrapper.py "$@"
 fi
