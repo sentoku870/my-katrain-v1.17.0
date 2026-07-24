@@ -51,11 +51,25 @@ def _build_bundle(ctx: FeatureContext) -> DiagnosticsBundle:
     """
     engine = ctx.engine
     if engine is not None:
+        # Phase 2026-07-24 diagnostics: prefer the resolved attributes set
+        # by ``KataGoEngine.__init__`` (``self.katago`` / ``self.model`` /
+        # ``self.katago_config``) and ``is_alive()`` so the recovery popup
+        # shows the actually-launched exe / model / config and a trustworthy
+        # Running/Stopped signal. The ``getattr`` fallbacks keep this
+        # compatible with mocks and legacy engines that don't expose those
+        # attributes.
+        config_path = getattr(engine, "katago_config", "")
+        if not config_path and hasattr(engine, "config") and isinstance(engine.config, dict):
+            config_path = engine.config.get("config", "")
+        if hasattr(engine, "is_alive") and callable(engine.is_alive):
+            is_running = bool(engine.is_alive())
+        else:
+            is_running = getattr(engine, "katago_process", None) is not None
         engine_info = (
             getattr(engine, "katago", ""),
             getattr(engine, "model", ""),
-            getattr(engine, "config", ""),
-            getattr(engine, "katago_process", None) is not None,
+            config_path,
+            is_running,
             None,  # version
         )
     else:
@@ -68,7 +82,7 @@ def _build_bundle(ctx: FeatureContext) -> DiagnosticsBundle:
 
     return collect_diagnostics_bundle(
         engine_info=engine_info,
-        app_version=ctx.version,
+        app_version=getattr(ctx, "version", "unknown"),
         config_path=ctx.config_file,
         data_folder=DATA_FOLDER,
         config_data=config_data,

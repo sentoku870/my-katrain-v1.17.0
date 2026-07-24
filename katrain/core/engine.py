@@ -248,6 +248,13 @@ class KataGoEngine(BaseEngine):
                 f"altcommand in use: '{raw_altcommand}'. Only set this if you trust the SGF source or local environment.",
                 OUTPUT_INFO,
             )
+            # Phase 2026-07-24 diagnostics: cache resolved paths so the
+            # diagnostics tab can show what was actually launched instead of
+            # ``Not configured``. With ``altcommand`` the model/config are not
+            # known to the engine, so we record a sentinel.
+            self.katago = raw_altcommand
+            self.model = "(altcommand)"
+            self.katago_config = "(altcommand)"
         else:
             model = find_package_resource(config["model"])
             cfg = find_package_resource(config["config"])
@@ -256,6 +263,14 @@ class KataGoEngine(BaseEngine):
             if not exe:
                 return
 
+            # Phase 2026-07-24 diagnostics: cache resolved paths so the
+            # diagnostics tab and recovery popup can show the actual exe,
+            # model, and config files in use (previously ``engine.katago``
+            # and ``engine.model`` did not exist, so the UI always fell back
+            # to ``Not configured``).
+            self.katago = exe
+            self.model = model
+            self.katago_config = cfg
             self.command = shlex.split(
                 f'"{exe}" analysis -model "{model}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
             )

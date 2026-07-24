@@ -1,6 +1,6 @@
 """Unit tests for ``katrain.gui.features.diagnostics_popup`` (Phase 282-P1B).
 
-The diagnostics popup module (422 LOC) had zero direct tests; only the
+The diagnostics popup module had zero direct tests; only the
 underlying ``core.diagnostics`` collectors were tested. This file
 locks in the GUI layer's contract via source-static and lightweight
 runtime checks.
@@ -8,15 +8,27 @@ runtime checks.
 The popup builders all require a real Kivy font pipeline which the
 headless CI cannot provide. We therefore:
 
-- Verify the public function surface via AST
+- Verify the helper function surface via AST
 - Verify the popup-bundle assembly contract
 - Spot-check the ``_collect_diagnostics`` graceful-degradation paths
   (no engine, no config, no logs) using a real ``DiagnosticsBundle``
 
+Phase 2026-07-24 (diagnostics):
+- ``show_diagnostics_popup`` / ``_show_diagnostics_popup_impl`` were
+  removed in Phase 230-D; the popup is now the ``Diagnostics`` tab
+  of the myKatrain settings popup. Public-surface tests in this file
+  reflect that (no more ``show_diagnostics_popup`` / ``Clock``).
+- Version "unknown" fallback is replaced by a test that verifies the
+  ``VERSION`` constant is propagated when the GUI exposes it.
+- KataGo engine attribute tests now prefer the new resolved attributes
+  (``katago`` / ``model`` / ``katago_config``) and ``is_alive()``,
+  with backward-compatible fallbacks for mocks.
+
 Coverage targets:
-- All public + private functions exist with expected signatures
+- All internal helpers exist with expected signatures
 - ``_collect_diagnostics`` handles missing engine / config / logs
 - i18n strings used in the popup are present in both .po files
+- App version is propagated from FeatureContext (no "unknown" regression)
 """
 
 from __future__ import annotations
@@ -44,13 +56,17 @@ def _function_names(tree: ast.Module) -> set[str]:
 
 
 class TestDiagnosticsPopupPublicApi:
-    """Lock in the public function surface."""
+    """Lock in the helper function surface.
+
+    The standalone ``show_diagnostics_popup`` was removed in Phase 230-D
+    (the diagnostics UI is now the ``Diagnostics`` tab of the myKatrain
+    settings popup). The remaining helpers are reused by
+    ``settings_popup_tabs/diagnostics_tab.py``.
+    """
 
     @pytest.mark.parametrize(
         "func_name",
         [
-            "show_diagnostics_popup",
-            "_show_diagnostics_popup_impl",
             "_collect_diagnostics",
             "_build_info_display",
             "_on_generate_zip",
@@ -64,20 +80,12 @@ class TestDiagnosticsPopupPublicApi:
         tree = _get_module_tree()
         assert func_name in _function_names(tree), f"diagnostics_popup.py missing function {func_name!r}"
 
-    def test_show_diagnostics_popup_signature(self):
-        """Public entry point must accept exactly one FeatureContext."""
-        import inspect
-
-        from katrain.gui.features.diagnostics_popup import show_diagnostics_popup
-
-        sig = inspect.signature(show_diagnostics_popup)
-        params = list(sig.parameters)
-        assert params == ["ctx"]
-
-    def test_uses_clock_schedule_once(self):
-        """Phase 230-D: deferred execution via Clock.schedule_once."""
-        text = DIAG_POPUP_PATH.read_text(encoding="utf-8")
-        assert "Clock.schedule_once" in text
+    def test_standalone_popup_removed(self):
+        """Phase 230-D: standalone popup was removed; only the tab remains."""
+        tree = _get_module_tree()
+        names = _function_names(tree)
+        assert "show_diagnostics_popup" not in names
+        assert "_show_diagnostics_popup_impl" not in names
 
     def test_uses_clipboard_copy(self):
         text = DIAG_POPUP_PATH.read_text(encoding="utf-8")
@@ -101,7 +109,6 @@ class TestDiagnosticsPopupI18nKeys:
     """Verify the i18n keys used by the popup exist in both .po files."""
 
     EXPECTED_KEYS = [
-        "Diagnostics",
         "Generate Bug Report",
         "Copy Info",
         "Copied!",
@@ -168,16 +175,42 @@ class TestCollectDiagnosticsGracefulDegradation:
         assert bundle.katago_info.exe_path == ""
         assert bundle.katago_info.is_running is False
 
-    def test_ctx_without_version_attr(self):
+    def test_ctx_without_version_attr_falls_back_to_unknown(self):
+        """Phase 2026-07-24: when ctx lacks ``version`` we fall back to
+        ``unknown`` so the GUI never AttributeError-s. The production
+        path (KaTrainGui.__init__ assigns ``self.version = VERSION``)
+        is covered by ``test_ctx_with_version_attr`` below."""
+        from katrain.core.constants.metadata import VERSION as EXPECTED_VERSION
+
         class NoVersionCtx:
             _config: dict = {}
 
-        ctx = NoVersionCtx()
-        bundle = _collect_diagnostics(ctx)
+        bundle = _collect_diagnostics(NoVersionCtx())
         assert bundle.app_info.version == "unknown"
+        assert bundle.app_info.version != EXPECTED_VERSION
 
-    def test_ctx_with_engine(self):
-        """When engine is provided, katago_info is populated from it."""
+    def test_ctx_with_version_attr(self):
+        """Phase 2026-07-24: when ctx exposes ``version`` (the production
+        path via ``KaTrainGui.__init__``), the diagnostics bundle must
+        propagate ``VERSION`` rather than fall back to ``unknown``."""
+        from katrain.core.constants.metadata import VERSION as EXPECTED_VERSION
+        from katrain.core.diagnostics import AppInfo
+
+        class CtxWithVersion:
+            version = EXPECTED_VERSION
+            config_file = "/tmp/config.json"
+            _config: dict = {}
+
+        bundle = _collect_diagnostics(CtxWithVersion())
+        assert isinstance(bundle.app_info, AppInfo)
+        assert bundle.app_info.version == EXPECTED_VERSION
+        assert bundle.app_info.version != "unknown"
+
+    def test_ctx_with_engine_resolved_attributes(self):
+        """Phase 2026-07-24: when the engine has cached the resolved
+        ``katago`` / ``model`` / ``katago_config`` attributes (set by
+        ``KataGoEngine.__init__``), those win over ``config["katago"]``.
+        """
         from types import SimpleNamespace
 
         class CtxWithEngine:
@@ -186,20 +219,24 @@ class TestCollectDiagnosticsGracefulDegradation:
             _config: dict = {}
 
             engine = SimpleNamespace(
-                katago="/path/to/katago",
-                model="/path/to/model",
-                config={"config": "/path/to/engine-config"},
-                katago_process=None,
+                katago="/resolved/katago",
+                model="/resolved/model",
+                katago_config="/resolved/config",
+                is_alive=lambda: False,
+                config={},
             )
 
         ctx = CtxWithEngine()
         bundle = _collect_diagnostics(ctx)
-        assert bundle.katago_info.exe_path == "/path/to/katago"
-        assert bundle.katago_info.model_path == "/path/to/model"
-        assert bundle.katago_info.config_path == "/path/to/engine-config"
-        assert bundle.katago_info.is_running is False  # process is None
+        assert bundle.katago_info.exe_path == "/resolved/katago"
+        assert bundle.katago_info.model_path == "/resolved/model"
+        assert bundle.katago_info.config_path == "/resolved/config"
+        assert bundle.katago_info.is_running is False
 
-    def test_ctx_with_engine_running(self):
+    def test_ctx_with_engine_running_via_is_alive(self):
+        """Phase 2026-07-24: ``is_alive()`` is the source of truth, not
+        ``katago_process is not None`` (which can lie if the engine has
+        died but the Popen object is still set)."""
         from types import SimpleNamespace
 
         class CtxWithRunning:
@@ -210,13 +247,61 @@ class TestCollectDiagnosticsGracefulDegradation:
             engine = SimpleNamespace(
                 katago="katago",
                 model="model",
+                katago_config="config",
+                is_alive=lambda: True,
                 config={},
-                katago_process=SimpleNamespace(pid=1234),
             )
 
         ctx = CtxWithRunning()
         bundle = _collect_diagnostics(ctx)
         assert bundle.katago_info.is_running is True
+
+    def test_ctx_with_engine_is_alive_returns_false(self):
+        """Phase 2026-07-24: a dead Popen whose ``is_alive()`` returns
+        False must be reported as ``Stopped``, not ``Running``."""
+        from types import SimpleNamespace
+
+        class CtxWithDeadEngine:
+            version = "1.0"
+            config_file = ""
+            _config: dict = {}
+
+            engine = SimpleNamespace(
+                katago="katago",
+                model="model",
+                katago_config="config",
+                is_alive=lambda: False,
+                # Note: katago_process is still set (the buggy condition
+                # the old code relied on), but is_alive() knows it died.
+                katago_process=SimpleNamespace(pid=1234),
+                config={},
+            )
+
+        ctx = CtxWithDeadEngine()
+        bundle = _collect_diagnostics(ctx)
+        assert bundle.katago_info.is_running is False
+
+    def test_ctx_engine_fallback_to_config_when_no_katago_config_attr(self):
+        """Phase 2026-07-24: when ``engine.katago_config`` is missing we
+        fall back to ``engine.config["config"]`` for backwards
+        compatibility with mocks/legacy engines."""
+        from types import SimpleNamespace
+
+        class CtxWithLegacyEngine:
+            version = "1.0"
+            config_file = ""
+            _config: dict = {}
+
+            engine = SimpleNamespace(
+                katago="katago",
+                model="model",
+                config={"config": "/legacy/engine-config"},
+                katago_process=None,
+            )
+
+        ctx = CtxWithLegacyEngine()
+        bundle = _collect_diagnostics(ctx)
+        assert bundle.katago_info.config_path == "/legacy/engine-config"
 
     def test_ctx_engine_config_not_a_dict(self):
         """Phase 230-D: engine.config may not be a dict - should not crash."""

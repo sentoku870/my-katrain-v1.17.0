@@ -1,6 +1,12 @@
-"""Diagnostics popup for viewing system info and generating bug reports.
+"""Diagnostics helpers used by the myKatrain settings popup's Diagnostics tab.
 
 Phase 29: Diagnostics + Bug Report Bundle.
+Phase 230-D: Standalone ``show_diagnostics_popup`` was removed; the popup
+is now reachable via the myKatrain settings popup (Tab 4). This module
+keeps the collection / display / zip-generation / copy-to-clipboard
+helpers (``_collect_diagnostics``, ``_build_info_display``,
+``_on_generate_zip``, ``_on_copy_info``, ``_on_generate_complete``) that
+``settings_popup_tabs/diagnostics_tab.py`` reuses.
 """
 
 from __future__ import annotations
@@ -15,7 +21,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
 
 from katrain.common.file_opener import open_file_in_folder
 from katrain.common.platform import resolve_output_directory
@@ -37,81 +42,6 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def show_diagnostics_popup(ctx: FeatureContext) -> None:
-    """Show diagnostics popup with system info and bug report generation.
-
-    Args:
-        ctx: FeatureContext providing config, engine, log access.
-    """
-    Clock.schedule_once(lambda dt: _show_diagnostics_popup_impl(ctx), 0)
-
-
-def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
-    """Implementation of diagnostics popup display."""
-    # Collect diagnostic information
-    bundle = _collect_diagnostics(ctx)
-
-    # Build popup content
-    content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
-
-    # Info display area (scrollable)
-    info_scroll = ScrollView(size_hint=(1, 1))
-    info_content = _build_info_display(bundle)
-    info_scroll.add_widget(info_content)
-    content.add_widget(info_scroll)
-
-    # Button area
-    button_box = BoxLayout(
-        orientation="horizontal",
-        size_hint=(1, None),
-        height=dp(50),
-        spacing=dp(10),
-    )
-
-    generate_btn = Button(
-        text=i18n._("Generate Bug Report"),
-        font_name=Theme.DEFAULT_FONT,
-        size_hint=(0.5, 1),
-    )
-    close_btn = Button(
-        text=i18n._("button:close"),
-        font_name=Theme.DEFAULT_FONT,
-        size_hint=(0.5, 1),
-    )
-
-    button_box.add_widget(generate_btn)
-    button_box.add_widget(close_btn)
-    content.add_widget(button_box)
-
-    # Create popup
-    popup = Popup(
-        title=i18n._("Diagnostics"),
-        title_font=Theme.DEFAULT_FONT,
-        content=content,
-        size_hint=(0.5, 0.6),
-    )
-
-    # Bind buttons
-    close_btn.bind(on_release=popup.dismiss)
-    generate_btn.bind(on_release=lambda btn: _on_generate_zip(ctx, bundle, generate_btn, popup))
-
-    # Add Copy to Clipboard button (phase 2)
-    copy_btn = Button(
-        text=i18n._("Copy Info"),
-        font_name=Theme.DEFAULT_FONT,
-        size_hint=(0.5, 1),
-    )
-    copy_btn.bind(on_release=lambda btn: _on_copy_info(ctx, bundle, copy_btn))
-
-    # Re-assemble button box with Copy button in middle
-    button_box.clear_widgets()
-    button_box.add_widget(generate_btn)
-    button_box.add_widget(copy_btn)
-    button_box.add_widget(close_btn)
-
-    popup.open()
-
-
 def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
     """Collect all diagnostic information.
 
@@ -127,13 +57,27 @@ def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
     # KataGo info - extract from engine if available
     engine = getattr(ctx, "engine", None)
     if engine is not None:
+        # Phase 2026-07-24 diagnostics: prefer the resolved attributes set
+        # by ``KataGoEngine.__init__`` (``self.katago`` / ``self.model`` /
+        # ``self.katago_config``) so the diagnostics tab shows what was
+        # actually launched, including the auto-resolved Windows/Linux/macOS
+        # exe path. Fall back to ``config["...]`` for engines that don't
+        # expose the cached attributes (e.g. mocks or tests).
+        config_path = getattr(engine, "katago_config", "")
+        if not config_path and hasattr(engine, "config") and isinstance(engine.config, dict):
+            config_path = engine.config.get("config", "")
+        # ``is_alive()`` (when available) calls ``Popen.poll()`` so we get a
+        # trustworthy Running/Stopped signal that survives the case where
+        # the ``Popen`` object is still set but the engine has died.
+        if hasattr(engine, "is_alive") and callable(engine.is_alive):
+            is_running = bool(engine.is_alive())
+        else:
+            is_running = getattr(engine, "katago_process", None) is not None
         katago_info = collect_katago_info(
             exe_path=getattr(engine, "katago", ""),
             model_path=getattr(engine, "model", ""),
-            config_path=engine.config.get("config", "")
-            if hasattr(engine, "config") and isinstance(engine.config, dict)
-            else "",
-            is_running=getattr(engine, "katago_process", None) is not None,
+            config_path=config_path,
+            is_running=is_running,
             version=None,  # Version retrieval not implemented yet
         )
     else:
