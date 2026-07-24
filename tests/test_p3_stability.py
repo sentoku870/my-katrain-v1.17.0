@@ -277,7 +277,7 @@ class TestOnRequestCloseRunsCleanup:
             mock_window._size = [800, 600]
             mock_window.top = 100
             mock_window.left = 100
-            mp.setattr("katrain.__main__.Window", mock_window)
+            mp.setattr("katrain.gui.app.Window", mock_window)
             mp.setattr("katrain.__main__.OUTPUT_DEBUG", 0)
             app.on_request_close()
 
@@ -291,7 +291,7 @@ class TestOnRequestCloseRunsCleanup:
             mock_window._size = [800, 600]
             mock_window.top = 100
             mock_window.left = 100
-            mp.setattr("katrain.__main__.Window", mock_window)
+            mp.setattr("katrain.gui.app.Window", mock_window)
             mp.setattr("katrain.__main__.OUTPUT_DEBUG", 0)
             app.on_request_close()
 

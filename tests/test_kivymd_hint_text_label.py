@@ -28,7 +28,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 KV_LOADER_PATH = REPO_ROOT / "katrain" / "gui" / "_kivymd_kv_loader.py"
-MAIN_PATH = REPO_ROOT / "katrain" / "__main__.py"
+# Phase PR3: KaTrainGui and KaTrainApp moved from __main__.py to
+# gui/app.py. Tests that grep for symbols in the original module
+# location now prefer the new location when it exists.
+_APP_PY = REPO_ROOT / "katrain" / "gui" / "app.py"
+MAIN_PATH = _APP_PY if _APP_PY.exists() else REPO_ROOT / "katrain" / "__main__.py"
 BASE_POPUP_PATH = REPO_ROOT / "katrain" / "gui" / "popups" / "_base.py"
 FACTORY_PATH = REPO_ROOT / "katrain" / "gui" / "widgets" / "factory.py"
 

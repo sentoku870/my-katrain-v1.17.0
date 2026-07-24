@@ -254,7 +254,11 @@ class TestRemovedWrappers:
 
         from katrain import __file__ as _init
 
-        main_path = Path(_init).parent / "__main__.py"
+        # Phase PR3: KaTrainGui moved from __main__.py to gui/app.py.
+        _pkg_dir = Path(_init).parent
+        _app_py = _pkg_dir / "gui" / "app.py"
+        _main_py = _pkg_dir / "__main__.py"
+        main_path = _app_py if _app_py.exists() else _main_py
         tree = ast.parse(main_path.read_text(encoding="utf-8"))
 
         found_in_class = set()
@@ -275,7 +279,11 @@ class TestRemovedWrappers:
 
         from katrain import __file__ as _init
 
-        main_path = Path(_init).parent / "__main__.py"
+        # Phase PR3: KaTrainGui moved from __main__.py to gui/app.py.
+        _pkg_dir = Path(_init).parent
+        _app_py = _pkg_dir / "gui" / "app.py"
+        _main_py = _pkg_dir / "__main__.py"
+        main_path = _app_py if _app_py.exists() else _main_py
         tree = ast.parse(main_path.read_text(encoding="utf-8"))
 
         has_do_update = False

@@ -112,8 +112,12 @@ class TestKaTrainGuiDelegationExists:
 
         # katrain パッケージの場所から __main__.py を導出
         katrain_pkg_dir = Path(katrain.__file__).parent
+        # Phase PR3: KaTrainGui moved from katrain/__main__.py to
+        # katrain/gui/app.py. Prefer the new location when present.
+        app_py = katrain_pkg_dir / "gui" / "app.py"
         main_py = katrain_pkg_dir / "__main__.py"
-        tree = ast.parse(main_py.read_text(encoding="utf-8"))
+        target_py = app_py if app_py.exists() else main_py
+        tree = ast.parse(target_py.read_text(encoding="utf-8"))
 
         # KaTrainGuiクラスを探す
         katrain_gui_class = None
@@ -155,8 +159,11 @@ class TestKaTrainGuiDelegationExists:
         import katrain
 
         katrain_pkg_dir = Path(katrain.__file__).parent
+        # Phase PR3: KaTrainGui moved from __main__.py to gui/app.py.
+        app_py = katrain_pkg_dir / "gui" / "app.py"
         main_py = katrain_pkg_dir / "__main__.py"
-        source_code = main_py.read_text(encoding="utf-8")
+        target_py = app_py if app_py.exists() else main_py
+        source_code = target_py.read_text(encoding="utf-8")
 
         # ConfigManagerのインポートと初期化が存在することを確認
         assert "from katrain.gui.managers.config_manager import ConfigManager" in source_code
@@ -186,8 +193,14 @@ class TestAppContextAssignedInInit:
         import katrain
 
         katrain_pkg_dir = Path(katrain.__file__).parent
+        # Phase PR3: KaTrainGui moved from katrain/__main__.py to
+        # katrain/gui/app.py. Fall back to the new location first,
+        # and to the legacy location for compatibility with older
+        # snapshots.
+        app_py = katrain_pkg_dir / "gui" / "app.py"
         main_py = katrain_pkg_dir / "__main__.py"
-        tree = ast.parse(main_py.read_text(encoding="utf-8"))
+        target = app_py if app_py.exists() else main_py
+        tree = ast.parse(target.read_text(encoding="utf-8"))
 
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == "KaTrainGui":
@@ -256,8 +269,11 @@ class TestAppContextAssignedInInit:
         import katrain
 
         katrain_pkg_dir = Path(katrain.__file__).parent
+        # Phase PR3: KaTrainGui moved from __main__.py to gui/app.py.
+        app_py = katrain_pkg_dir / "gui" / "app.py"
         main_py = katrain_pkg_dir / "__main__.py"
-        tree = ast.parse(main_py.read_text(encoding="utf-8"))
+        target_py = app_py if app_py.exists() else main_py
+        tree = ast.parse(target_py.read_text(encoding="utf-8"))
 
         ka_train_gui_class = None
         for node in ast.iter_child_nodes(tree):

@@ -235,7 +235,7 @@ class TestOnRequestCloseDefensive:
         app = self._make_app(engine=engine)
 
         # Patch Window.size since it's accessed in on_request_close
-        with patch("katrain.__main__.Window") as mock_window:
+        with patch("katrain.gui.app.Window") as mock_window:
             mock_window._size = [800, 600]
             mock_window.top = 100
             mock_window.left = 100
@@ -250,7 +250,7 @@ class TestOnRequestCloseDefensive:
         """When engine is None, on_request_close must still run cleanup."""
         app = self._make_app(engine=None)
 
-        with patch("katrain.__main__.Window") as mock_window:
+        with patch("katrain.gui.app.Window") as mock_window:
             mock_window._size = [800, 600]
             mock_window.top = 100
             mock_window.left = 100
