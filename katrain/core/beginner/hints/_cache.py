@@ -17,10 +17,12 @@ keeps working unchanged across the refactor.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from katrain.core.beginner import hints as _hints_pkg
 from katrain.core.beginner.models import BeginnerHint
+
+if TYPE_CHECKING:
+    pass
 
 # Sentinel value for cache (distinguishes None from "not computed").
 _NOT_COMPUTED = object()
@@ -62,6 +64,13 @@ def get_beginner_hint_cached(
                 return None
             return cast(BeginnerHint | None, cached_hint)
 
+    # Lazy import avoids runtime cycle with the umbrella package.
+    # ``katrain.core.beginner`` imports ``katrain.core.beginner.hints``
+    # which imports this module; importing the umbrella here at
+    # module-load time would deadlock. Function-level import is safe
+    # because by call time the umbrella's __init__ has finished.
+    from katrain.core.beginner import hints as _hints_pkg
+
     hint = _hints_pkg.compute_beginner_hint(
         game,
         node,
@@ -96,6 +105,8 @@ def get_summary_hint_cached(
         cached_cache_key, cached_hint = cached
         if cached_cache_key == cache_key:
             return cast(BeginnerHint | None, cached_hint)
+
+    from katrain.core.beginner import hints as _hints_pkg
 
     hint = _hints_pkg.compute_summary_hint(
         node,
