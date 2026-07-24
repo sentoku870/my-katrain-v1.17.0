@@ -91,6 +91,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests that initialize KaTrainBase (may be slow)",
     "kivy_headless: marks tests using KivyUnitTest headless infrastructure (Phase 146)",
+    "unit: pure logic tests with no external state (default fast set)",
 ]
 # NOTE: pytest-xdist is intentionally left enabled. CI never passes ``-n``,
 # so xdist never spawns workers there (a prior "exit code 102" was misdiagnosed
@@ -148,18 +149,6 @@ module = [
     "kivymd.*",
 ]
 ignore_missing_imports = true
-ignore_errors = true
-
-# Phase 275-mypy2: kivy_garden is a third-party stub used only as a
-# placeholder in requirements. Keep ignore_missing_imports but drop
-# ignore_errors so any code that touches it stays explicit.
-[[tool.mypy.overrides]]
-module = ["kivy_garden.*"]
-ignore_missing_imports = true
-
-# Tests have no type contracts (lots of monkeypatching + fixtures).
-[[tool.mypy.overrides]]
-module = ["tests.*"]
 ignore_errors = true
 
 [tool.hatch.build.targets.sdist]

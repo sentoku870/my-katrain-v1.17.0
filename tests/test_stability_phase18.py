@@ -6,7 +6,6 @@ PR #110: Critical Fixes (P1 + P2)
 """
 
 import importlib.util
-import os
 
 import pytest
 
@@ -26,11 +25,8 @@ def _kivy_available():
 
 
 def _skip_kivy_on_ci():
-    """Check if Kivy tests should be skipped (not installed or running on CI)."""
-    if not _kivy_available():
-        return True
-    # On CI, Kivy is installed but display is not available
-    return os.environ.get("CI", "").lower() == "true"
+    """Check if Kivy is installed before running Kivy-dependent tests."""
+    return not _kivy_available()
 
 
 # =============================================================================

@@ -1,4 +1,4 @@
-# .github/workflows/test_and_build.yml
+# .github/workflows/test_and_build.yaml
 
 name: Test, Build, and Release
 
@@ -141,12 +141,21 @@ jobs:
           # entirely (we already ran ``uv sync --locked`` in the
           # composite action), so cached wheel metadata is not
           # revalidated on every matrix cell.
-          xvfb-run -a uv run --frozen python -X faulthandler -m pytest tests -v --tb=short ${{ matrix.coverage && '--cov=katrain --cov-fail-under=60' || '' }} 2>&1
+           xvfb-run -a uv run --frozen python -X faulthandler -m pytest tests -v --tb=short ${{ matrix.coverage && '--cov=katrain --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=60' || '' }} 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true
           echo "Exit code: $exit_code"
           exit $exit_code
+
+      - name: Upload coverage report
+        if: matrix.coverage && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: warn
+
 
 # Coverage was historically a separate job that re-ran the entire
   # pytest suite under Python 3.11 with --cov. After PR-F the
@@ -174,12 +183,7 @@ jobs:
         run: uv run pyinstaller spec/KaTrain.spec --clean --noconfirm
         shell: powershell
 
-      # PR-F: the previous 'coverage' job used to also run ``uv build``
-      # to confirm the wheel/sdist were buildable. That job was
-      # removed (coverage runs inside the 3.13 test matrix now), so
-      # the smoke build is folded into the windows run.
-      - name: Smoke-check wheel/sdist build (Linux)
-        if: runner.os != 'Windows'
+      - name: Smoke-check wheel/sdist build
         run: uv build
 
       # Verify the build produced the expected artifacts before any
