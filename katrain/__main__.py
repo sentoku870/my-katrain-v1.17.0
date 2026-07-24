@@ -10,7 +10,7 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
-os.environ["KCFG_KIVY_LOG_LEVEL"] = os.environ.get("KCFG_KIVY_LOG_LEVEL", "warning")
+os.environ["KCFG_KIVY_LOG_LEVEL"] = os.environ.get("KCFG_KIVY_LOG_LEVEL", "error")
 
 from kivy.utils import platform as kivy_platform
 
