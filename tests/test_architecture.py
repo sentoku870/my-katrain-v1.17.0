@@ -1664,3 +1664,51 @@ def _lazy():
             "Module-level runtime cycle detected in game sub-modules: "
             + "; ".join(sorted(" -> ".join(scc) for scc in nontrivial))
         )
+
+    def test_batch_orchestration_has_no_umbrella_self_import(self):
+        """``katrain.core.batch.orchestration`` サブモジュールが
+        ``katrain.core.batch.orchestration`` (アンブレラ) を runtime
+        import していないこと。
+
+        パッケージ内 ``__init__.py`` 経由の自己 import は、Python の
+        部分ロード semantics に依存した fragile なパターンである。
+        兄弟モジュールへの参照は直接 ``from .orchestration._sibling
+        import X`` 形式を使うこと。
+
+        Phase E-2 (P7) で ``_process.py`` の ``from
+        katrain.core.batch.orchestration import _handle`` を直接
+        インポートに書き換えた。本テストはその回帰を防ぐ。
+        """
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1] / "katrain" / "core" / "batch" / "orchestration"
+        violations: list[str] = []
+        for py_file in repo.glob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            if "__pycache__" in str(py_file):
+                continue
+            rel = py_file.relative_to(_PROJECT_ROOT).as_posix()
+            tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            tc_ranges: list[tuple[int, int]] = [
+                (node.lineno, node.end_lineno or node.lineno)
+                for node in tree.body
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ]
+
+            def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
+                return any(s <= lineno <= e for s, e in _ranges)
+
+            for node in tree.body:
+                if isinstance(node, ast.ImportFrom) and not inside_tc(node.lineno) and node.module == "katrain.core.batch.orchestration":
+                    # Forbid bare umbrella import
+                    violations.append(f"{rel}:{node.lineno}: imports umbrella {node.module}")
+        assert not violations, (
+            "Sub-modules under katrain/core/batch/orchestration/ must import siblings directly "
+            "instead of going through the umbrella package. Use "
+            "``from katrain.core.batch.orchestration._<sibling> import X`` instead of "
+            "``from katrain.core.batch.orchestration import X``:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
