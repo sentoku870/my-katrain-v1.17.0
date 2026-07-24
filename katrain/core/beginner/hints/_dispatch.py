@@ -23,15 +23,38 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from katrain.core.beginner import hints as _hints_pkg
 from katrain.core.beginner.hints._extract import (
     _extract_best_policy,
     _extract_predicted_territory,
     _is_endgame_position,
 )
 from katrain.core.beginner.models import BeginnerHint, DetectorInput, HintCategory, SummaryHintContext
+
+if TYPE_CHECKING:
+    # Imported at runtime only inside functions (see _hints_pkg()) to
+    # avoid a real import-time cycle with ``katrain.core.beginner`` →
+    # ``katrain.core.beginner.hints`` → ``_dispatch`` →
+    # ``katrain.core.beginner``.
+    from katrain.core.beginner import hints as _hints_pkg
+
+logger = logging.getLogger(__name__)
+
+
+def _hints_pkg():
+    """Return the umbrella ``katrain.core.beginner.hints`` module.
+
+    Lazy accessor so this module can be imported without resolving
+    the umbrella package at import time. The umbrella re-exports
+    every symbol we need (detectors, extractors, helpers), and tests
+    patch attributes on the umbrella module object — the patches
+    remain effective because by call time the umbrella has finished
+    loading.
+    """
+    from katrain.core.beginner import hints as _pkg
+
+    return _pkg
 
 # Phase 92: Detector categories (always reliable, use board state).
 # Backward-compat alias for tests / external callers.
@@ -169,10 +192,10 @@ def compute_beginner_hint(
         captured = game.last_capture or []
         was_capture = bool(captured)
         captured_count = len(captured)
-        groups_after = _hints_pkg.extract_groups_from_game(game)
+        groups_after = _hints_pkg().extract_groups_from_game(game)
 
         game.set_current_node(node.parent)
-        groups_before = _hints_pkg.extract_groups_from_game(game)
+        groups_before = _hints_pkg().extract_groups_from_game(game)
 
         game.set_current_node(node)
 
@@ -217,19 +240,19 @@ def _priority_chain_hints(
     Phase 91 priority order. Extracted from ``compute_beginner_hint``
     so the aggregate path can share the same plumbing.
     """
-    hint = _hints_pkg.detect_self_atari(inp)
+    hint = _hints_pkg().detect_self_atari(inp)
     if hint and _category_enabled(hint.category, category_filter):
         return hint
 
-    hint = _hints_pkg.detect_ignore_atari(inp)
+    hint = _hints_pkg().detect_ignore_atari(inp)
     if hint and _category_enabled(hint.category, category_filter):
         return hint
 
-    hint = _hints_pkg.detect_missed_capture(inp)
+    hint = _hints_pkg().detect_missed_capture(inp)
     if hint and _category_enabled(hint.category, category_filter):
         return hint
 
-    hint = _hints_pkg.detect_cut_risk(inp, game)
+    hint = _hints_pkg().detect_cut_risk(inp, game)
     if hint and _category_enabled(hint.category, category_filter):
         return hint
 
@@ -276,16 +299,16 @@ def _aggregate_hints(
     candidates: list[BeginnerHint] = []
 
     for detector in (
-        _hints_pkg.detect_self_atari,
-        _hints_pkg.detect_ignore_atari,
-        _hints_pkg.detect_missed_capture,
+        _hints_pkg().detect_self_atari,
+        _hints_pkg().detect_ignore_atari,
+        _hints_pkg().detect_missed_capture,
     ):
         hint = detector(inp)
         if hint is not None and _category_enabled(hint.category, category_filter):
             candidates.append(hint)
 
     # detect_cut_risk needs the game argument.
-    hint = _hints_pkg.detect_cut_risk(inp, game)
+    hint = _hints_pkg().detect_cut_risk(inp, game)
     if hint is not None and _category_enabled(hint.category, category_filter):
         candidates.append(hint)
 
@@ -323,7 +346,7 @@ def _compute_summary_context(
     points_lost = getattr(node, "points_lost", None)
 
     candidate_moves = getattr(parent, "candidate_moves", None) if parent is not None else None
-    good_count, near_count = _hints_pkg.count_freedom_candidates(candidate_moves)
+    good_count, near_count = _hints_pkg().count_freedom_candidates(candidate_moves)
 
     overall_difficulty: float | None = None
     is_reliable = False
@@ -428,35 +451,35 @@ def compute_summary_hint(
         return bool(flags.get(key, True))
 
     if _flag("summary_mistake"):
-        hint = _hints_pkg.detect_mistake_summary(ctx)
+        hint = _hints_pkg().detect_mistake_summary(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_freedom"):
-        hint = _hints_pkg.detect_freedom_summary(ctx)
+        hint = _hints_pkg().detect_freedom_summary(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_difficulty"):
-        hint = _hints_pkg.detect_difficulty_summary(ctx)
+        hint = _hints_pkg().detect_difficulty_summary(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("katago_uncertain"):
-        hint = _hints_pkg.detect_katago_uncertain(ctx)
+        hint = _hints_pkg().detect_katago_uncertain(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_ownership"):
-        hint = _hints_pkg.detect_ownership_dominant(ctx)
+        hint = _hints_pkg().detect_ownership_dominant(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_policy"):
-        hint = _hints_pkg.detect_policy_confident(ctx)
+        hint = _hints_pkg().detect_policy_confident(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
-        hint = _hints_pkg.detect_policy_conflict(ctx)
+        hint = _hints_pkg().detect_policy_conflict(ctx)
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 

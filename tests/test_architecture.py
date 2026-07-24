@@ -1712,3 +1712,58 @@ def _lazy():
             "``from katrain.core.batch.orchestration import X``:\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
+
+    def test_beginner_hints_has_no_umbrella_self_import(self):
+        """``katrain.core.beginner.hints`` サブモジュールが
+        ``katrain.core.beginner`` (アンブレラ) を runtime import していないこと。
+
+        パッケージ内 ``__init__.py`` 経由の自己 import は、Python の
+        部分ロード semantics に依存した fragile なパターンである。
+
+        Phase E-3 (P8) で ``_cache.py`` と ``_dispatch.py`` の
+        ``from katrain.core.beginner import hints as _hints_pkg``
+        を関数内 lazy import に書き換えた（_cache.py は直接 import、
+        _dispatch.py は accessor 関数経由）。本テストはその回帰を防ぐ。
+
+        関数内の遅延 import と ``TYPE_CHECKING`` ブロック内の import は
+        許可する (これらは module-load 時には実行されない)。
+        """
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1] / "katrain" / "core" / "beginner" / "hints"
+        violations: list[str] = []
+        for py_file in repo.glob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            if "__pycache__" in str(py_file):
+                continue
+            rel = py_file.relative_to(_PROJECT_ROOT).as_posix()
+            tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            tc_ranges: list[tuple[int, int]] = [
+                (node.lineno, node.end_lineno or node.lineno)
+                for node in tree.body
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ]
+
+            def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
+                return any(s <= lineno <= e for s, e in _ranges)
+
+            for node in tree.body:
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and not inside_tc(node.lineno)
+                    and node.module
+                    and node.module == "katrain.core.beginner"
+                ):
+                    # Forbid the umbrella ``katrain.core.beginner``.
+                    # Sibling modules (hints._extract, hints._gate,
+                    # hints.api, hints._cache, hints._dispatch) are
+                    # allowed.
+                    violations.append(f"{rel}:{node.lineno}: imports umbrella {node.module}")
+        assert not violations, (
+            "Sub-modules under katrain/core/beginner/hints/ must not import the umbrella "
+            "``katrain.core.beginner``. Use sibling modules directly:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
