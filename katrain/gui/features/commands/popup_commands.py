@@ -19,7 +19,7 @@ def do_select_box(ctx: KaTrainGui) -> None:
     Args:
         ctx: KaTrainGui instance
     """
-    from katrain.core.constants import STATUS_INFO
+    from katrain.core.constants.output import STATUS_INFO
     from katrain.core.lang import i18n
 
     ctx.controls.set_status(i18n._("analysis:region:start"), STATUS_INFO)

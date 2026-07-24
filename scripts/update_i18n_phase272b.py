@@ -15,8 +15,8 @@ precedent in the .po file (e.g. "Cancel", "Close", "Best move: {move}") and
 renaming would require a much larger refactor. Adding as-is keeps scope
 manageable.
 """
+
 import polib
-from pathlib import Path
 
 # (msgid, en_msgstr, jp_msgstr)
 ENTRIES = [

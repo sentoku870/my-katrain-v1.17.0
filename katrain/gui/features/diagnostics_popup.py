@@ -20,7 +20,7 @@ from kivy.uix.scrollview import ScrollView
 from katrain.common.file_opener import open_file_in_folder
 from katrain.common.platform import resolve_output_directory
 from katrain.common.sanitize import get_sanitization_context
-from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.diagnostics import (
     DiagnosticsBundle,
     collect_app_info,
@@ -146,7 +146,7 @@ def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
         )
 
     # App info
-    from katrain.core.constants import DATA_FOLDER
+    from katrain.core.constants.metadata import DATA_FOLDER
 
     # Note: ctx IS the KaTrainGui instance (FeatureContext protocol)
     app_info = collect_app_info(

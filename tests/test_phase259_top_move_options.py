@@ -19,7 +19,7 @@ they use everywhere else.
 
 from __future__ import annotations
 
-from katrain.core.constants import (
+from katrain.core.constants.metadata import (
     TOP_MOVE_DELTA_SCORE,
     TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_OPTIONS,

@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING, Any
 
-from katrain.core.constants import OUTPUT_ERROR
+from katrain.core.constants.output import OUTPUT_ERROR
 from katrain.core.errors import SGFError
 from katrain.core.game import KaTrainSGF
 from katrain.gui.features.types import LogFunction

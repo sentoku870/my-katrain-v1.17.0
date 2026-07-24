@@ -22,7 +22,7 @@ from typing import Any
 # Re-export the TOP_MOVE_* constants so callers can index the result
 # dict with the same names used by the production code, without
 # reaching across to ``katrain.core.constants`` separately.
-from katrain.core.constants import (
+from katrain.core.constants.metadata import (
     TOP_MOVE_DELTA_SCORE,
     TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_OWNERSHIP,

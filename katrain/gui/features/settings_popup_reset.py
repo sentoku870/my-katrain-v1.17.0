@@ -19,7 +19,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
-from katrain.core.constants import STATUS_INFO
+from katrain.core.constants.output import STATUS_INFO
 from katrain.core.lang import i18n
 
 if TYPE_CHECKING:

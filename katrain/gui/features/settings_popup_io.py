@@ -30,7 +30,7 @@ from katrain.common.settings_export import (
     export_settings,
     parse_exported_settings,
 )
-from katrain.core.constants import STATUS_ERROR, STATUS_INFO
+from katrain.core.constants.output import STATUS_ERROR, STATUS_INFO
 from katrain.core.lang import i18n
 
 if TYPE_CHECKING:

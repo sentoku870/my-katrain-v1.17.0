@@ -63,14 +63,7 @@ from kivymd.app import MDApp
 # backwards compatibility with TYPE_CHECKING references in error_handler,
 # commands modules, and tests.
 # =============================================================================
-from katrain.core.constants import (  # noqa: E402, F401
-    HOMEPAGE,
-    MODE_ANALYZE,
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    OUTPUT_INFO,
-    STATUS_INFO,
-)
+from katrain.core.constants.output import OUTPUT_ERROR
 from katrain.gui.app import (  # noqa: E402, F401
     AnalysisController,
     AutoSetupController,

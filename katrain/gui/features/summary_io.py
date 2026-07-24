@@ -19,7 +19,7 @@ from kivy.core.clipboard import Clipboard
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_INFO
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 

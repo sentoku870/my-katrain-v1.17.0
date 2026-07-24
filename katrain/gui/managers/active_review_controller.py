@@ -197,7 +197,7 @@ class ActiveReviewController:
             Uses private access to ReviewSession._pending_move_number
             for compatibility with existing behavior.
         """
-        from katrain.core.constants import STATUS_INFO
+        from katrain.core.constants.output import STATUS_INFO
         from katrain.core.lang import i18n
         from katrain.core.study.active_review import (
             ActiveReviewer,

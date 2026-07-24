@@ -11,7 +11,7 @@ import threading
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.constants.output import OUTPUT_DEBUG
 from katrain.core.state import EventType
 
 

@@ -25,7 +25,7 @@ from katrain.core.analysis import (
     snapshot_from_game,
 )
 from katrain.core.analysis.modes import AnalysisMode
-from katrain.core.constants import OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.game.analysis_orchestrator import AnalysisOrchestrator
 from katrain.core.game.base import BaseGame, IllegalMoveException, KaTrainSGF
@@ -116,7 +116,7 @@ class Game(BaseGame):
         throttle_max_attempts: int = 50,
         throttle_poll_interval: float = 0.1,
     ) -> None:
-        from katrain.core.constants import PRIORITY_GAME_ANALYSIS
+        from katrain.core.constants.priorities import PRIORITY_GAME_ANALYSIS
 
         if priority is None:
             priority = PRIORITY_GAME_ANALYSIS

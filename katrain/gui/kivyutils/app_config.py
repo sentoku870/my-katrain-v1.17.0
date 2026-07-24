@@ -65,7 +65,7 @@ def apply_kivy_log_config(debug_level: int) -> None:
 
     from kivy import Config
 
-    from katrain.core.constants import OUTPUT_DEBUG
+    from katrain.core.constants.output import OUTPUT_DEBUG
 
     Config.set("kivy", "log_level", "warning")
     if debug_level >= OUTPUT_DEBUG:

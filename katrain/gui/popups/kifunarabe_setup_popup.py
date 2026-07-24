@@ -210,7 +210,7 @@ def _load_sgf_into_new_game(gui: Any, filename: str) -> bool:
     Returns:
         True if the load succeeded, False otherwise.
     """
-    from katrain.core.constants import OUTPUT_ERROR
+    from katrain.core.constants.output import OUTPUT_ERROR
     from katrain.core.game import KaTrainSGF
     from katrain.core.sgf_parser import ParseError
 

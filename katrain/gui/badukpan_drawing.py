@@ -33,7 +33,7 @@ from katrain.core.board_geometry import (
     x_coordinate_text,
     y_coordinate_text,
 )
-from katrain.core.constants import STATUS_TEACHING
+from katrain.core.constants.output import STATUS_TEACHING
 from katrain.core.game import Move
 from katrain.core.utils import var_to_grid
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text

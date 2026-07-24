@@ -22,7 +22,7 @@ import threading
 from typing import Any
 from unittest.mock import MagicMock
 
-from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.constants.output import OUTPUT_DEBUG
 from katrain.core.state import EventType
 from katrain.gui.managers.ui_update_manager import UIUpdateManager
 

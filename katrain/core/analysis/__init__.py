@@ -10,11 +10,24 @@ Phase B で models.py, logic.py, presentation.py に分離されました。
   - logic_loss.py: 損失計算関数（PR #126）
   - logic_importance.py: 重要度計算関数（PR #127）
 - presentation.py: 表示/フォーマット関数
+- board_context.py, cluster_classifier.py, critical_moves.py, etc.
 
 後方互換性:
 - 全てのシンボルはこの __init__.py から再エクスポートされます
 - `from katrain.core.analysis import *` で全機能にアクセス可能
 - logic.py は logic_*.py から再エクスポートするため、既存のインポートは変更不要
+
+.. note::
+
+    Phase A-2 (P2): 新規コードは granular サブモジュールから直接 import すること。
+    ``from katrain.core.analysis.models import X`` のような形式を推奨。
+    この ``__init__.py`` からの import は後方互換のため残しているが、PR1 の
+    ``katrain.core.constants`` のような巨大な facade にしないため、新規コードは
+    サブモジュール import を使う方針。
+
+    サブモジュール内（``katrain/core/analysis/*.py``）から ``katrain.core.analysis``
+    パッケージを import すると循環依存になるため禁止（TYPE_CHECKING 内を除く）。
+    詳細は ``tests/test_architecture.py::TestAnalysisGranularImports`` を参照。
 
 Note: シンボルの __module__ パスが変更されます。
       pickle/キャッシュでクラス参照を保存している場合、デシリアライズ失敗の可能性あり。

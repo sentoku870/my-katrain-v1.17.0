@@ -104,7 +104,7 @@ class TestSaveEngineSettings:
         ctx.update_engine_config.assert_called_once_with(analysis_engine="katago")
 
     def test_oserror_sets_status(self):
-        from katrain.core.constants import STATUS_ERROR
+        from katrain.core.constants.output import STATUS_ERROR
         from katrain.gui.features.settings_popup_savers import _save_engine_settings
 
         ctx = _make_ctx()

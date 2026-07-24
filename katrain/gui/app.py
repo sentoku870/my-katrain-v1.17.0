@@ -64,16 +64,9 @@ from katrain.core.analysis_result import (
     EngineTestResult as TestAnalysisResult,
 )
 from katrain.core.base_katrain import KaTrainBase
-from katrain.core.constants import (
-    DATA_FOLDER,
-    HOMEPAGE,
-    MODE_ANALYZE,
-    OUTPUT_DEBUG,
-    OUTPUT_INFO,
-    SGF_INTERNAL_COMMENTS_MARKER,
-    STATUS_INFO,
-    VERSION,
-)
+from katrain.core.constants.metadata import DATA_FOLDER, HOMEPAGE, SGF_INTERNAL_COMMENTS_MARKER, VERSION
+from katrain.core.constants.modes import MODE_ANALYZE
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_INFO, STATUS_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401

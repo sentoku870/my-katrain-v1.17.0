@@ -75,7 +75,7 @@ class GUIRefreshManager:
         ``super().log()``. Errors and KataGo stderr lines that contain
         'error' trigger a status bar update.
         """
-        from katrain.core.constants import OUTPUT_ERROR, OUTPUT_KATAGO_STDERR, STATUS_ERROR
+        from katrain.core.constants.output import OUTPUT_ERROR, OUTPUT_KATAGO_STDERR, STATUS_ERROR
 
         if self._set_status is None:
             return
@@ -86,7 +86,7 @@ class GUIRefreshManager:
 
     def on_engine_status(self, event_type: str, message: str) -> None:
         """Map engine status events to user-facing status messages."""
-        from katrain.core.constants import STATUS_INFO
+        from katrain.core.constants.output import STATUS_INFO
 
         if self._set_status is None:
             return

@@ -24,19 +24,21 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.analysis.modes import AnalysisMode, parse_analysis_mode
-from katrain.core.constants import (
+from katrain.core.constants.output import (
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
     OUTPUT_INFO,
+    STATUS_ANALYSIS,
+    STATUS_INFO,
+    STATUS_TEACHING,
+)
+from katrain.core.constants.priorities import (
     PRIORITY_ALTERNATIVES,
     PRIORITY_DEFAULT,
     PRIORITY_EQUALIZE,
     PRIORITY_EXTRA_ANALYSIS,
     PRIORITY_GAME_ANALYSIS,
     PRIORITY_SWEEP,
-    STATUS_ANALYSIS,
-    STATUS_INFO,
-    STATUS_TEACHING,
 )
 from katrain.core.engine import KataGoEngine
 from katrain.core.game_node import GameNode

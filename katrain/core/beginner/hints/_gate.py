@@ -151,7 +151,7 @@ def should_show_beginner_hints(enabled: bool, mode: str) -> bool:
     Returns:
         True if hints should be displayed.
     """
-    from katrain.core.constants import MODE_PLAY
+    from katrain.core.constants.modes import MODE_PLAY
 
     if not enabled:
         return False

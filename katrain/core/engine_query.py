@@ -13,7 +13,7 @@ import copy
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR
 from katrain.core.sgf_parser import Move
 
 if TYPE_CHECKING:

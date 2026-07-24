@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from katrain.core.constants import (
+from katrain.core.constants.output import (
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_INFO,

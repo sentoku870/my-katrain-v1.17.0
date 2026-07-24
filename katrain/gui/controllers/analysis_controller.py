@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.constants.output import OUTPUT_DEBUG
 from katrain.core.lang import i18n
 
 
@@ -120,7 +120,7 @@ class AnalysisController:
 
     def restore_last_mode(self) -> None:
         """前回終了時のモード（play / analyze）を復元する。"""
-        from katrain.core.constants import MODE_ANALYZE, MODE_PLAY
+        from katrain.core.constants.modes import MODE_ANALYZE, MODE_PLAY
 
         try:
             last_mode = self._ctx.config("ui_state/last_mode", MODE_PLAY)

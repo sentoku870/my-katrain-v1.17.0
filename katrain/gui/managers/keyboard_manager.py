@@ -13,7 +13,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from katrain.core.constants import STATUS_INFO
+from katrain.core.constants.output import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 

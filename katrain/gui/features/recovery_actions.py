@@ -23,7 +23,8 @@ from kivy.core.clipboard import Clipboard
 from katrain.common.platform import resolve_output_directory
 from katrain.common.sanitize import get_sanitization_context, sanitize_text
 from katrain.core.auto_setup import prepare_reset_to_auto
-from katrain.core.constants import DATA_FOLDER, OUTPUT_ERROR, OUTPUT_INFO
+from katrain.core.constants.metadata import DATA_FOLDER
+from katrain.core.constants.output import OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.diagnostics import (
     collect_diagnostics_bundle,  # PUBLIC API
     create_diagnostics_zip,

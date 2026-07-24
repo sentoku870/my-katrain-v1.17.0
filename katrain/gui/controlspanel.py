@@ -11,14 +11,8 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from katrain.core.analysis import classify_mistake
 from katrain.core.beginner import get_beginner_hint_cached, get_summary_hint_cached
 from katrain.core.beginner.detector_freedom import count_freedom_candidates
-from katrain.core.constants import (
-    MODE_ANALYZE,
-    MODE_PLAY,
-    OUTPUT_DEBUG,
-    PLAYER_HUMAN,
-    STATUS_ANALYSIS,
-    STATUS_ERROR,
-)
+from katrain.core.constants.modes import MODE_ANALYZE, MODE_PLAY, PLAYER_HUMAN
+from katrain.core.constants.output import OUTPUT_DEBUG, STATUS_ANALYSIS, STATUS_ERROR
 from katrain.core.errors import UIStateError
 from katrain.core.lang import rank_label
 from katrain.core.state import EventType

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from katrain.core.constants import OUTPUT_INFO
+from katrain.core.constants.output import OUTPUT_INFO
 
 
 def _build_minimal_ctx(katrain_log: MagicMock | None = None):

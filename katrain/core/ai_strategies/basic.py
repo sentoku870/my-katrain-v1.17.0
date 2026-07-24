@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from katrain.core.ai.constants import AI_DEFAULT, AI_HANDICAP
 from katrain.core.ai_strategies_base import AIStrategy, register_strategy
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR
+from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_ERROR
 from katrain.core.game import Move
 
 
