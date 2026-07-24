@@ -2056,7 +2056,8 @@ msgid "ui:filebrowser:computer"
 msgstr "Computer"
 
 msgid "ui:filebrowser:select_folder_title"
-msgstr "Select folder - Navigate into target folder, then click 'Select This Folder'"
+msgstr ""
+"Select folder - Navigate into target folder, then click 'Select This Folder'"
 
 msgid "ui:filebrowser:select_this_folder"
 msgstr "Select This Folder"
@@ -3023,3 +3024,6 @@ msgstr "Playing here puts your group in atari."
 
 msgid "beginner_hint:self_atari:why"
 msgstr "A move that puts your own stones in atari can be captured next."
+
+msgid "mistakes only"
+msgstr "mistakes only"

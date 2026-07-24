@@ -2952,3 +2952,6 @@ msgstr "そこに打つと、すぐ取られやすいです。"
 
 msgid "beginner_hint:self_atari:why"
 msgstr "アタリに打つと、次に相手に取られます。"
+
+msgid "mistakes only"
+msgstr "悪手のみ"
