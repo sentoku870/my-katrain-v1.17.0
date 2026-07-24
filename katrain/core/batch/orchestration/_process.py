@@ -13,11 +13,11 @@ import traceback
 from collections.abc import Callable
 from typing import Any
 
-from katrain.core.batch.orchestration import _handle
 from katrain.core.batch.orchestration._context import (
     _AnalysisAborted,
     _BatchFileContext,
 )
+from katrain.core.batch.orchestration._handle import _post_success_processing
 from katrain.core.batch.visits import choose_visits_for_sgf
 from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
 
@@ -35,7 +35,7 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
         _handle_analysis_failure(ctx, log)
         return
 
-    _handle._post_success_processing(
+    _post_success_processing(
         ctx=ctx,
         game=game,
         base_name=base_name,
