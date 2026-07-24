@@ -1544,3 +1544,123 @@ def _lazy():
         assert not runtime_edges, "Module-level runtime import detected in analysis sub-modules: " + "; ".join(
             f"{src} -> {dst}" for src, dst in sorted(runtime_edges)
         )
+
+    def test_game_subsystem_has_no_module_level_cycle(self):
+        """``katrain.core.game`` パッケージ配下にモジュールレベル循環
+        (import-time cycle) がないこと。
+
+        既存パターン (Phase E-1 / P6 で確認):
+        - ``facade`` から ``analysis_orchestrator`` への参照は runtime
+          モジュールレベル (``from katrain.core.game.analysis_orchestrator
+          import AnalysisOrchestrator``)。
+        - ``analysis_orchestrator`` から ``facade`` への参照は
+          ``TYPE_CHECKING`` ブロック内のため import 時には実行されない。
+        - ``facade`` から ``insert_mode`` / ``navigation`` への参照も
+          runtime モジュールレベルだが、逆方向の参照は存在しない。
+
+        したがって ``game.facade → game.analysis_orchestrator`` の片方向
+        エッジのみが存在し、サブモジュール間に循環はない。
+
+        検証対象 (``__init__.py`` は re-export 用のオーケストレータなので除外):
+        - ``katrain.core.game.base``
+        - ``katrain.core.game.facade``
+        - ``katrain.core.game.analysis_orchestrator``
+        - ``katrain.core.game.insert_mode``
+        - ``katrain.core.game.navigation``
+        """
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1] / "katrain" / "core" / "game"
+        modules = [
+            "base.py",
+            "facade.py",
+            "analysis_orchestrator.py",
+            "insert_mode.py",
+            "navigation.py",
+        ]
+        # Map module name -> set of "katrain.core.game" runtime edges it has
+        edges: dict[str, set[str]] = {}
+        for fname in modules:
+            fpath = repo / fname
+            if not fpath.exists():
+                continue
+            tree = ast.parse(fpath.read_text(encoding="utf-8"))
+            tc_ranges: list[tuple[int, int]] = [
+                (node.lineno, node.end_lineno or node.lineno)
+                for node in tree.body
+                if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ]
+
+            def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
+                return any(s <= lineno <= e for s, e in _ranges)
+
+            module_edges: set[str] = set()
+            for node in tree.body:
+                if isinstance(node, ast.ImportFrom):
+                    if inside_tc(node.lineno):
+                        continue
+                    if node.module and (
+                        node.module == "katrain.core.game"
+                        or node.module.startswith("katrain.core.game.")
+                    ):
+                        module_edges.add(node.module)
+                elif isinstance(node, ast.Import):
+                    if inside_tc(node.lineno):
+                        continue
+                    for alias in node.names:
+                        if alias.name.startswith("katrain.core.game"):
+                            module_edges.add(alias.name)
+            edges[fname] = module_edges
+
+        # Build SCC over the sub-modules and assert no nontrivial SCC
+        graph: dict[str, list[str]] = {fname: [] for fname in modules}
+        for src, dsts in edges.items():
+            for dst in dsts:
+                base = dst.removeprefix("katrain.core.game.")
+                # Match bare "game" -> treat as the facade package, but
+                # the test treats it as ambiguous and ignores; the
+                # analysis_orchestrator imports are direct sub-module
+                # names so they map cleanly.
+                if base in modules:
+                    graph[src].append(base)
+
+        index_of: dict[str, int] = {}
+        lowlink: dict[str, int] = {}
+        on_stack: set[str] = set()
+        stack: list[str] = []
+        counter = [0]
+        sccs: list[list[str]] = []
+
+        def strongconnect(v: str) -> None:
+            index_of[v] = counter[0]
+            lowlink[v] = counter[0]
+            counter[0] += 1
+            stack.append(v)
+            on_stack.add(v)
+            for w in graph.get(v, ()):
+                if w not in index_of:
+                    strongconnect(w)
+                    lowlink[v] = min(lowlink[v], lowlink[w])
+                elif w in on_stack:
+                    lowlink[v] = min(lowlink[v], index_of[w])
+            if lowlink[v] == index_of[v]:
+                scc: list[str] = []
+                while True:
+                    w = stack.pop()
+                    on_stack.discard(w)
+                    scc.append(w)
+                    if w == v:
+                        break
+                sccs.append(scc)
+
+        for v in modules:
+            if v not in index_of:
+                strongconnect(v)
+
+        nontrivial = [scc for scc in sccs if len(scc) > 1]
+        assert not nontrivial, (
+            "Module-level runtime cycle detected in game sub-modules: "
+            + "; ".join(sorted(" -> ".join(scc) for scc in nontrivial))
+        )
