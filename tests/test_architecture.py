@@ -1518,9 +1518,7 @@ def _lazy():
             tc_ranges: list[tuple[int, int]] = [
                 (node.lineno, node.end_lineno or node.lineno)
                 for node in tree.body
-                if isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
+                if isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
             ]
 
             def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
@@ -1588,9 +1586,7 @@ def _lazy():
             tc_ranges: list[tuple[int, int]] = [
                 (node.lineno, node.end_lineno or node.lineno)
                 for node in tree.body
-                if isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
+                if isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
             ]
 
             def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
@@ -1602,8 +1598,7 @@ def _lazy():
                     if inside_tc(node.lineno):
                         continue
                     if node.module and (
-                        node.module == "katrain.core.game"
-                        or node.module.startswith("katrain.core.game.")
+                        node.module == "katrain.core.game" or node.module.startswith("katrain.core.game.")
                     ):
                         module_edges.add(node.module)
                 elif isinstance(node, ast.Import):
@@ -1660,9 +1655,8 @@ def _lazy():
                 strongconnect(v)
 
         nontrivial = [scc for scc in sccs if len(scc) > 1]
-        assert not nontrivial, (
-            "Module-level runtime cycle detected in game sub-modules: "
-            + "; ".join(sorted(" -> ".join(scc) for scc in nontrivial))
+        assert not nontrivial, "Module-level runtime cycle detected in game sub-modules: " + "; ".join(
+            sorted(" -> ".join(scc) for scc in nontrivial)
         )
 
     def test_batch_orchestration_has_no_umbrella_self_import(self):
@@ -1693,24 +1687,25 @@ def _lazy():
             tc_ranges: list[tuple[int, int]] = [
                 (node.lineno, node.end_lineno or node.lineno)
                 for node in tree.body
-                if isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
+                if isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
             ]
 
             def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
                 return any(s <= lineno <= e for s, e in _ranges)
 
             for node in tree.body:
-                if isinstance(node, ast.ImportFrom) and not inside_tc(node.lineno) and node.module == "katrain.core.batch.orchestration":
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and not inside_tc(node.lineno)
+                    and node.module == "katrain.core.batch.orchestration"
+                ):
                     # Forbid bare umbrella import
                     violations.append(f"{rel}:{node.lineno}: imports umbrella {node.module}")
         assert not violations, (
             "Sub-modules under katrain/core/batch/orchestration/ must import siblings directly "
             "instead of going through the umbrella package. Use "
             "``from katrain.core.batch.orchestration._<sibling> import X`` instead of "
-            "``from katrain.core.batch.orchestration import X``:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+            "``from katrain.core.batch.orchestration import X``:\n" + "\n".join(f"  - {v}" for v in violations)
         )
 
     def test_beginner_hints_has_no_umbrella_self_import(self):
@@ -1742,9 +1737,7 @@ def _lazy():
             tc_ranges: list[tuple[int, int]] = [
                 (node.lineno, node.end_lineno or node.lineno)
                 for node in tree.body
-                if isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
+                if isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
             ]
 
             def inside_tc(lineno: int, _ranges: list[tuple[int, int]] = tc_ranges) -> bool:
@@ -1764,6 +1757,5 @@ def _lazy():
                     violations.append(f"{rel}:{node.lineno}: imports umbrella {node.module}")
         assert not violations, (
             "Sub-modules under katrain/core/beginner/hints/ must not import the umbrella "
-            "``katrain.core.beginner``. Use sibling modules directly:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+            "``katrain.core.beginner``. Use sibling modules directly:\n" + "\n".join(f"  - {v}" for v in violations)
         )

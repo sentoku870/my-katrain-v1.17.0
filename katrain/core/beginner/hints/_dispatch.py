@@ -56,6 +56,7 @@ def _hints_pkg():
 
     return _pkg
 
+
 # Phase 92: Detector categories (always reliable, use board state).
 # Backward-compat alias for tests / external callers.
 _DETECTOR_CATEGORIES = frozenset(
