@@ -8,6 +8,10 @@ This module provides:
 - KifunarabeSession: manager for tracking guesses and summaries
 - evaluate_guess(): judge a guessed coordinate against the recorded move
 - should_auto_advance(): decide whether the engine should auto-play a side
+- build_kifunarabe_options(): assemble the on-board choice set
+  (Phase 290 supports a ``near_actual`` pool that picks candidates
+  within ``near_threshold_points`` of the actual move's ``pointsLost``,
+  in addition to the legacy ``top_kata`` order-based selection)
 
 The module is Kivy-independent and operates on GameNode data only through
 type hints (TYPE_CHECKING) so that tests can run without the GUI.
@@ -19,6 +23,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+
+from katrain.core.study.kifunarabe_constants import (
+    KIFUNARABE_CANDIDATE_POOL_DEFAULT,
+    KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL,
+    KIFUNARABE_CANDIDATE_POOL_TOP_KATA,
+    KIFUNARABE_NEAR_THRESHOLD_DEFAULT,
+    VALID_CANDIDATE_POOLS,
+)
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -50,6 +62,12 @@ VALID_MAX_MOVES: tuple[int, ...] = (0, 50, 100, 150)
 
 #: Phase 179-B1: maximum number of Critical 3 entries per player (B and W).
 CRITICAL_3_PER_PLAYER = 3
+
+#: Phase 290: re-export the candidate pool constants for callers that
+#: already import from this module (avoids forcing a switch to
+#: ``kifunarabe_constants`` just to read the pool name).
+POOL_TOP_KATA = KIFUNARABE_CANDIDATE_POOL_TOP_KATA
+POOL_NEAR_ACTUAL = KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL
 
 
 # =============================================================================
@@ -278,6 +296,173 @@ def should_auto_advance(config: KifunarabeConfig, next_player: str) -> bool:
     return False
 
 
+def _coerce_candidate_pool(value: Any, *, default: str = KIFUNARABE_CANDIDATE_POOL_DEFAULT) -> str:
+    """Normalise a candidate-pool config value into one of :data:`VALID_CANDIDATE_POOLS`.
+
+    Accepts ``None`` (returns ``default``), and silently clamps any
+    unrecognised string back to ``default``. The function exists so the
+    GUI can pass raw ``ConfigParser`` values without us leaking
+    ``ValueError``s into badukpan hint rendering.
+    """
+    if isinstance(value, str) and value in VALID_CANDIDATE_POOLS:
+        return value
+    return default
+
+
+def _coerce_near_threshold(value: Any, *, default: float = KIFUNARABE_NEAR_THRESHOLD_DEFAULT) -> float:
+    """Clamp a near-threshold config value into ``[0.0, 20.0]``.
+
+    Strings that look numeric (e.g. ``"3.5"``) are accepted. Negative
+    values are clamped to ``0.0``; absurdly large ones are clamped to
+    ``20.0``. Anything non-numeric falls back to ``default`` so the GUI
+    cannot crash the choice-set builder on a mistyped config entry.
+    """
+    try:
+        coerced = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, min(20.0, coerced))
+
+
+def _candidate_points_lost(cand: dict[str, Any]) -> float:
+    """Return the ``pointsLost`` of a candidate dict, treating missing as 0.
+
+    ``pointsLost`` is clipped to ``>= 0`` by ``GameNode.candidate_moves``;
+    this helper exists so the call sites stay readable and easy to mock.
+    """
+    raw = cand.get("pointsLost", 0)
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _get_actual_points_lost(
+    node: "GameNode",
+    actual_gtp: str,
+    parent_candidates: list[dict[str, Any]],
+) -> float:
+    """Determine the ``pointsLost`` centre for the ``near_actual`` pool mode.
+
+    Resolution order:
+
+    1. The actual move's entry inside ``parent_candidates`` (the parent's
+       KataGo analysis already sees the move and labels it with its own
+       ``pointsLost``). ``actual_gtp`` matching is case-insensitive.
+    2. The actual move's child node analysis: ``pointsLost = root_score -
+       child_score`` (signed by the side-to-move, clipped to ``>=0``).
+       This handles games where the actual move was not in the parent's
+       top-N candidate list.
+    3. Fallback ``0.0`` — equivalent to assuming the actual move sits at
+       KataGo's top. This is also what the legacy ``top_kata`` path used
+       implicitly, so the puzzle never has zero options in degenerate
+       cases.
+
+    Args:
+        node: The position whose options we're building (the *parent*
+            of the move the user must guess).
+        actual_gtp: GTP coordinate of the recorded (correct) move.
+        parent_candidates: ``node.candidate_moves`` (may be empty).
+
+    Returns:
+        A non-negative ``pointsLost`` value, in the same units as
+        ``GameNode.candidate_moves`` (i.e. signed points lost from the
+        to-play player's perspective).
+    """
+    for cand in parent_candidates:
+        gtp = cand.get("move")
+        if gtp and isinstance(gtp, str) and gtp.upper() == actual_gtp.upper():
+            return _candidate_points_lost(cand)
+
+    ordered = getattr(node, "ordered_children", None) or []
+    if ordered:
+        child = ordered[0]
+        if child is not None and getattr(child, "analysis_exists", False):
+            root_analysis = getattr(node, "analysis", None) or {}
+            root = root_analysis.get("root") or {}
+            try:
+                root_score = float(root.get("scoreLead", 0))
+                child_score = float(child.analysis["root"]["scoreLead"])
+            except (KeyError, TypeError, ValueError):
+                root_score = child_score = None  # type: ignore[assignment]
+            if root_score is not None and child_score is not None:
+                sign = node.player_sign(getattr(node, "next_player", None)) if hasattr(node, "player_sign") else 1
+                return max(0.0, sign * (root_score - child_score))
+
+    return 0.0
+
+
+def _select_near_actual_options(
+    parent_candidates: list[dict[str, Any]],
+    actual_gtp: str,
+    actual_points_lost: float,
+    threshold: float,
+    slots_for_kata: int,
+) -> list[str]:
+    """Pick up to ``slots_for_kata`` candidates within ``threshold`` of actual.
+
+    Candidates are sorted by ``|pointsLost - actual_points_lost|``
+    ascending (closest first), then by KataGo ``order`` as a tiebreaker.
+    When fewer than ``slots_for_kata`` neighbours are available the
+    function back-fills with the next-best KataGo candidates so the user
+    always sees the requested number of markers.
+    """
+    selected: list[str] = []
+    seen: set[str] = {actual_gtp.upper()}
+
+    neighbours = [
+        c
+        for c in parent_candidates
+        if isinstance(c.get("move"), str)
+        and c["move"].upper() not in seen
+        and abs(_candidate_points_lost(c) - actual_points_lost) <= threshold
+    ]
+    neighbours.sort(
+        key=lambda c: (
+            abs(_candidate_points_lost(c) - actual_points_lost),
+            c.get("order", 1 << 20),
+        )
+    )
+
+    for cand in neighbours:
+        if len(selected) >= slots_for_kata:
+            break
+        gtp = cand["move"]
+        selected.append(gtp)
+        seen.add(gtp.upper())
+
+    if len(selected) < slots_for_kata:
+        for cand in parent_candidates:
+            if len(selected) >= slots_for_kata:
+                break
+            gtp = cand.get("move")
+            if not isinstance(gtp, str) or gtp.upper() in seen:
+                continue
+            selected.append(gtp)
+            seen.add(gtp.upper())
+
+    return selected[:slots_for_kata]
+
+
+def _select_top_kata_options(
+    parent_candidates: list[dict[str, Any]],
+    actual_gtp: str,
+    slots_for_kata: int,
+) -> list[str]:
+    """Legacy KataGo top-N behaviour preserved verbatim (Phase 177)."""
+    selected: list[str] = []
+    seen: set[str] = {actual_gtp.upper()}
+    for cand in parent_candidates:
+        gtp = cand.get("move")
+        if not isinstance(gtp, str) or gtp.upper() in seen:
+            continue
+        selected.append(gtp)
+        seen.add(gtp.upper())
+        if len(selected) >= slots_for_kata:
+            break
+    return selected
+
+
 def get_hint_candidates(
     node: "GameNode",
     max_hints: int,
@@ -323,13 +508,25 @@ def build_kifunarabe_options(
     node: "GameNode",
     max_hints: int,
     min_visits: int = MIN_CANDIDATE_VISITS,
+    *,
+    candidate_pool: str = KIFUNARABE_CANDIDATE_POOL_DEFAULT,
+    near_threshold_points: float = KIFUNARABE_NEAR_THRESHOLD_DEFAULT,
 ) -> list[str]:
     """Build the on-board choice set for a kifunarabe (棋譜並べ) position.
 
-    The choice set always contains the recorded (actual) move first, followed
-    by ``max_hints - 1`` additional KataGo top candidates. Candidates are
-    taken in ``order`` ascending order (KataGo best-to-decreasing) without
-    shuffling, so the user can read the engine ranking on the board.
+    The choice set always contains the recorded (actual) move first. The
+    remaining ``max_hints - 1`` slots are filled according to
+    ``candidate_pool``:
+
+    - ``"top_kata"`` (legacy, Phase 177): KataGo candidates in ``order``
+      ascending, best-to-decreasing, without shuffling. The user can read
+      the engine ranking on the board.
+    - ``"near_actual"`` (Phase 290): KataGo candidates whose ``pointsLost``
+      is within ``near_threshold_points`` of the actual move's
+      ``pointsLost``, sorted by closeness. Surfaces alternative hands of
+      comparable evaluation rather than the obvious-best moves. Falls back
+      to ``top_kata`` ordering when there aren't enough neighbours; this
+      keeps the click count stable across positions.
 
     Edge cases:
     - ``max_hints <= 0``: returns ``[]`` (blind mode, no markers).
@@ -339,15 +536,23 @@ def build_kifunarabe_options(
     - KataGo analysis absent or low-visits: falls back to ``[actual]`` when
       ``max_hints >= 1`` (we still want the user to be able to click the
       correct move), otherwise ``[]``.
+    - Unrecognised ``candidate_pool`` value: coerced to the default
+      silently (see :func:`_coerce_candidate_pool`).
 
     Args:
         node: Current GameNode whose candidates are filtered.
         max_hints: 0..5 -- total options to surface (actual included).
         min_visits: Minimum KataGo root visits to trust candidates.
+        candidate_pool: ``"top_kata"`` or ``"near_actual"`` (see above).
+        near_threshold_points: Tolerance in points for the
+            ``near_actual`` mode. Negative or unparseable values clamp to
+            ``[0.0, 20.0]``.
 
     Returns:
-        List of GTP coordinate strings, length 0..max_hints, in the order:
-        ``[actual, kata_best, kata_2nd, ...]``.
+        List of GTP coordinate strings, length 0..max_hints. The actual
+        move is always at index ``0`` (so the GUI can mark it
+        unambiguously as ``_kifunarabe_actual``); the remaining entries
+        come from the selected pool mode.
     """
     if max_hints < 0:
         return []
@@ -361,23 +566,28 @@ def build_kifunarabe_options(
     if max_hints == 1:
         return [actual_gtp]
 
-    # max_hints >= 2: actual + (max_hints - 1) KataGo top moves.
-    slots_for_kata = max_hints - 1
-    kata_gtps: list[str] = []
-    if node.analysis_exists and node.root_visits >= min_visits:
-        candidates = node.candidate_moves
-        seen: set[str] = {actual_gtp}
-        for cand in candidates:
-            gtp = cand.get("move")
-            if not gtp or gtp in seen:
-                continue
-            seen.add(gtp)
-            kata_gtps.append(gtp)
-            if len(kata_gtps) >= slots_for_kata:
-                break
+    pool_mode = _coerce_candidate_pool(candidate_pool)
+    threshold = _coerce_near_threshold(near_threshold_points)
 
-    options: list[str] = [actual_gtp, *kata_gtps[:slots_for_kata]]
-    return options
+    if not node.analysis_exists or node.root_visits < min_visits:
+        return [actual_gtp]
+
+    candidates = node.candidate_moves
+    slots_for_kata = max_hints - 1
+
+    if pool_mode == KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL:
+        actual_points = _get_actual_points_lost(node, actual_gtp, candidates)
+        kata_gtps = _select_near_actual_options(
+            candidates,
+            actual_gtp,
+            actual_points,
+            threshold,
+            slots_for_kata,
+        )
+    else:
+        kata_gtps = _select_top_kata_options(candidates, actual_gtp, slots_for_kata)
+
+    return [actual_gtp, *kata_gtps[:slots_for_kata]]
 
 
 # =============================================================================

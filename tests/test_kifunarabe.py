@@ -935,3 +935,233 @@ class TestKifunarabeMarkerGuards:
         for marker in out:
             missing = required - marker.keys()
             assert not missing, f"Missing renderer keys {missing} on {marker['move']!r}"
+
+
+# ----------------------------------------------------------------------------
+# Phase 290: candidate_pool = "near_actual"
+# ----------------------------------------------------------------------------
+
+
+def _near_node(
+    actual_gtp: str,
+    candidates: list[dict],
+    *,
+    child_analysis: dict | None = None,
+    child_root_visits: int = 0,
+    root_visits: int = 5000,
+) -> Any:
+    """Build a node that exercises the ``near_actual`` code path.
+
+    ``FakeNode`` from earlier in this file is not aware of ``player_sign``;
+    a small subclass below patches that, mirroring what
+    :class:`katrain.core.game_node.GameNode` provides.
+    """
+
+    class _PlayerSignNode(FakeNode):
+        next_player: str = "B"
+
+        def player_sign(self, player: str | None) -> int:
+            return {"B": 1, "W": -1, None: 0}[player]  # type: ignore[index]
+
+    if child_analysis is None:
+
+        class _NoAnalysisChild:
+            move = MagicMock(gtp=lambda: actual_gtp)
+            analysis_exists = False
+            analysis = None
+
+        children = [_NoAnalysisChild()]
+    else:
+
+        class _AnalyzedChild:
+            def __init__(self, gtp: str) -> None:
+                self._gtp = gtp
+                self.analysis_exists = True
+                self.analysis = {
+                    "root": {"scoreLead": child_analysis.get("scoreLead", 0.0)},
+                    "completed": True,
+                }
+
+            @property
+            def move(self) -> Any:
+                m = MagicMock()
+                m.gtp.return_value = self._gtp
+                return m
+
+        children = [_AnalyzedChild(actual_gtp)]
+
+    node = _PlayerSignNode(
+        ordered_children=children,
+        analysis_exists=True,
+        root_visits=root_visits,
+        candidate_moves=candidates,
+    )
+    # Stash a synthetic analysis root so _get_actual_points_lost's
+    # fall-through branch can compute a delta when child_analysis is
+    # provided.
+    node.analysis = {"root": {"scoreLead": 3.0}}  # type: ignore[attr-defined]
+    return node
+
+
+class TestBuildKifunarabeOptionsNearActual:
+    """Phase 290: candidate_pool = ``near_actual`` selects by pointsLost."""
+
+    def test_filters_to_neighbors_within_threshold(self) -> None:
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        # Actual = D4 with pointsLost=1.0. Default threshold = 2.0 points.
+        # Within the band: Q4 (1.5), R4 (2.5 nope - exactly on the line -
+        # use 1.8 to be unambiguously inside). Outside: Q16 (10.0).
+        node = _near_node(
+            "D4",
+            [
+                {"move": "D4", "order": 0, "pointsLost": 1.0, "visits": 5000},
+                {"move": "Q4", "order": 1, "pointsLost": 1.5, "visits": 4000},
+                {"move": "R4", "order": 2, "pointsLost": 1.8, "visits": 3000},
+                {"move": "D16", "order": 3, "pointsLost": 4.0, "visits": 2500},
+                {"move": "Q16", "order": 4, "pointsLost": 10.0, "visits": 2000},
+            ],
+        )
+        out = build_kifunarabe_options(node, 4, candidate_pool="near_actual", near_threshold_points=2.0)
+        # Actual first, then neighbours sorted by closeness.
+        assert out[0] == "D4"
+        # Q4 (delta 0.5) before R4 (delta 0.8)
+        assert out[1] == "Q4"
+        assert out[2] == "R4"
+        # D16 (delta 3.0) and Q16 (delta 9.0) are out of band and must
+        # NOT appear in the neighbours; we asked for 4 total so the
+        # fourth slot will be filled by the fallback. The exact fallback
+        # order is the KataGo ``order`` (D16 = order 3, Q16 = order 4).
+        assert out[3] in {"D16", "Q16"}
+        assert "Q16" not in out[:3]
+
+    def test_fills_shortage_with_top_kata_when_few_neighbours(self) -> None:
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        # Only one neighbour within threshold; we ask for 3 slots, the
+        # second slot must be back-filled by the top KataGo candidate.
+        node = _near_node(
+            "D4",
+            [
+                {"move": "D4", "order": 0, "pointsLost": 1.0, "visits": 5000},
+                {"move": "Q4", "order": 1, "pointsLost": 1.5, "visits": 4000},  # neighbour
+                {"move": "R4", "order": 2, "pointsLost": 5.0, "visits": 3000},  # far
+                {"move": "Q16", "order": 3, "pointsLost": 10.0, "visits": 2000},  # far
+            ],
+        )
+        out = build_kifunarabe_options(node, 3, candidate_pool="near_actual", near_threshold_points=2.0)
+        assert out[0] == "D4"
+        assert out[1] == "Q4"
+        # Backfill is ordered by KataGo ``order``: R4 (order 2) before Q16.
+        assert out[2] == "R4"
+
+    def test_uses_child_node_when_actual_not_in_parent_candidates(self) -> None:
+        """Phase 290: when KataGo missed the actual move, fall back to the
+        child node's analysis to compute the centre ``pointsLost``.
+
+        We give the parent a candidate with pointsLost=0.0 and the child a
+        scoreLead such that the implied delta is 1.0; combined with the
+        neighbours in the candidates list the centre should drive the
+        selection correctly.
+        """
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        node = _near_node(
+            "D4",
+            [
+                # The actual move ``D4`` is missing from the parent
+                # candidates (KataGo did not list it).
+                {"move": "Q16", "order": 0, "pointsLost": 0.0, "visits": 5000},
+                {"move": "Q4", "order": 1, "pointsLost": 1.0, "visits": 4000},
+                {"move": "R4", "order": 2, "pointsLost": 1.5, "visits": 3000},
+                {"move": "D16", "order": 3, "pointsLost": 6.0, "visits": 2500},
+            ],
+            child_analysis={"scoreLead": 2.0},
+        )
+        # Parent scoreLead=3.0, child scoreLead=2.0, sign=+1 -> centre=1.0
+        out = build_kifunarabe_options(node, 3, candidate_pool="near_actual", near_threshold_points=1.0)
+        assert out[0] == "D4"
+        # Q4 (delta 0.0) and R4 (delta 0.5) are inside the band.
+        assert out[1] == "Q4"
+        assert out[2] == "R4"
+
+    def test_threshold_zero_picks_no_neighbours(self) -> None:
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        # Threshold 0.0 -> only candidates with exactly matching
+        # pointsLost qualify. None of the parent candidates match the
+        # actual move's pointsLost (=0.0 is the best, but the actual is
+        # absent here). Result: all three slots are filled by fallback
+        # (KataGo ``order``).
+        node = _near_node(
+            "D4",
+            [
+                {"move": "D4", "order": 0, "pointsLost": 1.0, "visits": 5000},
+                {"move": "Q16", "order": 1, "pointsLost": 1.2, "visits": 4000},
+                {"move": "R4", "order": 2, "pointsLost": 1.4, "visits": 3000},
+            ],
+        )
+        out = build_kifunarabe_options(node, 3, candidate_pool="near_actual", near_threshold_points=0.0)
+        assert out == ["D4", "Q16", "R4"]
+
+    def test_invalid_pool_defaults_to_near_actual(self) -> None:
+        """Unknown ``candidate_pool`` values are silently coerced."""
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        node = _near_node(
+            "D4",
+            [
+                {"move": "D4", "order": 0, "pointsLost": 1.0, "visits": 5000},
+                {"move": "Q4", "order": 1, "pointsLost": 1.5, "visits": 4000},
+            ],
+        )
+        # Pass garbage pool name -> coerced to default ("near_actual")
+        out = build_kifunarabe_options(node, 2, candidate_pool="not_a_real_mode")
+        assert out == ["D4", "Q4"]
+
+    def test_top_kata_mode_still_works(self) -> None:
+        """Explicit ``top_kata`` opt-in keeps Phase 177 semantics."""
+        from katrain.core.study.kifunarabe import build_kifunarabe_options
+
+        node = _near_node(
+            "D4",
+            [
+                {"move": "Q16", "order": 0, "pointsLost": 0.0, "visits": 5000},
+                {"move": "R4", "order": 1, "pointsLost": 0.5, "visits": 4000},
+                {"move": "D16", "order": 2, "pointsLost": 1.0, "visits": 3000},
+            ],
+        )
+        out = build_kifunarabe_options(node, 3, candidate_pool="top_kata", near_threshold_points=2.0)
+        # Actual first, then KataGo order (ignoring pointsLost).
+        assert out == ["D4", "Q16", "R4"]
+
+
+class TestKifunarabeConstants:
+    """Phase 290: candidate-pool constants exported from kifunarabe_constants."""
+
+    def test_pool_default_is_near_actual(self) -> None:
+        from katrain.core.study.kifunarabe_constants import (
+            KIFUNARABE_CANDIDATE_POOL_DEFAULT,
+            KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL,
+        )
+
+        assert KIFUNARABE_CANDIDATE_POOL_DEFAULT == KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL
+        assert KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL == "near_actual"
+
+    def test_threshold_default_is_two_points(self) -> None:
+        from katrain.core.study.kifunarabe_constants import (
+            KIFUNARABE_NEAR_THRESHOLD_DEFAULT,
+        )
+
+        assert KIFUNARABE_NEAR_THRESHOLD_DEFAULT == 2.0
+
+    def test_valid_pools_tuple_lists_both_modes(self) -> None:
+        from katrain.core.study.kifunarabe_constants import (
+            KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL,
+            KIFUNARABE_CANDIDATE_POOL_TOP_KATA,
+            VALID_CANDIDATE_POOLS,
+        )
+
+        assert KIFUNARABE_CANDIDATE_POOL_TOP_KATA in VALID_CANDIDATE_POOLS
+        assert KIFUNARABE_CANDIDATE_POOL_NEAR_ACTUAL in VALID_CANDIDATE_POOLS
+        assert len(VALID_CANDIDATE_POOLS) == 2
