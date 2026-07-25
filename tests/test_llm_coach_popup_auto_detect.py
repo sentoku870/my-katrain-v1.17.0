@@ -30,7 +30,12 @@ class TestPhase2256RankAutoFill:
         )
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
-        assert content.ids["rank_input"].text == "4d"  # black first in auto
+        # Phase 272-B: rank_input is now a Spinner. The detected rank
+        # "4d" (auto perspective → black) is converted to its mode key
+        # "advanced", then to the localised label.
+        assert content.ids["rank_input"].text == "ADVANCED（三段〜五段）"
+        # ``detected_rank`` keeps the raw value so downstream consumers
+        # (refresh hint, status) can display the original notation.
         assert content.detected_rank == "4d"
         assert (
             "rank-auto" in content.ids["rank_auto_label"].text or "auto" in content.ids["rank_auto_label"].text.lower()
@@ -44,10 +49,11 @@ class TestPhase2256RankAutoFill:
             encoding="utf-8",
         )
         content.ids["karte_path_input"].text = str(karte)
-        content.ids["rank_input"].text = "5k"  # user already typed
+        # Phase 272-B: simulate user selecting ADVANCED in the Spinner.
+        content.ids["rank_input"].text = "ADVANCED（三段〜五段）"
         content._populate_rank_and_perspective()
-        # User input is preserved
-        assert content.ids["rank_input"].text == "5k"
+        # User Spinner selection is preserved.
+        assert content.ids["rank_input"].text == "ADVANCED（三段〜五段）"
 
     def test_perspective_auto_label_uses_detected_color(self, tmp_path):
         content = _make_content(path_type="karte")
@@ -71,7 +77,8 @@ class TestPhase2256PlayerColorPassthrough:
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         content.ids["karte_path_input"].text = str(karte)
-        content.ids["rank_input"].text = "5k"
+        # Phase 272-B: Spinner stores localised label.
+        content.ids["rank_input"].text = "INTERMEDIATE（9級〜4級）"
         content.detected_player_color = "B"
         content.perspective_value = "B"
         fake_prompt = MagicMock()
@@ -86,14 +93,27 @@ class TestPhase2256PlayerColorPassthrough:
             content.on_generate_and_copy()
         assert spy.call_args.kwargs.get("player_color") == "B"
 
-    def test_player_color_none_when_auto_no_detection(self, tmp_path):
+    def test_player_color_none_when_auto_no_detection_blocks_generate(self, tmp_path):
+        """Phase 272-B: when auto mode + no detection, generation is BLOCKED
+        (not silently allowed with PlayerColor=unknown)."""
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {}}), encoding="utf-8")
         content.ids["karte_path_input"].text = str(karte)
-        content.ids["rank_input"].text = "5k"
+        content.ids["rank_input"].text = "INTERMEDIATE（9級〜4級）"
         content.perspective_value = "auto"
         content.detected_player_color = None
+        # Cache the player info so the error message can name them.
+        content._last_player_info = {
+            "black": {"name": "Alice"},
+            "white": {"name": "Bob"},
+        }
+        # Stub the player-settings reader so default_user is populated.
+        content._read_player_settings = lambda: {
+            "default_user": "Carol",
+            "default_user_rank": "",
+            "general_player_rank": "",
+        }
         with (
             patch(
                 "katrain.gui.features.llm_coach.build_llm_prompt",
@@ -102,7 +122,8 @@ class TestPhase2256PlayerColorPassthrough:
             patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
         ):
             content.on_generate_and_copy()
-        assert spy.call_args.kwargs.get("player_color") is None
+        # Generation was blocked — build_llm_prompt was NOT called.
+        assert not spy.called
 
 
 class TestPhase2256Helpers:
@@ -211,15 +232,15 @@ class TestPhase226IGuiAutoDetectFeedback:
         content._install_config_mock(mykatrain_settings={"default_user_name": "P1"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
-        # Rank auto-fill: the input should have been filled with 5k
-        # (P1's rank) since the perspective defaults to "auto" and
-        # both colours are equal.
-        assert content.ids["rank_input"].text in ("5k", "6k")
+        # Phase 272-B: rank_input stores the Spinner label. 5k / 6k both
+        # map to "INTERMEDIATE（9級〜4級）".
+        assert content.ids["rank_input"].text == "INTERMEDIATE（9級〜4級）"
 
-    def test_rank_fallback_to_default_user_rank(self, tmp_path):
+    def test_rank_fallback_to_general_player_rank(self, tmp_path):
         content = _make_content(path_type="karte")
-        # When Karte has no rank info, the default_user_rank setting
-        # should be used (Phase 225.8 fallback).
+        # Phase 272-B: when Karte has no rank info, the analysis-tab
+        # Spinner value (general_player_rank) is the highest-priority
+        # fallback. ``default_user_rank`` is the legacy third slot.
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(make_karte_with_player_info("P1", None, "P2", None)),
@@ -227,15 +248,12 @@ class TestPhase226IGuiAutoDetectFeedback:
         )
         content.katrain = MagicMock()
         content._install_config_mock(
-            mykatrain_settings={
-                "default_user_name": "P1",
-                "default_user_rank": "4段",
-            }
+            mykatrain_settings={"default_user_name": "P1"},
+            general_player_rank="advanced",
         )
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
-        # rank_input should have been filled with "4段" as fallback
-        assert content.ids["rank_input"].text == "4段"
+        assert content.ids["rank_input"].text == "ADVANCED（三段〜五段）"
 
 
 class TestPhase226BSpinnerTextToInternal:
@@ -405,12 +423,17 @@ class TestPhase2257AutoDetectDefersWhenKartePathEmpty:
 
 
 class TestPhase2258DefaultUserRankFallback:
-    """Phase 225.8: when Karte/SGF has no rank info, the popup falls back
-    to the mykatrain setting ``default_user_rank`` so the user doesn't
-    have to enter their rank on every prompt generation."""
+    """Phase 225.8 + Phase 272-B: Karte/SGF or ``default_user_rank`` fallback.
 
-    def test_default_user_rank_used_when_karte_has_no_rank(self, tmp_path):
-        """Karte has player names but no ranks → default_user_rank fills."""
+    Phase 272-B reordered the priority chain so ``general_player_rank``
+    (analysis tab Spinner) wins first; Karte/SGF and ``default_user_rank``
+    remain as the 2nd and 3rd slots respectively.
+    """
+
+    def test_default_user_rank_used_when_no_karte_no_general(self, tmp_path):
+        """Karte has player names but no ranks; general_player_rank is empty.
+        ``default_user_rank`` fills the rank_input Spinner with the
+        corresponding mode key label."""
         content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
@@ -418,11 +441,14 @@ class TestPhase2258DefaultUserRankFallback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content._install_config_mock(mykatrain_settings={"default_user_rank": "4段"})
+        content._install_config_mock(
+            mykatrain_settings={"default_user_rank": "4段"},
+            general_player_rank="",  # Phase 272-B: must be empty for the legacy fallback to fire
+        )
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
-        # The rank input was filled with the default_user_rank
-        assert content.ids["rank_input"].text == "4段"
+        # Phase 272-B: 4段 → "advanced" → Spinner label.
+        assert content.ids["rank_input"].text == "ADVANCED（三段〜五段）"
 
     def test_existing_karte_rank_wins_over_default(self, tmp_path):
         """If Karte has rank info, default_user_rank must NOT overwrite."""
@@ -433,11 +459,33 @@ class TestPhase2258DefaultUserRankFallback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content._install_config_mock(mykatrain_settings={"default_user_rank": "4段"})
+        content._install_config_mock(
+            mykatrain_settings={"default_user_rank": "4段"},
+            general_player_rank="",
+        )
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
-        # Karte rank "5k" wins over default_user_rank "4段"
-        assert content.ids["rank_input"].text == "5k"
+        # Phase 272-B: 5k → "intermediate" → Spinner label.
+        assert content.ids["rank_input"].text == "INTERMEDIATE（9級〜4級）"
+
+    def test_general_player_rank_wins_over_karte(self, tmp_path):
+        """Phase 272-B: analysis-tab Spinner is the top priority, beats Karte."""
+        content = _make_content(path_type="karte")
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(make_karte_with_player_info("P1", "5k", "P2", "5k")),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content._install_config_mock(
+            mykatrain_settings={"default_user_rank": "4段"},
+            general_player_rank="advanced",
+        )
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # general_player_rank "advanced" beats Karte "5k" and
+        # default_user_rank "4段".
+        assert content.ids["rank_input"].text == "ADVANCED（三段〜五段）"
 
     def test_no_rank_no_default_leaves_input_empty(self, tmp_path):
         """No rank anywhere → rank input stays empty."""
@@ -445,7 +493,7 @@ class TestPhase2258DefaultUserRankFallback:
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         content.katrain = MagicMock()
-        content._install_config_mock(mykatrain_settings={})
+        content._install_config_mock(mykatrain_settings={}, general_player_rank="")
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         assert content.ids["rank_input"].text == ""

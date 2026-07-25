@@ -340,6 +340,34 @@ def estimate_mode_from_rank(rank_str: str | None) -> CoachMode | None:
     return None
 
 
+# Phase 272: 5-level mode → KataGo skill preset bridge.
+#
+# The legacy ``general/skill_preset`` was always "relaxed" / "beginner"
+# / "standard" / "advanced" / "pro" (5 levels). When the analysis tab
+# was switched to a free-text rank input (Phase 229), this mapping
+# became the *bridge* between the user's rank and the analysis
+# thresholds. Phase 272 collapses the user input to a 5-level
+# ``CoachMode`` and maps back to the historical preset name so the
+# downstream logic (PV Filter, Beginner Hints, AI opponent
+# strictness) keeps working unchanged.
+_MODE_TO_SKILL_PRESET: dict[CoachMode, str] = {
+    CoachMode.BEGINNER: "relaxed",
+    CoachMode.INTERMEDIATE: "beginner",
+    CoachMode.DAN: "standard",
+    CoachMode.ADVANCED: "advanced",
+    CoachMode.EXPERT: "pro",
+}
+
+
+def skill_preset_for_mode(mode: CoachMode) -> str:
+    """Map a :class:`CoachMode` to the historical skill preset name.
+
+    Returns ``"standard"`` as a defensive fallback when ``mode`` is
+    unknown (should never happen in practice).
+    """
+    return _MODE_TO_SKILL_PRESET.get(mode, "standard")
+
+
 def estimate_mode_from_loss(
     avg_points_lost: float | None,
     winrate_drop_pct: float | None = None,

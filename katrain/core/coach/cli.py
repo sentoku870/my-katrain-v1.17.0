@@ -36,6 +36,7 @@ from katrain.core.coach.karte_detector import detect_symptoms_from_karte
 from katrain.core.coach.lexicon import get_entry
 from katrain.core.coach.llm_validator import validate_llm_output
 from katrain.core.coach.master_db import CoachMode
+from katrain.core.coach.player_rank_mode import coerce_to_mode_key
 from katrain.core.coach.prompt_builder import (
     PromptConfig,
     build_translation_prompt,
@@ -44,6 +45,21 @@ from katrain.core.coach.symptom_index import (
     SymptomId,
 )
 from katrain.core.coach.tones import select_voice, voice_summary
+
+
+def _resolve_mode_from_rank(rank: str | None) -> CoachMode:
+    """Derive a :class:`CoachMode` from a rank string for prompt construction.
+
+    Phase 272 follow-up: ``modes_for_voice(voice)[0]`` is a footgun because
+    after AYAKA removal TOMOKO serves BEGINNER, INTERMEDIATE, DAN and
+    ADVANCED — so ``modes[0]`` always returned BEGINNER, making every
+    non-EXPERT rank produce a ``Level: BEGINNER`` prompt regardless of
+    the user's input. Always go through
+    :func:`katrain.common.player_rank_mode.coerce_to_mode_key` and fall
+    back to :data:`CoachMode.INTERMEDIATE` when no rank is given.
+    """
+    return CoachMode(coerce_to_mode_key(rank, default=CoachMode.INTERMEDIATE))
+
 
 _DEFAULT_LLM_REQUIRED = (
     SymptomId.TIME_PRESSURE_LOSS,
@@ -165,10 +181,9 @@ def build_prompt(
     the LLM which side to focus on.
     """
     voice = select_voice(rank, avg_points_lost=avg_points_lost)
-    from katrain.core.coach.tones import modes_for_voice
-
-    modes = modes_for_voice(voice)
-    mode = modes[0] if modes else CoachMode.INTERMEDIATE
+    # Phase 272 follow-up: derive the CoachMode from the actual rank,
+    # not from the (TOMOKO, BEGINNER-first) modes_for_voice() lookup.
+    mode = _resolve_mode_from_rank(rank)
 
     if detected_ids is None:
         detected_ids = detect_symptoms_from_karte(karte)
@@ -259,7 +274,7 @@ def _cmd_build_summary(raw_data: dict[str, Any], args: argparse.Namespace) -> in
         SummaryPromptConfig,
         build_summary_weakness_prompt,
     )
-    from katrain.core.coach.tones import modes_for_voice, select_voice
+    from katrain.core.coach.tones import select_voice
 
     jtype = detect_json_type(raw_data)
     if jtype != "summary":
@@ -272,8 +287,9 @@ def _cmd_build_summary(raw_data: dict[str, Any], args: argparse.Namespace) -> in
         return 2
 
     voice = select_voice(args.rank)
-    modes = modes_for_voice(voice)
-    mode = modes[0] if modes else CoachMode.INTERMEDIATE
+    # Phase 272 follow-up: same fix as build_prompt — derive the mode
+    # from the rank, not from the (TOMOKO, BEGINNER-first) lookup.
+    mode = _resolve_mode_from_rank(args.rank)
 
     cfg = SummaryPromptConfig(
         voice=voice,
@@ -396,7 +412,7 @@ def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) ->
         build_summary_weakness_prompt,
     )
     from katrain.core.coach.summary_validator import validate_summary_llm_output
-    from katrain.core.coach.tones import modes_for_voice, select_voice
+    from katrain.core.coach.tones import select_voice
 
     jtype = _detect_jtype(raw_data)
     if jtype != "summary":
@@ -407,8 +423,9 @@ def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) ->
         return 2
 
     voice = select_voice(args.rank)
-    modes = modes_for_voice(voice)
-    mode = modes[0] if modes else CoachMode.INTERMEDIATE
+    # Phase 272 follow-up: same fix as build_prompt — derive the mode
+    # from the rank, not from the (TOMOKO, BEGINNER-first) lookup.
+    mode = _resolve_mode_from_rank(args.rank)
 
     cfg = SummaryPromptConfig(
         voice=voice,
