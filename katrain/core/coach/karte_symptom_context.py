@@ -47,11 +47,15 @@ from katrain.core.coach.symptom_index import SymptomContext, SymptomId
 
 
 def _collect_meaning_tags(karte: dict[str, Any]) -> tuple[MeaningTagId, ...]:
-    """Collect all MeaningTagId values present in important_moves."""
+    """Collect all MeaningTagId values present in important_moves.
+
+    Dual-read (2026-07 fix): the real Karte stores the tag under
+    ``primary_tag`` (legacy fallback: ``meaning_tag_id``).
+    """
     tags: list[MeaningTagId] = []
     seen: set[MeaningTagId] = set()
     for move in karte.get("important_moves", []) or []:
-        tag_str = move.get("meaning_tag_id")
+        tag_str = move.get("primary_tag") or move.get("meaning_tag_id")
         if not tag_str:
             continue
         # Match by enum value (string)
@@ -73,7 +77,9 @@ def _collect_hint_categories(karte: dict[str, Any]) -> tuple[HintCategory, ...]:
 
     moves = karte.get("important_moves", []) or []
     for m in moves:
-        cat = m.get("mistake_category") or m.get("category")
+        # Dual-read (2026-07 fix): real Karte uses ``mistake_type``
+        # (legacy fallback: ``mistake_category`` / ``category``).
+        cat = m.get("mistake_type") or m.get("mistake_category") or m.get("category")
         if not cat:
             continue
         cat_str = str(cat).lower()
@@ -249,9 +255,13 @@ def _symptom_ids_from_weakness_categories(
 ) -> tuple[SymptomId, ...]:
     """Map weakness[*].category strings to SymptomId values.
 
-    The weakness aggregation in json_export writes SymptomId.value
-    strings (e.g. "atari_blindness", "big_point_blindness") into the
-    category field. We reverse-map them to the SymptomId enum.
+    Note (2026-07): the real Karte export writes MistakeCategory values
+    ("BLUNDER" / "MISTAKE" / "INACCURACY") into ``category``, which do
+    not correspond to any SymptomId — so this mapping yields nothing on
+    real kartes. Category-level detection instead flows through the
+    meaning-tag path (:func:`_collect_meaning_tags`). This function is
+    kept for legacy fixtures that stored SymptomId.value strings in the
+    category field.
     """
     out: list[SymptomId] = []
     seen: set[SymptomId] = set()

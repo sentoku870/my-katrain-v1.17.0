@@ -23,28 +23,48 @@ from typing import Any
 # --- Aggregators ---
 
 
+def _first_numeric(move: dict[str, Any], *keys: str) -> float | None:
+    """Return the first numeric value among ``keys`` in ``move``.
+
+    Dual-read helper (2026-07 schema-alignment fix): the real Karte JSON
+    stores per-move loss as ``loss_clamped`` while older fixtures used
+    ``points_lost``. New keys are tried first; legacy keys are accepted
+    as a fallback so old fixtures / saved kartes keep working.
+    """
+    for k in keys:
+        v = move.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return float(v)
+    return None
+
+
 def extract_avg_points_lost(karte: dict[str, Any]) -> float | None:
     """Compute the average pointsLost across all important moves.
 
-    Returns None when no important moves have a numeric points_lost.
+    Reads the real Karte field ``loss_clamped`` (legacy fallback:
+    ``points_lost``). Returns None when no important moves have a
+    numeric loss.
     """
     moves = karte.get("important_moves", []) or []
     losses: list[float] = []
     for m in moves:
-        v = m.get("points_lost")
-        if isinstance(v, (int, float)):
-            losses.append(float(v))
+        v = _first_numeric(m, "loss_clamped", "points_lost")
+        if v is not None:
+            losses.append(v)
     return sum(losses) / len(losses) if losses else None
 
 
 def extract_avg_winrate_lost(karte: dict[str, Any]) -> float | None:
-    """Average winrateLost across all important moves (None when no data)."""
+    """Average winrateLost across all important moves (None when no data).
+
+    Reads ``winrate_lost`` (added to Karte output in schema 3.5).
+    """
     moves = karte.get("important_moves", []) or []
     losses: list[float] = []
     for m in moves:
-        v = m.get("winrate_lost")
-        if isinstance(v, (int, float)):
-            losses.append(float(v))
+        v = _first_numeric(m, "winrate_lost")
+        if v is not None:
+            losses.append(v)
     return sum(losses) / len(losses) if losses else None
 
 
@@ -53,31 +73,38 @@ def extract_max_winrate_drop(karte: dict[str, Any]) -> float | None:
     moves = karte.get("important_moves", []) or []
     values: list[float] = []
     for m in moves:
-        v = m.get("winrate_lost")
-        if isinstance(v, (int, float)):
-            values.append(float(v))
+        v = _first_numeric(m, "winrate_lost")
+        if v is not None:
+            values.append(v)
     return max(values) if values else None
 
 
 def extract_max_score_stdev(karte: dict[str, Any]) -> float | None:
-    """Largest KataGo scoreStdev seen on any important move (None when no data)."""
+    """Largest KataGo scoreStdev seen on any important move (None when no data).
+
+    Reads ``score_stdev`` (added to Karte output in schema 3.5).
+    """
     moves = karte.get("important_moves", []) or []
     values: list[float] = []
     for m in moves:
-        v = m.get("score_stdev")
-        if isinstance(v, (int, float)):
-            values.append(float(v))
+        v = _first_numeric(m, "score_stdev")
+        if v is not None:
+            values.append(v)
     return max(values) if values else None
 
 
 def extract_max_overall_difficulty(karte: dict[str, Any]) -> float | None:
-    """Largest overall_difficulty reported on any important move (None when no data)."""
+    """Largest position difficulty reported on any important move (None when no data).
+
+    Reads the real Karte field ``difficulty_score`` (schema 3.5; legacy
+    fallback: ``overall_difficulty``).
+    """
     moves = karte.get("important_moves", []) or []
     values: list[float] = []
     for m in moves:
-        v = m.get("overall_difficulty")
-        if isinstance(v, (int, float)):
-            values.append(float(v))
+        v = _first_numeric(m, "difficulty_score", "overall_difficulty")
+        if v is not None:
+            values.append(v)
     return max(values) if values else None
 
 
@@ -85,6 +112,11 @@ def extract_good_move_count(karte: dict[str, Any]) -> int:
     """Return the maximum good_move_count across important moves.
 
     Used by Freedom-detector family (Phase 179).
+
+    Note: the current Karte JSON does not emit ``good_move_count`` per
+    move, so this returns 0 on real kartes (Freedom-family detectors
+    stay inactive). A future schema addition (e.g. candidate count) is
+    needed to revive them.
     """
     moves = karte.get("important_moves", []) or []
     counts: list[int] = []
@@ -230,11 +262,11 @@ def extract_winrate_scorelead_correlation(
     xs: list[float] = []
     ys: list[float] = []
     for m in moves:
-        w = m.get("winrate_lost")
-        p = m.get("points_lost")
-        if isinstance(w, (int, float)) and isinstance(p, (int, float)):
-            xs.append(float(w))
-            ys.append(float(p))
+        w = _first_numeric(m, "winrate_lost")
+        p = _first_numeric(m, "loss_clamped", "points_lost")
+        if w is not None and p is not None:
+            xs.append(w)
+            ys.append(p)
     return _safe_pearson(xs, ys)
 
 
@@ -246,10 +278,10 @@ def extract_winrate_scorelead_pairs(karte: dict[str, Any]) -> list[tuple[float, 
     moves = karte.get("important_moves", []) or []
     out: list[tuple[float, float]] = []
     for m in moves:
-        w = m.get("winrate_lost")
-        p = m.get("points_lost")
-        if isinstance(w, (int, float)) and isinstance(p, (int, float)):
-            out.append((float(w), float(p)))
+        w = _first_numeric(m, "winrate_lost")
+        p = _first_numeric(m, "loss_clamped", "points_lost")
+        if w is not None and p is not None:
+            out.append((w, p))
     return out
 
 
@@ -257,18 +289,30 @@ def extract_critical_move_count(karte: dict[str, Any]) -> int:
     """Count critical / blunder moves in the karte.
 
     Phase 149-C-3 defines critical_3 section per player; we union those
-    with any mistake_count from reason_tags_distribution.
+    with any tag counts from reason_tags_distribution.
+
+    Dual-read (2026-07 fix): the real Karte stores ``critical_3[color]``
+    as a plain list of items (legacy fallback: ``{"moves": [...]}``),
+    and ``reason_tags_distribution[color]`` as a flat ``{tag: count}``
+    map (legacy fallback: nested ``total_count``).
     """
     critical_3 = karte.get("critical_3", {}) or {}
     reason_tags = karte.get("reason_tags_distribution", {}) or {}
     total = 0
     for color in ("black", "white"):
-        c3 = critical_3.get(color, {}) or {}
-        moves = c3.get("moves", []) if isinstance(c3, dict) else []
-        total += len(moves) if isinstance(moves, list) else 0
+        c3 = critical_3.get(color, []) or []
+        if isinstance(c3, list):
+            total += len(c3)
+        elif isinstance(c3, dict):
+            moves = c3.get("moves", [])
+            total += len(moves) if isinstance(moves, list) else 0
         rt = reason_tags.get(color, {}) or {}
         if isinstance(rt, dict):
-            total += int(rt.get("total_count", 0) or 0)
+            nested = rt.get("total_count")
+            if isinstance(nested, int):
+                total += nested
+            else:
+                total += sum(v for v in rt.values() if isinstance(v, int) and not isinstance(v, bool))
     return total
 
 
