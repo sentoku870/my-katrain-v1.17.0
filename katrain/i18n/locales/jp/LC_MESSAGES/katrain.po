@@ -259,7 +259,7 @@ msgid "kifunarabe:summary:next_sgf"
 msgstr "次の棋譜"
 
 msgid "kifunarabe:summary:abort"
-msgstr "中断して棋譜並べ終了"
+msgstr "中断して終了"
 
 # Phase 179-B2
 msgid "kifunarabe:summary:critical3"

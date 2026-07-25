@@ -246,30 +246,40 @@ def show_kifunarabe_summary(
     # Phase 249-γ: added an "Important moves" button that opens the
     # Phase 248-γ-D1 list popup so the user can jump to any of the
     # Critical 3 positions from the session.
+    # Phase 290-B: each button now gets ``size_hint_x=1`` and the row
+    # uses ``dp(4)`` spacing so the 4 buttons share equal width inside
+    # a 480dp popup — the previous dp(8) + 440dp combo clipped the
+    # Japanese "中断して棋譜並べ終了" label. The label has also been
+    # shortened to "中断して終了" (and "Abort" in English) so each
+    # button has comfortable headroom even on smaller screens.
     button_row = BoxLayout(
         orientation="horizontal",
-        spacing=dp(8),
+        spacing=dp(4),
         size_hint_y=None,
         height=dp(40),
     )
     next_btn = Button(
         text=i18n._("kifunarabe:summary:next_sgf"),
         font_name=Theme.DEFAULT_FONT,
+        size_hint_x=1,
     )
     next_btn.bind(on_release=lambda _b: content.on_next_sgf())
     history_btn = Button(
         text=i18n._("kifunarabe:summary:history"),
         font_name=Theme.DEFAULT_FONT,
+        size_hint_x=1,
     )
     history_btn.bind(on_release=lambda _b: content.on_show_history())
     important_btn = Button(
         text=i18n._("kifunarabe:summary:important_moves"),
         font_name=Theme.DEFAULT_FONT,
+        size_hint_x=1,
     )
     important_btn.bind(on_release=lambda _b: content.on_show_important_moves())
     abort_btn = Button(
         text=i18n._("kifunarabe:summary:abort"),
         font_name=Theme.DEFAULT_FONT,
+        size_hint_x=1,
     )
     abort_btn.bind(on_release=lambda _b: content.on_abort())
     button_row.add_widget(next_btn)
@@ -280,7 +290,7 @@ def show_kifunarabe_summary(
 
     popup = I18NPopup(
         title_key="kifunarabe:summary:title",
-        size=[dp(440), dp(420)],
+        size=[dp(480), dp(420)],
         content=content,
     ).__self__
     popup.size_hint = (None, None)

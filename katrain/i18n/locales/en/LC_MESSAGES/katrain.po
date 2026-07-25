@@ -732,7 +732,7 @@ msgid "kifunarabe:summary:next_sgf"
 msgstr "Next game"
 
 msgid "kifunarabe:summary:abort"
-msgstr "Abort Kifu Narabe"
+msgstr "Abort"
 
 # Phase 179-B2
 msgid "kifunarabe:summary:critical3"
