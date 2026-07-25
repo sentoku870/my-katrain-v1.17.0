@@ -492,6 +492,9 @@ class TestBuildKifunarabeConfig:
     the persisted config. The dict assembly was extracted into
     ``build_kifunarabe_config`` so this regression can be caught without
     spinning up a Kivy popup.
+
+    Phase 290: extended to also cover the candidate-pool Spinner and
+    the near-threshold numeric input.
     """
 
     def _refs(
@@ -503,7 +506,13 @@ class TestBuildKifunarabeConfig:
         uniform_color: bool = True,
         auto_toggle: bool = True,
         auto_export: bool = False,
+        candidate_pool: str = "near_actual",
+        near_threshold: float = 2.0,
     ) -> dict:
+        pool_mock = MagicMock()
+        pool_mock.input_value = candidate_pool
+        threshold_mock = MagicMock()
+        threshold_mock.input_value = near_threshold
         return {
             "sgf_load_input": MagicMock(text=sgf_load),
             "show_digits_cb": MagicMock(active=show_digits),
@@ -511,6 +520,8 @@ class TestBuildKifunarabeConfig:
             "uniform_color_cb": MagicMock(active=uniform_color),
             "auto_toggle_cb": MagicMock(active=auto_toggle),
             "auto_export_cb": MagicMock(active=auto_export),
+            "candidate_pool_spinner": pool_mock,
+            "near_threshold_input": threshold_mock,
         }
 
     def test_persists_auto_export_weaknesses(self):
@@ -531,16 +542,75 @@ class TestBuildKifunarabeConfig:
             uniform_color=False,
             auto_toggle=False,
             auto_export=True,
+            candidate_pool="top_kata",
+            near_threshold=3.5,
         )
         kif = build_kifunarabe_config(refs)
         assert kif == {
             "sgf_load": "/tmp/games",
+            "kifunarabe/candidate_pool": "top_kata",
+            "kifunarabe/near_threshold": 3.5,
             "show_digits": True,
             "show_actual_border": True,
             "uniform_color": False,
             "auto_toggle_markers": False,
             "auto_export_weaknesses": True,
         }
+
+    def test_persists_candidate_pool_top_kata(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(candidate_pool="top_kata")
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/candidate_pool"] == "top_kata"
+
+    def test_persists_candidate_pool_near_actual(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(candidate_pool="near_actual")
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/candidate_pool"] == "near_actual"
+
+    def test_invalid_pool_value_becomes_none(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(candidate_pool="garbage_value")
+        kif = build_kifunarabe_config(refs)
+        # The save coerces unknown values to ``None`` so the core's
+        # _coerce_candidate_pool() picks the default at runtime.
+        assert kif["kifunarabe/candidate_pool"] is None
+
+    def test_persists_near_threshold_value(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(near_threshold=4.5)
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/near_threshold"] == 4.5
+
+    def test_near_threshold_clamps_above_max(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(near_threshold=100.0)
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/near_threshold"] == 20.0
+
+    def test_near_threshold_clamps_below_min(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs(near_threshold=-1.0)
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/near_threshold"] == 0.0
+
+    def test_near_threshold_non_numeric_falls_back_to_default(self):
+        from katrain.gui.features.settings_popup_savers import build_kifunarabe_config
+
+        refs = self._refs()
+        # Replace the threshold mock to raise on read (mimicking non-numeric input).
+        bad_threshold = MagicMock()
+        type(bad_threshold).input_value = property(lambda _self: (_ for _ in ()).throw(ValueError("x")))
+        refs["near_threshold_input"] = bad_threshold
+        kif = build_kifunarabe_config(refs)
+        assert kif["kifunarabe/near_threshold"] == 2.0
 
     def test_preserves_unknown_keys_from_existing(self):
         """Phase 277 pattern: merge into existing so future keys survive."""
@@ -562,6 +632,8 @@ class TestBuildKifunarabeConfig:
         # No phantom keys from a None merge
         assert set(kif.keys()) == {
             "sgf_load",
+            "kifunarabe/candidate_pool",
+            "kifunarabe/near_threshold",
             "show_digits",
             "show_actual_border",
             "uniform_color",

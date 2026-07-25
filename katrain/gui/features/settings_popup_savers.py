@@ -14,6 +14,14 @@ from typing import TYPE_CHECKING, Any
 
 from katrain.core.constants.output import STATUS_ERROR
 from katrain.core.lang import i18n
+from katrain.core.study.kifunarabe_constants import (
+    KIFUNARABE_CANDIDATE_POOL_KEY,
+    KIFUNARABE_NEAR_THRESHOLD_DEFAULT,
+    KIFUNARABE_NEAR_THRESHOLD_KEY,
+    KIFUNARABE_NEAR_THRESHOLD_MAX,
+    KIFUNARABE_NEAR_THRESHOLD_MIN,
+    VALID_CANDIDATE_POOLS,
+)
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -124,11 +132,18 @@ def build_kifunarabe_config(widget_refs: dict[str, Any], existing: dict[str, Any
     popup, and prevents future regressions where a checkbox is added to
     the tab but forgotten in the save block.
 
+    Phase 290: also reads the candidate-pool Spinner (``candidate_pool``)
+    and the near-threshold numeric input (``near_threshold``). Values
+    that fail the validator are coerced to the type-safe defaults
+    rather than raising, so a mistyped config can never crash the
+    settings save.
+
     Args:
         widget_refs: The dict returned by the kifunarabe tab builder.
             Must contain ``sgf_load_input``, ``show_digits_cb``,
             ``show_actual_border_cb``, ``uniform_color_cb``,
-            ``auto_toggle_cb`` and ``auto_export_cb``.
+            ``auto_toggle_cb``, ``auto_export_cb``,
+            ``candidate_pool_spinner`` and ``near_threshold_input``.
         existing: Existing ``kifunarabe`` config dict to merge into so
             unknown keys (added by future phases) are preserved. ``None``
             starts from an empty dict.
@@ -138,7 +153,29 @@ def build_kifunarabe_config(widget_refs: dict[str, Any], existing: dict[str, Any
         and ``ctx.save_config``.
     """
     kif: dict[str, Any] = dict(existing or {})
+
     kif["sgf_load"] = widget_refs["sgf_load_input"].text
+
+    # Phase 290: candidate-pool Spinner emits the canonical key directly
+    # (the Spinner uses ``input_value`` to read ``value_refs[selected]``).
+    # We still validate here so a stale manual override of the ini file
+    # cannot end up in the saved config.
+    raw_pool = widget_refs["candidate_pool_spinner"].input_value
+    kif[KIFUNARABE_CANDIDATE_POOL_KEY] = raw_pool if raw_pool in VALID_CANDIDATE_POOLS else None
+
+    # Phase 290: numeric clamp so the stored threshold stays in
+    # ``[NEAR_THRESHOLD_MIN, NEAR_THRESHOLD_MAX]``. ``input_value`` may
+    # raise if the field is non-numeric; in that case we silently fall
+    # back to the default so the save completes.
+    try:
+        raw_threshold = float(widget_refs["near_threshold_input"].input_value)
+    except (TypeError, ValueError):
+        raw_threshold = KIFUNARABE_NEAR_THRESHOLD_DEFAULT
+    kif[KIFUNARABE_NEAR_THRESHOLD_KEY] = max(
+        KIFUNARABE_NEAR_THRESHOLD_MIN,
+        min(KIFUNARABE_NEAR_THRESHOLD_MAX, raw_threshold),
+    )
+
     kif["show_digits"] = bool(widget_refs["show_digits_cb"].active)
     kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
     kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)

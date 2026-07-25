@@ -1855,13 +1855,27 @@ msgstr "Draw all markers in a single colour (no KataGo colour gradient)"
 msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "Auto-toggle 'next moves' and 'dots' during kifunarabe"
 
+msgid "mykatrain:settings:kifunarabe_candidate_pool"
+msgstr "Candidate pool"
+
+msgid "mykatrain:settings:kifunarabe_pool_top_kata"
+msgstr "KataGo top"
+
+msgid "mykatrain:settings:kifunarabe_pool_near_actual"
+msgstr "Near actual move"
+
+msgid "mykatrain:settings:kifunarabe_near_threshold"
+msgstr "Near threshold (pts)"
+
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr ""
 "When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\n"
 "Set it to the directory that holds the pro game records you want to study.\n"
 "Leave it empty to fall back to the regular SGF load folder.\n"
 "\n"
-"By default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."
+"By default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice.\n"
+"\n"
+"Set \"Candidate pool\" to \"Near actual move\" to surface KataGo candidates whose pointsLost is within the \"Near threshold (pts)\" range of the actual move's evaluation. Use this when the KataGo-best list feels too easy. If too few candidates fall inside the threshold the remaining slots are filled with the legacy KataGo order."
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "Auto Setup"
