@@ -973,9 +973,8 @@ msgstr "デフォルトユーザー「{user}」/ 黒:{black} 白:{white} → {co
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
 msgstr ""
-"視点自動判定不可: mykatrain 設定の『デフォルトユーザー名』が未設定です。設定 → mykatrain → デフォルトユーザー名 "
-"を入力してください視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。設定 → mykatrain → "
-"デフォルトユーザー名を入力してください。"
+"視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。"
+"設定 → mykatrain → デフォルトユーザー名を入力してください。"
 
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "自動判定エラー: {error}"
