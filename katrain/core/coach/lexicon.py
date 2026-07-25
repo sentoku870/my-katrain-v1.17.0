@@ -29,6 +29,7 @@ Usage::
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -415,6 +416,107 @@ def all_ids() -> tuple[str, ...]:
     return tuple(sorted(ids))
 
 
+def extract_all_injected_terms(
+    injection_text: str | None = None,
+    *,
+    entry_ids: Iterable[str] | None = None,
+) -> set[str]:
+    """Build a permissive whitelist of every Japanese term related to the injection.
+
+    Phase 272-B5: the validator previously used the ``ja_term`` map
+    plus the ``「…」`` brackets from the injection block as the
+    whitelist for "off-injection" warnings. That was too narrow:
+    the LLM often uses a term that was taught via the entry's
+    ``ja_one_liner`` / ``ja_short`` / ``pitfalls`` / ``recognize_by``
+    prose (which may contain sub-terms like ``捨て石`` or
+    ``大場`` that are *not* the entry's primary ``ja_term``).
+
+    This helper builds a comprehensive whitelist:
+
+    - The ``ja_term`` / ``ja_title`` of every entry / concept
+      (or every entry matching ``entry_ids`` when provided)
+    - The ``「…」`` / ``『…』`` brackets from ``injection_text``
+    - Japanese compound words (2-15 chars, Kana + CJK) extracted from
+      each entry's ``pitfalls`` / ``recognize_by`` / ``micro_example``
+      / ``ja_short`` / ``ja_one_liner`` / ``ja_expanded`` (entries)
+      and ``ja_one_liner`` / ``ja_expanded`` / ``decision_checklist``
+      / ``drills`` / ``nuances`` (concepts)
+
+    The whitelist is then consumed by
+    :func:`katrain.core.coach.llm_validator._extract_off_injection_lexicon_mentions`
+    so terms that legitimately come from the injection block are not
+    reported as ``lexicon_mention_not_injected``.
+
+    Args:
+        injection_text: Raw text of the injected Lexicon block (with
+            HTML comment markers stripped — i.e. ``prompt.lex_injection``).
+            ``None`` is allowed; only the explicit entry ids are used.
+        entry_ids: When provided, restrict the whitelist to those
+            entry/concept ids. When ``None``, the full bundle is used
+            (useful for callers that don't know which entries were
+            injected).
+
+    Returns:
+        A set of Japanese terms that should be accepted as "injected".
+        Duplicate terms are collapsed.
+    """
+    bundle = _load_default_cached()
+    terms: set[str] = set()
+
+    # 1. Primary ``ja_term`` / ``ja_title`` for the requested entries.
+    if entry_ids is None:
+        candidates: Iterable[str] = list(bundle.entry_by_id) + list(bundle.concept_by_id)
+    else:
+        candidates = list(entry_ids)
+
+    for eid in candidates:
+        entry = bundle.entry_by_id.get(eid)
+        if entry is not None and entry.ja_term:
+            terms.add(entry.ja_term)
+            # Sub-extract from description text.
+            for source in (entry.ja_one_liner, entry.ja_short, entry.ja_expanded or ""):
+                _collect_japanese_compounds(source, terms)
+            for pitfall in entry.pitfalls:
+                _collect_japanese_compounds(pitfall, terms)
+            for recog in entry.recognize_by:
+                _collect_japanese_compounds(recog, terms)
+            _collect_japanese_compounds(entry.micro_example, terms)
+            continue
+        concept = bundle.concept_by_id.get(eid)
+        if concept is not None and concept.ja_title:
+            terms.add(concept.ja_title)
+            for source in (concept.ja_one_liner, concept.ja_expanded, concept.nuances):
+                _collect_japanese_compounds(source, terms)
+            for step in concept.decision_checklist:
+                _collect_japanese_compounds(step, terms)
+            for drill in concept.drills:
+                _collect_japanese_compounds(drill, terms)
+
+    # 2. Bracketed terms from the rendered injection block.
+    if injection_text:
+        terms.update(re.findall(r"[「『]([^」』]{2,20})[」』]", injection_text))
+
+    return terms
+
+
+# Phase 272-B5: extract Japanese compound words (Kana + CJK Unified Ideographs)
+# of 2-15 characters from free-form text. Capped so we don't accidentally
+# accept very long phrases that would over-match.
+_JAPANESE_COMPOUND_RE = re.compile(r"[ぁ-んァ-ヴ一-鿿]{2,15}")
+
+
+def _collect_japanese_compounds(text: str, target: set[str]) -> None:
+    """Phase 272-B5 helper: append Japanese compounds from ``text`` to ``target``."""
+    if not text:
+        return
+    for compound in _JAPANESE_COMPOUND_RE.findall(text):
+        # Skip very common particles / short particles that would
+        # cause false positives in the validator.
+        if compound in ("こと", "もの", "ため", "よう", "として", "による"):
+            continue
+        target.add(compound)
+
+
 def build_id_to_ja_term_map(entry_ids: Iterable[str] | None = None) -> dict[str, str]:
     """Build a mapping ``{id: ja_term}`` for the requested entry ids.
 
@@ -427,8 +529,17 @@ def build_id_to_ja_term_map(entry_ids: Iterable[str] | None = None) -> dict[str,
     "hallucinated" ja_terms that were *not* part of the injection
     block but were still written inside 「」 brackets.
 
+    Phase 272: also includes Lv3 concept ids (e.g. ``"urgent_vs_big"``)
+    using their ``ja_title`` field. The previous implementation only
+    looked at :attr:`LexiconBundle.entry_by_id`, so concept ids were
+    silently dropped — making every concept-related term (``"大場"``,
+    ``"急場"`` etc.) appear as off-injection even when the concept was
+    actually injected. Concepts use ``ja_title`` (mirrors
+    :func:`inject_lexicon_for_prompt` which already handles both).
+
     Args:
-        entry_ids: Iterable of ids to look up. ``None`` means *all* ids.
+        entry_ids: Iterable of ids to look up. ``None`` means *all* ids
+            (entries + concepts).
 
     Returns:
         A dict containing only the ids that were actually found in the
@@ -437,14 +548,19 @@ def build_id_to_ja_term_map(entry_ids: Iterable[str] | None = None) -> dict[str,
         detect missing entries.
     """
     bundle = _load_default_cached()
-    by_id = bundle.entry_by_id
     if entry_ids is None:
-        return {eid: entry.ja_term for eid, entry in by_id.items()}
+        ids: list[str] = list(bundle.entry_by_id) + list(bundle.concept_by_id)
+    else:
+        ids = list(entry_ids)
     out: dict[str, str] = {}
-    for eid in entry_ids:
-        entry = by_id.get(eid)
+    for eid in ids:
+        entry = bundle.entry_by_id.get(eid)
         if entry is not None:
             out[eid] = entry.ja_term
+            continue
+        concept = bundle.concept_by_id.get(eid)
+        if concept is not None:
+            out[eid] = concept.ja_title
     return out
 
 

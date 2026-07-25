@@ -976,6 +976,17 @@ msgstr ""
 "視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。"
 "設定 → mykatrain → デフォルトユーザー名を入力してください。"
 
+msgid "mykatrain:llm-coach:auto-detect-user-not-found"
+msgstr ""
+"デフォルトユーザー「{user}」が黒「{black}」・白「{white}」のどちらにも見つかりません。"
+"視点を「黒」/「白」で明示してください。"
+
+msgid "mykatrain:llm-coach:auto-detect-blocked-on-generate"
+msgstr ""
+"視点自動判定失敗のため生成を停止しました: デフォルトユーザー「{user}」が"
+"黒「{black}」/白「{white}」のどちらにも一致しません。"
+"視点を「黒」/「白」で明示してください。"
+
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "自動判定エラー: {error}"
 
@@ -1310,6 +1321,21 @@ msgstr "現在: {preset}（棋力未設定のデフォルト）"
 
 msgid "mykatrain:settings:player_rank_usage"
 msgstr "※解析閾値の調整と LLM コーチのフォールバック（Karte/SGF に棋力がない時）の両方に使われます"
+
+msgid "mykatrain:settings:rank-mode-beginner"
+msgstr "BEGINNER（入門〜10級）"
+
+msgid "mykatrain:settings:rank-mode-intermediate"
+msgstr "INTERMEDIATE（9級〜4級）"
+
+msgid "mykatrain:settings:rank-mode-dan"
+msgstr "DAN（3級〜二段）"
+
+msgid "mykatrain:settings:rank-mode-advanced"
+msgstr "ADVANCED（三段〜五段）"
+
+msgid "mykatrain:settings:rank-mode-expert"
+msgstr "EXPERT（六段以上）"
 
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "候補手フィルタ（最善手除く）:"
@@ -2821,6 +2847,9 @@ msgstr "⚠ 表示省略あり ({base})"
 
 msgid "mykatrain:llm-coach:paste-too-long"
 msgstr "LLM 応答が長すぎます ({original} 文字)、先頭 {kept} 文字で打ち切りました"
+
+msgid "mykatrain:llm-coach:empty-response-after-strip"
+msgstr "プロンプト部分を除去した結果、回答が空になりました。LLM 回答のみを貼り付けてください。"
 
 #. Phase 251: per-category hint toggle label
 msgid "mykatrain:settings:self_atari"

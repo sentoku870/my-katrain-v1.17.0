@@ -51,7 +51,10 @@ from enum import Enum
 from typing import Any
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
-from katrain.core.coach.lexicon import build_id_to_ja_term_map
+from katrain.core.coach.lexicon import (
+    build_id_to_ja_term_map,
+    extract_all_injected_terms,
+)
 from katrain.core.coach.prompt_builder import LlmPrompt, PromptConfig
 
 
@@ -139,14 +142,20 @@ class ValidationReport:
 
 # Phase 203 §5.3 contract: LLM must end with "参照した症状ID: [list]"
 # Allow some flexibility: Chinese / English / Japanese variants.
+#
+# Phase 272: brackets are now REQUIRED. The previous optional-bracket
+# version (``\[?`` / ``\]?``) caused the Tier-1 regex to match the
+# prompt template's own placeholder line ``[<id1>, <id2>, ...]`` when
+# the user pasted the prompt + answer together, fabricating three
+# ``unknown_symptom_id`` warnings. The Summary validator (which uses
+# strict brackets) does not have this bug.
 _SYMPTOM_ID_LINE_RE = re.compile(
     r"""
     (?:参照した症状ID|参照した症状|UsedSymptoms|SymptomIDs)
     \s*[:：=]\s*
-    \[
-    ?                       # optional opening bracket
-    (.*?)                  # captured: id list
-    \]?                    # optional closing bracket
+    \[                              # REQUIRED opening bracket
+    (.*?)                           # captured: id list
+    \]                              # REQUIRED closing bracket
     \s*$
     """,
     re.VERBOSE | re.MULTILINE,
@@ -154,13 +163,15 @@ _SYMPTOM_ID_LINE_RE = re.compile(
 
 # Phase 226-A (A2 tier 2): inline symptom reference markers. The id list
 # may appear mid-sentence (not just at end-of-text).
+#
+# Phase 272: same bracket tightening as the trailing-line regex.
 _INLINE_SYMPTOM_ID_RE = re.compile(
     r"""
     (?:症状|参照症状|ReferencedSymptoms?|UsedSymptoms?|SymptomIDs?)
     \s*[:：=]\s*
-    \[?                       # optional opening bracket
-    ([^\]\n]{1,400}?)         # captured: id list (no closing bracket / newline)
-    \]?                       # optional closing bracket
+    \[                              # REQUIRED opening bracket
+    ([^\]\n]{1,400}?)               # captured: id list (no closing bracket / newline)
+    \]                              # REQUIRED closing bracket
     \s*(?=$|[\n。.]|参照した) # bounded by EOL / Japanese period / another marker
     """,
     re.VERBOSE | re.IGNORECASE,
@@ -356,9 +367,15 @@ def _extract_symptom_ids(text: str) -> tuple[str, ...]:
     seen: set[str] = set()
 
     # Tier 1: canonical trailing line.
-    m = _SYMPTOM_ID_LINE_RE.search(text)
-    if m:
-        captured: str = str(m.group(1))
+    #
+    # Phase 272: use ``finditer`` and take the LAST match. The previous
+    # ``re.search`` returned only the FIRST trailing line, which was the
+    # prompt template's placeholder when the user pasted prompt+answer
+    # together. By taking the last line we prefer the LLM's actual
+    # answer (which is always written after the prompt body).
+    matches = list(_SYMPTOM_ID_LINE_RE.finditer(text))
+    if matches:
+        captured: str = str(matches[-1].group(1))
         for sid in _split_id_list(captured):
             if sid not in seen:
                 out.append(sid)
@@ -494,6 +511,7 @@ def _extract_off_injection_lexicon_mentions(
     text: str,
     id_to_ja_term: dict[str, str],
     all_known_ja_terms: set[str] | None = None,
+    injection_text: str | None = None,
 ) -> tuple[str, ...]:
     """Phase 226-A (A1 negative side): ja_terms used but not in injection.
 
@@ -512,19 +530,37 @@ def _extract_off_injection_lexicon_mentions(
             uses the same LOW severity for both to keep the user
             experience simple, but the distinction is preserved
             here for future tuning.
+        injection_text: Optional raw text of the injected Lexicon
+            block. Phase 272: when provided, ``「…」`` candidates that
+            appear anywhere inside this block (e.g. ``「大場」`` inside
+            ``urgent_vs_big``'s definition, ``「堅ツギ」`` inside
+            ``katatsugi``'s definition) are added to the whitelist so
+            the LLM is not falsely warned for using a term it was
+            *taught* via the injection block's body text.
 
     Returns:
         Tuple of the raw term strings used inside 「」 brackets that
-        did not match any injected ``ja_term``.
+        did not match any injected ``ja_term`` (and are not in the
+        injection-block body whitelist).
     """
     if not text:
         return ()
     injected_ja = set(id_to_ja_term.values())
+    # Phase 272-B5: use the comprehensive whitelist (primary terms +
+    # bracketed terms from injection + Japanese compounds harvested
+    # from each entry's description / pitfalls / drills). This prevents
+    # false ``lexicon_mention_not_injected`` warnings when the LLM
+    # writes a sub-term that was taught via the injection block's
+    # body text (e.g. ``「重い」`` for ``heavy_shape``,
+    # ``「大場」`` inside the ``urgent_vs_big`` concept definition).
+    whitelist: set[str] = set()
+    if injection_text is not None:
+        whitelist = extract_all_injected_terms(injection_text, entry_ids=list(id_to_ja_term))
     out: list[str] = []
     seen: set[str] = set()
     for m in _LEXICON_MENTION_RE.finditer(text):
         term = m.group(1)
-        if term in injected_ja:
+        if term in injected_ja or term in whitelist:
             continue
         if term in seen:
             continue
@@ -700,7 +736,14 @@ def validate_llm_output(
     # so we report both *referenced* ids and *off-injection* terms.
     id_to_ja_term = build_id_to_ja_term_map(prompt.referenced_lexicon_ids)
     mentioned_lex = _extract_lexicon_mentions(llm_text, id_to_ja_term)
-    off_injection_terms = _extract_off_injection_lexicon_mentions(llm_text, id_to_ja_term)
+    # Phase 272: pass the raw injection block so terms that appear
+    # inside the definition body (e.g. ``「大場」`` inside
+    # ``urgent_vs_big``'s description) are whitelisted.
+    off_injection_terms = _extract_off_injection_lexicon_mentions(
+        llm_text,
+        id_to_ja_term,
+        injection_text=getattr(prompt, "lex_injection", None),
+    )
     for term in off_injection_terms:
         issues.append(
             ValidationIssue(
