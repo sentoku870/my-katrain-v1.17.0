@@ -60,8 +60,6 @@
   },
   "important_moves": [
     {
-      "game_name": "Game [DATE] [TIME]",
-      "game_id": "[DATE] [TIME]",
       "move_number": 5,
       "player": "white",
       "coords": "D15",
@@ -70,9 +68,7 @@
       "loss_raw": 2.5,
       "importance": 3.2,
       "mistake_type": "mistake",
-      "reason_codes": [
-        "unknown"
-      ],
+      "reason_codes": [],
       "primary_tag": "territorial_loss",
       "winrate_lost": 0.0,
       "score_before": 0.0,
@@ -81,8 +77,6 @@
       "difficulty_score": 1.0
     },
     {
-      "game_name": "Game [DATE] [TIME]",
-      "game_id": "[DATE] [TIME]",
       "move_number": 17,
       "player": "white",
       "coords": "F4",
@@ -102,8 +96,6 @@
       "difficulty_score": 1.0
     },
     {
-      "game_name": "Game [DATE] [TIME]",
-      "game_id": "[DATE] [TIME]",
       "move_number": 34,
       "player": "black",
       "coords": "P3",
@@ -195,6 +187,132 @@
       "loss_coverage_pct": 100.0
     }
   },
+  "weaknesses_by_tag": {
+    "black": [
+      {
+        "tag": "territorial_loss",
+        "count": 1,
+        "total_loss": 12.0,
+        "avg_loss": 12.0,
+        "evidence": [
+          {
+            "move_number": 34,
+            "gtp": "P3",
+            "loss": 12.0,
+            "category": "BLUNDER"
+          }
+        ]
+      }
+    ],
+    "white": [
+      {
+        "tag": "territorial_loss",
+        "count": 2,
+        "total_loss": 8.5,
+        "avg_loss": 4.2,
+        "evidence": [
+          {
+            "move_number": 17,
+            "gtp": "F4",
+            "loss": 6.0,
+            "category": "BLUNDER"
+          },
+          {
+            "move_number": 5,
+            "gtp": "D15",
+            "loss": 2.5,
+            "category": "MISTAKE"
+          }
+        ]
+      }
+    ]
+  },
+  "score_trajectory": [
+    {
+      "move": 10,
+      "score": 2.2
+    },
+    {
+      "move": 20,
+      "score": 7.9
+    },
+    {
+      "move": 30,
+      "score": 7.9
+    },
+    {
+      "move": 40,
+      "score": -3.8
+    },
+    {
+      "move": 50,
+      "score": -3.8
+    },
+    {
+      "move": 60,
+      "score": -3.8
+    },
+    {
+      "move": 70,
+      "score": -3.8
+    },
+    {
+      "move": 80,
+      "score": -3.8
+    },
+    {
+      "move": 90,
+      "score": -3.8
+    },
+    {
+      "move": 100,
+      "score": -3.8
+    },
+    {
+      "move": 110,
+      "score": -3.8
+    },
+    {
+      "move": 120,
+      "score": -3.8
+    },
+    {
+      "move": 130,
+      "score": -3.8
+    },
+    {
+      "move": 140,
+      "score": -3.8
+    },
+    {
+      "move": 150,
+      "score": -3.8
+    },
+    {
+      "move": 160,
+      "score": -3.8
+    },
+    {
+      "move": 170,
+      "score": -3.8
+    },
+    {
+      "move": 180,
+      "score": -3.8
+    },
+    {
+      "move": 190,
+      "score": -3.8
+    },
+    {
+      "move": 200,
+      "score": -3.8
+    },
+    {
+      "move": 204,
+      "score": -3.8
+    }
+  ],
   "mistake_streaks": {
     "black": [],
     "white": []
@@ -245,9 +363,7 @@
         "game_phase": "opening",
         "position_difficulty": "only",
         "area": "edge",
-        "reason_tags": [
-          "unknown"
-        ],
+        "reason_tags": [],
         "complexity_discounted": false,
         "best_move": "C16"
       }
@@ -278,7 +394,6 @@
       "heavy": 1
     },
     "white": {
-      "unknown": 1,
       "heavy": 1
     }
   },
@@ -481,68 +596,5 @@
       "mistake_count": 0
     }
   ],
-  "opponent_strength_loss_correlation": {
-    "black": {
-      "by_bucket": {
-        "kyu": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        },
-        "dan": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        },
-        "high_dan": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        },
-        "unknown": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        }
-      },
-      "sample_count": 0,
-      "status": "no_opponent_info",
-      "narrative": "No opponent rank information available."
-    },
-    "white": {
-      "by_bucket": {
-        "kyu": {
-          "games": 1,
-          "total_loss": 38.5,
-          "avg_loss": 38.5,
-          "mistake_count": 2
-        },
-        "dan": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        },
-        "high_dan": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        },
-        "unknown": {
-          "games": 0,
-          "total_loss": 0.0,
-          "avg_loss": 0.0,
-          "mistake_count": 0
-        }
-      },
-      "sample_count": 1,
-      "status": "insufficient_data",
-      "narrative": "1 game against kyu opponents; avg_loss 38.5"
-    }
-  }
+  "opponent_strength_loss_correlation": null
 }

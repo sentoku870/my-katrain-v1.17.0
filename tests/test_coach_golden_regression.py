@@ -74,11 +74,12 @@ class TestExtractorsOnRealKarte:
     def test_critical_move_count_handles_list_shape(self):
         """critical_3[color] is a plain list; reason_tags are flat counts.
 
-        Fox karte: critical_3 black=2, white=1; reason_tags black={unknown:1,
-        heavy:1}, white={heavy:1} -> total 3 + 3 = 6.
+        Fox karte: critical_3 black=2, white=1; reason_tags black={heavy:1},
+        white={heavy:1} (``unknown`` placeholders are dropped since 3.5)
+        -> total 3 + 2 = 5.
         """
         karte = _load_karte("karte_sgf_fox.golden")
-        assert extract_critical_move_count(karte) == 6
+        assert extract_critical_move_count(karte) == 5
 
 
 # --- Symptom context / detection against the real shape ---
@@ -147,3 +148,65 @@ class TestValidatorOnRealKarte:
         report = validate_llm_output(text, karte, prompt, config=config)
         unknown = [i for i in report.issues if i.kind == "unknown_symptom_id" and i.severity == ValidationSeverity.HIGH]
         assert unknown == []
+
+
+# --- Schema 3.5 sections against the real shape ---
+
+
+class TestSchema35Sections:
+    def test_meta_score_perspective(self):
+        karte = _load_karte("karte_sgf_fox.golden")
+        assert karte["meta"]["score_perspective"] == "black"
+
+    def test_important_moves_coaching_fields(self):
+        """Schema 3.5 coaching-context fields exist on every important move."""
+        karte = _load_karte("karte_sgf_fox.golden")
+        for mv in karte["important_moves"]:
+            for key in ("winrate_lost", "score_before", "score_after", "score_stdev", "difficulty_score"):
+                assert key in mv, f"missing coaching field: {key}"
+
+    def test_important_moves_drop_game_ref(self):
+        """Single-game karte omits game_name / game_id (they repeat meta)."""
+        karte = _load_karte("karte_sgf_fox.golden")
+        for mv in karte["important_moves"]:
+            assert "game_name" not in mv
+            assert "game_id" not in mv
+
+    def test_critical_3_has_best_move(self):
+        karte = _load_karte("karte_sgf_fox.golden")
+        # Move 17 (R8): the mock analysis names T6 as the best move.
+        assert karte["critical_3"]["black"][0]["best_move"] == "T6"
+
+    def test_weaknesses_by_tag_structure(self):
+        """Fox karte: black's territorial_loss bucket = 2 moves / 8.5 points."""
+        karte = _load_karte("karte_sgf_fox.golden")
+        by_tag = karte["weaknesses_by_tag"]
+        assert set(by_tag.keys()) == {"black", "white"}
+        black_top = by_tag["black"][0]
+        assert black_top["tag"] == "territorial_loss"
+        assert black_top["count"] == 2
+        assert black_top["total_loss"] == pytest.approx(8.5)
+        assert black_top["evidence"][0]["move_number"] == 17
+
+    def test_score_trajectory_sampling(self):
+        """Sampled every 10 moves plus the final move (92)."""
+        karte = _load_karte("karte_sgf_fox.golden")
+        traj = karte["score_trajectory"]
+        sampled = [p["move"] for p in traj]
+        assert sampled == [10, 20, 30, 40, 50, 60, 70, 80, 90, 92]
+        for p in traj:
+            assert isinstance(p["score"], (int, float))
+
+    def test_opponent_correlation_is_null_on_single_game(self):
+        karte = _load_karte("karte_sgf_fox.golden")
+        assert karte["opponent_strength_loss_correlation"] is None
+
+    def test_reason_codes_unknown_dropped(self):
+        """The ``unknown`` placeholder never reaches any section."""
+        karte = _load_karte("karte_sgf_fox.golden")
+        for mv in karte["important_moves"]:
+            assert "unknown" not in mv["reason_codes"]
+        for color in ("black", "white"):
+            assert "unknown" not in karte["reason_tags_distribution"][color]
+            for c3 in karte["critical_3"][color]:
+                assert "unknown" not in c3["reason_tags"]

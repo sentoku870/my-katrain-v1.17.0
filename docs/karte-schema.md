@@ -74,13 +74,15 @@ class KarteReport(TypedDict):
     important_moves: list[MistakeItem]
     weaknesses: dict[str, list[WeaknessItem]] | None        # {"black": [...], "white": [...]}
     weaknesses_meta: dict[str, WeaknessMeta] | None          # Phase 158-I
+    weaknesses_by_tag: dict[str, list[WeaknessTagItem]]     # v3.5 追加（§2.6a）
+    score_trajectory: list[ScoreTrajectoryPoint]            # v3.5 追加（§2.6b）
     mistake_streaks: dict[str, list[StreakItem]] | None
     critical_3: dict[str, list[CriticalMoveItem]] | None    # {"black": [...], "white": [...]}
     data_quality: DataQualityStats | None
     reason_tags_distribution: dict[str, dict[str, int]] | None
     win_loss_analysis: dict[str, Any] | None                # Phase 154-D
     loss_progression: list[dict[str, Any]] | None
-    opponent_strength_loss_correlation: dict[str, dict[str, Any]] | None  # Phase 155-D
+    opponent_strength_loss_correlation: None                # v3.5 から常に None（単局では相関不能）
 ```
 
 ### 2.2 `meta` セクション
@@ -125,8 +127,8 @@ class KarteReport(TypedDict):
 
 ```python
 class MistakeItem(TypedDict):
-    game_name: str
-    game_id: str | None
+    # v3.5: 単局カルテでは game_name / game_id を省略（全手が meta と同値で冗長なため）。
+    #       Summary の top_mistakes では複数局識別のため引き続き付与される。
     move_number: int
     player: str                              # "black" | "white"
     coords: str                              # GTP 座標
@@ -189,6 +191,43 @@ class WeaknessMeta(TypedDict):
     total_loss: float                        # プレイヤー損失合計
     loss_coverage_pct: float                 # covered_loss / total_loss × 100
 ```
+
+### 2.6a `weaknesses_by_tag` セクション（v3.5 追加）
+
+`weaknesses`（phase × category）が「いつ・どれくらい」の診断軸なのに対し、
+こちらは**意味タグ（12 種類の診断カテゴリ）軸**で「どんな種類のミスか」を
+集計する。LLM は「死活の誤判断が 3 件・計 15.0 目」のような、コーチングに
+直結する弱点の言語化ができる。
+
+```python
+class WeaknessTagItem(TypedDict):
+    tag: str                                 # MeaningTagId enum value（例: "life_death_error"）
+    count: int                               # このタグの重要ミス手数
+    total_loss: float                        # 2 桁丸め
+    avg_loss: float
+    evidence: list[MoveEvidence]             # 代表手（信頼度連動で 1-3 件）
+```
+
+- 集計対象: `important_moves` に分類済みの意味タグを持つ手（同色、タグ非 None）
+- 並び順: `total_loss` 降順（同値はタグ名昇順）、**上位 3 タグ**まで
+- タグが付かなかった場合は空リスト
+
+### 2.6b `score_trajectory` セクション（v3.5 追加）
+
+形勢（scoreLead）の推移を **10 手ごと + 最終手** でサンプリングした
+コンパクトなカーブ（19 路で ~25 点・約 1KB）。`loss_progression` が
+「損失の分布」しか示さないのに対し、こちらは実際のリード推移なので、
+LLM は「終始劣勢」「中盤で逆転」「大きくリード後に崩壊」といった
+**対局の流れ**を叙述できる。
+
+```python
+class ScoreTrajectoryPoint(TypedDict):
+    move: int                                # 手数（1-indexed）
+    score: float                             # その手後の形勢（黒視点・1 桁丸め）
+```
+
+- 視点は常に黒（`meta.score_perspective` 参照）
+- 未解析手（`score_after` が None）はサンプルを欠番（0 を捏造しない）
 
 ### 2.7 `mistake_streaks` セクション
 
@@ -477,7 +516,7 @@ REPORT_SCHEMA_HASH = sha1(
 | 3.4 | 221 | `detect_json_type` で karte / summary 自動判別 |
 | 3.4 | 225.6 | Karte `meta.player_info` 追加（BR/WR） |
 | 3.4 | 228 | Summary Shape B 対応（`players.<name>.mistakes`） |
-| 3.5 | 2026-07 | コーチング強化: MistakeItem に `winrate_lost` / `score_before` / `score_after` / `score_stdev` / `difficulty_score`、CriticalMoveItem に `best_move`、`meta.score_perspective` 追加。critical_3 の reason_tags をエイリアス正規化。coach 層のフィールド名不一致（症状検出が実データで不発だった問題）を修繕 |
+| 3.5 | 2026-07 | コーチング強化: MistakeItem に `winrate_lost` / `score_before` / `score_after` / `score_stdev` / `difficulty_score`、CriticalMoveItem に `best_move`、`meta.score_perspective` 追加。critical_3 の reason_tags をエイリアス正規化。coach 層のフィールド名不一致（症状検出が実データで不発だった問題）を修繕。`weaknesses_by_tag` / `score_trajectory` 新設、単局 `opponent_strength_loss_correlation` を None 化、単局 `important_moves` の `game_name` / `game_id` 省略、`unknown` プレースホルダータグの出力抑制 |
 
 ---
 

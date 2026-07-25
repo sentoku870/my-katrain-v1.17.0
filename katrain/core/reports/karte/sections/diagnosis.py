@@ -19,6 +19,7 @@ default).
 Functions:
 - weakness_hypothesis_for(): Returns WeaknessItem list for one player
 - mistake_streaks_for(): Returns StreakItem list (consecutive mistakes)
+- weakness_by_tag_for(): Returns per-meaning-tag weakness aggregation
 """
 
 from __future__ import annotations
@@ -187,3 +188,72 @@ def mistake_streaks_for(
     )
 
     return [_streak_to_item(s) for s in streaks]
+
+
+def weakness_by_tag_for(
+    ctx: KarteContext,
+    player: str,
+    *,
+    top_n: int = 3,
+) -> list[dict[str, Any]]:
+    """Aggregate the player's important mistakes by meaning tag (schema 3.5).
+
+    The phase x category view (``weaknesses``) tells the LLM *when* the
+    mistakes happened and *how big* they were, but not *what kind* of
+    mistake they were ("opening BLUNDER x2" is weak coaching material).
+    This section aggregates the same player's classified important moves
+    by ``meaning_tag_id`` (12 diagnostic categories such as
+    ``life_death_error`` / ``direction_error``), so the LLM can say
+    e.g. "life-and-death misreads: 3 moves, 15.0 points total".
+
+    Pool: ``ctx.important_moves`` for ``player`` with a non-None
+    ``meaning_tag_id`` (these are the moves that already received the
+    board-aware classification). Tags are ranked by total loss; ties
+    break on tag id for determinism.
+
+    Args:
+        ctx: Karte context
+        player: "B" or "W"
+        top_n: Maximum tag buckets returned (default 3)
+
+    Returns:
+        List of WeaknessTagItem dicts (empty when no tagged mistakes).
+    """
+    tag_moves: dict[str, list[MoveEval]] = {}
+    for mv in ctx.important_moves:
+        if mv.player != player:
+            continue
+        tag = mv.meaning_tag_id
+        if not tag:
+            continue
+        tag_moves.setdefault(tag, []).append(mv)
+
+    if not tag_moves:
+        return []
+
+    def _total_loss(moves: list[MoveEval]) -> float:
+        return sum(get_canonical_loss_from_move(mv) for mv in moves)
+
+    # (total_loss desc, tag asc) for a deterministic ranking
+    ranked = sorted(
+        tag_moves.items(),
+        key=lambda kv: (-_total_loss(kv[1]), kv[0]),
+    )
+
+    evidence_count = analysis.get_evidence_count(ctx.confidence_level)
+
+    result: list[dict[str, Any]] = []
+    for tag, moves in ranked[:top_n]:
+        total = _total_loss(moves)
+        evidence_moves = analysis.select_representative_moves(moves, max_count=evidence_count)
+        result.append(
+            {
+                "tag": tag,
+                "count": len(moves),
+                "total_loss": round(total, 2),
+                "avg_loss": round(total / len(moves), 2) if moves else 0.0,
+                "evidence": [_move_to_evidence(mv) for mv in evidence_moves],
+            }
+        )
+
+    return result

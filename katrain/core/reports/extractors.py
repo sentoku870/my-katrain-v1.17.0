@@ -26,8 +26,27 @@ class MoveExtractor:
     """Extracts standardized data from a MoveEval."""
 
     @staticmethod
-    def extract(move: MoveEval, game_id: str | None = None, game_name: str = "", board_size: int = 19) -> MistakeItem:
-        """Convert a MoveEval into a MistakeItem dict."""
+    def extract(
+        move: MoveEval,
+        game_id: str | None = None,
+        game_name: str = "",
+        board_size: int = 19,
+        *,
+        include_game_ref: bool = True,
+    ) -> MistakeItem:
+        """Convert a MoveEval into a MistakeItem dict.
+
+        Args:
+            move: The MoveEval to convert.
+            game_id: Game id embedded in the item (multi-game context).
+            game_name: Game name embedded in the item (multi-game context).
+            board_size: Board size for phase classification.
+            include_game_ref: Schema 3.5. When False, ``game_name`` /
+                ``game_id`` are omitted — the single-game Karte passes
+                False because every item would repeat the same values
+                already present in ``meta`` (token waste). The Summary
+                passes True since its ``top_mistakes`` span many games.
+        """
 
         # 1. Basic Info
         move_number = move.move_number
@@ -56,8 +75,11 @@ class MoveExtractor:
         # category_short = CATEGORY_ALIASES.get(mistake_type, mistake_type)
 
         # 5. Reason Codes Normalization
+        # Schema 3.5: drop the ``unknown`` placeholder (emitted when the
+        # board analysis could not produce tactical tags) — it carries
+        # no coaching information and only adds noise for the LLM.
         raw_tags = list(move.reason_tags) if move.reason_tags else []
-        reason_codes = sorted(list(set(REASON_CODE_ALIASES.get(t, t) for t in raw_tags)))
+        reason_codes = sorted({REASON_CODE_ALIASES.get(t, t) for t in raw_tags if t != "unknown"})
 
         # 6. Primary Tag
         primary_tag = move.meaning_tag_id
@@ -71,9 +93,7 @@ class MoveExtractor:
         score_stdev = move.score_stdev
         difficulty_score = move.position_difficulty_score
 
-        return {
-            "game_name": game_name,
-            "game_id": game_id,
+        item: MistakeItem = {
             "move_number": move_number,
             "player": player,
             "coords": coords,
@@ -90,6 +110,10 @@ class MoveExtractor:
             "score_stdev": round(score_stdev, 2) if score_stdev is not None else None,
             "difficulty_score": round(difficulty_score, 2) if difficulty_score is not None else None,
         }
+        if include_game_ref:
+            item["game_name"] = game_name
+            item["game_id"] = game_id
+        return item
 
 
 class MetaExtractor:

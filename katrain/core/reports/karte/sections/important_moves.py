@@ -189,6 +189,11 @@ def reason_tags_distribution_for(
     counts: dict[str, int] = {}
     for mv in player_moves:
         for tag in mv.reason_tags or []:
+            # Schema 3.5: drop the ``unknown`` placeholder (board
+            # analysis could not produce tactical tags) — it carries
+            # no coaching information.
+            if tag == "unknown":
+                continue
             normalized = REASON_CODE_ALIASES.get(tag, tag)
             counts[normalized] = counts.get(normalized, 0) + 1
 
@@ -301,9 +306,10 @@ def critical_3_section_for(
 
         # Normalize reason tags through the same alias map used by
         # ``important_moves`` so both sections speak the same vocabulary
-        # (e.g. ``heavy_loss`` -> ``heavy``).
+        # (e.g. ``heavy_loss`` -> ``heavy``). Schema 3.5: also drop the
+        # ``unknown`` placeholder (no coaching information).
         normalized_reason_tags = (
-            sorted({REASON_CODE_ALIASES.get(t, t) for t in cm.reason_tags}) if cm.reason_tags else []
+            sorted({REASON_CODE_ALIASES.get(t, t) for t in cm.reason_tags if t != "unknown"}) if cm.reason_tags else []
         )
 
         result.append(

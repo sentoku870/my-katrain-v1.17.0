@@ -262,7 +262,16 @@ def build_karte_json(
 
     important_moves_list: list[MistakeItem] = []
     for mv in important_move_evals:
-        item = MoveExtractor.extract(mv, game_id=game_uid, game_name=common_meta["name"], board_size=board_x)
+        # Schema 3.5: single-game Karte omits game_name / game_id from
+        # each item — they would repeat ``meta`` values on every move
+        # (token waste). The Summary keeps them (multi-game context).
+        item = MoveExtractor.extract(
+            mv,
+            game_id=game_uid,
+            game_name=common_meta["name"],
+            board_size=board_x,
+            include_game_ref=False,
+        )
         important_moves_list.append(item)
 
     # Phase 149 C-3: Compute confidence level once for all extended sections
@@ -305,6 +314,7 @@ def build_karte_json(
     # Phase 149 C-3: Invoke revived sections
     from katrain.core.reports.karte.sections.diagnosis import (
         mistake_streaks_for,
+        weakness_by_tag_for,
         weakness_hypothesis_for,
     )
     from katrain.core.reports.karte.sections.important_moves import (
@@ -316,6 +326,13 @@ def build_karte_json(
     weaknesses = {
         "black": weakness_hypothesis_for(ctx, "B"),
         "white": weakness_hypothesis_for(ctx, "W"),
+    }
+    # Schema 3.5: meaning-tag weakness axis — tells the LLM *what kind*
+    # of mistake (life-and-death, direction, ...) rather than only
+    # *when / how big* (phase x category).
+    weaknesses_by_tag = {
+        "black": weakness_by_tag_for(ctx, "B"),
+        "white": weakness_by_tag_for(ctx, "W"),
     }
     # Phase 158-I: meta block summarising how much of each player's loss
     # is captured by the weakness aggregation. Without this the LLM
@@ -370,26 +387,10 @@ def build_karte_json(
         for b in loss_buckets
     ]
 
-    # Phase 155-D: Opponent-strength loss correlation (per-game).
-    # Karte emits this for each player (B and W) using the in-game BR/WR.
-    from katrain.core.analysis.models import GameSummaryData
-    from katrain.core.reports.sections import build_opponent_strength_loss_correlation
-
-    rank_black_str = get_property("BR")
-    rank_white_str = get_property("WR")
-    single_game = GameSummaryData(
-        game_name=game_filename,
-        player_black=common_meta["players"]["black"],
-        player_white=common_meta["players"]["white"],
-        snapshot=snapshot,
-        board_size=(board_x, board_y),
-        rank_black=rank_black_str,
-        rank_white=rank_white_str,
-    )
-    opponent_correlation = {
-        "black": build_opponent_strength_loss_correlation([single_game], common_meta["players"]["black"]),
-        "white": build_opponent_strength_loss_correlation([single_game], common_meta["players"]["white"]),
-    }
+    # Schema 3.5: sampled score-lead curve so the LLM can narrate the
+    # game flow (even game / one-sided / comeback) — previously only
+    # per-bucket *loss* distribution (loss_progression) was available.
+    score_trajectory = _score_trajectory_for(list(snapshot.moves))
 
     result: dict[str, Any] = {
         "schema_version": REPORT_SCHEMA_VERSION,
@@ -401,13 +402,19 @@ def build_karte_json(
         # ``weaknesses_meta.black.coverage_pct`` and understand the
         # scope of the weakness aggregation at a glance.
         "weaknesses_meta": weaknesses_meta,
+        "weaknesses_by_tag": weaknesses_by_tag,
+        "score_trajectory": score_trajectory,
         "mistake_streaks": mistake_streaks,
         "critical_3": critical_3,
         "data_quality": data_quality,
         "reason_tags_distribution": reason_tags_dist,
         "win_loss_analysis": win_loss,
         "loss_progression": loss_progression,
-        "opponent_strength_loss_correlation": opponent_correlation,
+        # Schema 3.5: always None on the single-game Karte — one game
+        # can never yield an opponent-strength *correlation*, and the
+        # full block wasted ~15% of the payload with a hard-coded
+        # ``insufficient_data`` status. The Summary keeps its block.
+        "opponent_strength_loss_correlation": None,
     }
     return result
 
@@ -480,3 +487,35 @@ def _weaknesses_meta_for(
         "total_loss": round(total_loss, 2),
         "loss_coverage_pct": loss_coverage_pct,
     }
+
+
+def _score_trajectory_for(
+    moves: list[Any],  # list[MoveEval]
+    *,
+    sample_every: int = 10,
+) -> list[dict[str, Any]]:
+    """Build the ``score_trajectory`` section (schema 3.5).
+
+    Samples the score-lead curve every ``sample_every`` moves plus the
+    final move, so the LLM can narrate the game flow (even game /
+    one-sided / collapse / comeback) at a cost of ~1 KB. Values are
+    ``score_after`` of each sampled move, i.e. the lead AFTER that
+    move, from BLACK's perspective (see ``meta.score_perspective``).
+
+    Moves whose analysis is missing (``score_after is None``) are
+    skipped — a gap in the curve is more honest than a fabricated 0.
+    """
+    points: list[dict[str, Any]] = []
+    if not moves:
+        return points
+
+    last_move_number = moves[-1].move_number
+    for mv in moves:
+        n = mv.move_number
+        is_sample = n % sample_every == 0 or n == last_move_number
+        if not is_sample:
+            continue
+        if mv.score_after is None:
+            continue
+        points.append({"move": n, "score": round(mv.score_after, 1)})
+    return points
