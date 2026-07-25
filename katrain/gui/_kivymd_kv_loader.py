@@ -203,6 +203,25 @@ STUB_KV: dict[str, str] = {
         "            pos:\n"
         "                self.center_x - (self._underline_width / 2), \\\n"
         "                self.y + dp(16)\n"
+        "        # Phase 280: rectangle モード用の周囲枠線。\n"
+        "        # KivyMD 1.2.0 公式の canvas.after 「rectangle」グループは\n"
+        "        # スタブライブラリに含まれていないため、自前で canvas.before に描画する。\n"
+        "        # フォーカス時は ``line_color_focus`` で枠線をハイライトし、\n"
+        "        # 「いまどのフィールドが選択中か」を視覚的に明示する。\n"
+        "        # 通常時は ``line_color_normal`` (薄いグレー) で控えめに。\n"
+        "        Color:\n"
+        "            rgba: self.line_color_focus if self.focus else self.line_color_normal\n"
+        "            group: 'rectangle_border'\n"
+        "        Line:\n"
+        "            points:\n"
+        "                (\n"
+        "                self.x, self.y, self.right, self.y,\n"
+        "                self.right, self.top, self.x, self.top,\n"
+        "                self.x, self.y\n"
+        "                )\n"
+        "            width: dp(1.2) if self.focus else dp(1)\n"
+        "            close: True\n"
+        "            group: 'rectangle_border'\n"
         "        # Hint text.\n"
         "        Color:\n"
         "            rgba: self._hint_text_color\n"
@@ -212,13 +231,33 @@ STUB_KV: dict[str, str] = {
         "            pos:\n"
         "                self.x, \\\n"
         "                self.y + self.height - self._hint_y\n"
+        "    # Phase 280: カーソル描画は ``_base.py`` の ``LabelledTextInput.on_kv_post``\n"
+        "    # 内で Python コードから canvas.after に Color + Rectangle を追加し、\n"
+        "    # ``cursor_color`` / ``cursor_pos`` / ``cursor_width`` / ``line_height``\n"
+        "    # を ``bind`` して動的更新している。 KV rule での ``self.cursor_color``\n"
+        "    # binding は初回評価時に TextInput デフォルトの ``[1, 0, 0, 1]``\n"
+        "    # (赤) がキャッシュされる問題があったため、Python 側で明示的に\n"
+        "    # bind する方式を採用。\n"
         "    # Phase 281: prefer Theme.DEFAULT_FONT over Roboto when the\n"
         "    # parent's font_name binding has not yet propagated.\n"
         "    font_name: root.font_name if root.font_name else Theme.DEFAULT_FONT\n"
-        "    foreground_color:\n"
-        "        self.theme_cls.on_primary_container_color \\\n"
-        '        if hasattr(self.theme_cls, "on_primary_container_color") \\\n'
-        "        else self.theme_cls.text_color\n"
+        "    # Phase 280: 直接 ``foreground_color`` をテーマ由来ではなく\n"
+        "    # ``Theme.TEXT_COLOR`` 固定に変更。KivyMD 1.2.0 の stub KV は元々\n"
+        "    # ``theme_cls.on_primary_container_color`` (青) を返していたため、\n"
+        "    # フォーカス時に文字がシアン色で描画される副作用があった。\n"
+        "    # 派生 ``<LabelledTextInput>`` (popup_widgets.kv) の override だけに\n"
+        "    # 頼るとタイミング次第で反映漏れが起きるため、MDTextField 直下で固定。\n"
+        "    foreground_color: Theme.TEXT_COLOR\n"
+        "    # Phase 280: フォーカス付きで MDTextField でテキストを選択すると\n"
+        "    # KivyMD 1.2.0 が親 <MDTextField> の selection_color を\n"
+        "    # 暗黙の ``[0.184, 0.655, 0.831, 0.5]`` (青 50% 透明) に戻し、\n"
+        "    # パス部分選択時に「青文字で読みにくい」問題が発生する。\n"
+        "    # 派生 ``<LabelledTextInput>`` 側でも override するが、\n"
+        "    # タイミング次第で反映漏れが起きるため MDTextField 直下でも固定。\n"
+        "    selection_color: [0, 0, 0, 0]\n"
+        "    # Phase 280: カーソルは白 ``[1, 1, 1, 1]`` で固定。_box の暗い BOX_BACKGROUND_COLOR\n"
+        "    # 背景とのコントラストで 2.5sp 幅の縦線として視認可能。\n"
+        "    cursor_color: [1, 1, 1, 1]\n"
         '    font_size: "16sp"\n'
         '    padding: 0, "16dp", 0, "10dp"\n'
         "    multiline: False\n"
@@ -278,6 +317,42 @@ def ensure_kivymd_kv_stubs() -> str:
     stub_root = _ensure_kv_stubs()
     if kivymd.uix_path != stub_root:
         kivymd.uix_path = stub_root
+
+    # Phase 280: TextInput._draw_selection() が ``self.selection_color``
+    # のスナップショットを取って ``canvas.add(Color(*selection_color,
+    # group='selection'))`` するため、``__setattr__`` 横取りで
+    # ``selection_color`` を ``[0, 0, 0, 0]`` にしても、青い ``Color``
+    # 命令が ``canvas`` に追加され続けてしまう。
+    #
+    # 確実に防ぐため ``_draw_selection`` を monkey patch して、
+    # 内部で ``selection_color = [0, 0, 0, 0]`` を強制する
+    # ``_patched_draw_selection`` に置換する。これでウィジェット個別
+    # の ``__setattr__`` 横取りが効かないケース (キャッシュ古い /
+    # 別経路) でも、TextInput 全体で青い選択ハイライトが出なくなる。
+    #
+    # このパッチは ``_draw_selection_lines`` 経由でも呼ばれるため、
+    # 1 箇所 monkey patch すれば全 TextInput (派生含む) で適用される。
+    from kivy.uix.textinput import TextInput
+
+    if getattr(TextInput, "_katrain_selection_disabled", False):
+        return stub_root  # 既にパッチ済み
+
+    _original_draw_selection = TextInput._draw_selection
+
+    def _katrain_patched_draw_selection(self, *args, **kwargs):
+        # ``_draw_selection`` 呼び出し時に ``self.selection_color`` を
+        # 強制的に ``[0, 0, 0, 0]`` (完全透明) にする。元の値は
+        # 関数終了後に復元 (副作用を最小化)。
+        original = self.selection_color
+        self.selection_color = [0, 0, 0, 0]
+        try:
+            return _original_draw_selection(self, *args, **kwargs)
+        finally:
+            self.selection_color = original
+
+    TextInput._draw_selection = _katrain_patched_draw_selection
+    TextInput._katrain_selection_disabled = True
+
     return stub_root
 
 
