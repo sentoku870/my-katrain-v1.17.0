@@ -4,8 +4,54 @@
 #:import Theme katrain.gui.theme.Theme
 
 <LabelledTextInput>:
+    # Phase 280: KivyMD 1.2.0 の ``line`` モードでは下線が ``self.y + dp(16)`` 固定位置に描かれ、
+    # デフォルト padding ``[0, 16dp, 0, 10dp]`` のテキストコンテンツ領域を貫通する。
+    # NotoSansJP のラテン文字ディセンダが大きいと、フィールドの下線とパス文字列が
+    # 視覚的に重なり文字が読みにくくなる (``config_popup`` / ``llm_coach_popup`` で報告)。
+    # ``rectangle`` モードは下線非描画・フィールド周囲枠線のみで
+    # テキスト領域と視覚要素が重ならない。すべての ``LabelledTextInput`` 派生
+    # (``LabelledPathInput`` / ``LabelledFloatInput`` / ``LabelledIntInput``) にも
+    # 自動で伝播する。
+    mode: "rectangle"
     font_name: Theme.DEFAULT_FONT
     font_size: sp(Theme.INPUT_FONT_SIZE)
+    # Phase 280: フォーク元 v1.18.1 スタイル再現のためのコンパクト化。
+    # - ``height: dp(36)`` + ``padding: [12, 8, 12, 8]`` で 1 行入力欄を
+    #   Windows / Mac 標準の 28-36dp レンジに収める
+    # - ``background_color: [0, 0, 0, 0]`` で TextInput デフォルトの白背景
+    #   (通常 [1, 1, 1, 1]) を透明化し、popup のダーク背景と同化させる
+    #   → これが「枠が大きすぎる」問題の主原因
+    # - カーソル可視性: ダーク背景で sp(1) 白カーソルは完全に隠れるため、
+    #   ``cursor_width: sp(2.5)`` + ``cursor_color: [0, 0, 0, 1]`` (黒)
+    #   で、高 DPI 環境でも確実に視認できるようにする。
+    #   フォーク元 v1.18.1 スクリーンショットでも薄い黒カーソルが見える。
+    height: dp(36)
+    size_hint_y: None
+    padding: [dp(12), dp(8), dp(12), dp(8)]
+    background_color: [0, 0, 0, 0]
+    cursor_width: sp(2.5)
+    # Phase 280: テキスト/カーソル/無効色は常に白。フォーカスによる
+    # ``theme_cls.primary_color`` (青) フォールバックを全パターンで防ぐ。
+    # ユーザー要望: カーソルは白 (``[1, 1, 1, 1]``) で統一。BOX_BACKGROUND_COLOR
+    # (やや明るい紺) とのコントラストで 2.5sp 幅の縦線として視認可能。
+    foreground_color: Theme.TEXT_COLOR
+    disabled_foreground_color: Theme.TEXT_COLOR
+    cursor_color: [1, 1, 1, 1]
+    text_color_focus: Theme.TEXT_COLOR
+    text_color_normal: Theme.TEXT_COLOR
+    # Phase 280: 選択ハイライトを完全透明化。``setattr`` だと KivyMD 1.2.0
+    # 内部の上書きロジック ``set_default_colors`` (``_set_color``) が
+    # テーマ更新時に ``theme_cls.primary_color`` (青) に戻してしまうため、
+    # ``on_focus`` バインディング (``self.selection_color = ...``) では
+    # 反映漏れが起きた。代わりに ``fbind`` を使って ``selection_color``
+    # プロパティを ``[0, 0, 0, 0]`` に永続的に固定する。
+    selection_color: [0, 0, 0, 0]
+    on_focus:
+        self.foreground_color = Theme.TEXT_COLOR
+        self.cursor_color = [1, 1, 1, 1]
+        self.selection_color = [0, 0, 0, 0]
+        self.text_color_focus = Theme.TEXT_COLOR
+        self.text_color_normal = Theme.TEXT_COLOR
     # Phase 277: KivyMD 1.2.0 removed ``helper_text_mode: "none"`` and
     # ``color_mode``. ``helper_text: ""`` keeps the helper line empty
     # under the new ``on_focus`` default, which is the equivalent of
@@ -30,11 +76,17 @@
     font_size: sp(Theme.INPUT_FONT_SIZE)
     write_tab: False
     size_hint: 0.5, None
+    # Phase 280: sp(20) フォント用に LabelledTextInput ベースの dp(36) だと
+    # テキストが切れるため dp(40) に拡張
+    height: dp(40)
 
 <LabelledFloatInput>:
     font_size: sp(Theme.INPUT_FONT_SIZE)
     write_tab: False
     size_hint: 0.5, None
+    # Phase 280: sp(20) フォント用に LabelledTextInput ベースの dp(36) だと
+    # テキストが切れるため dp(40) に拡張
+    height: dp(40)
 
 <LabelledCheckBox>:
     size: sp(Theme.DESC_FONT_SIZE)*2,sp(Theme.DESC_FONT_SIZE)*2

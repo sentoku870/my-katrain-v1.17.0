@@ -6,6 +6,7 @@ maintenance and faster incremental imports.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from typing import Any
 
@@ -138,6 +139,49 @@ class LabelledTextInput(MDTextField):
     input_property = StringProperty("")
     multiline = BooleanProperty(False)
 
+    # Phase 280: あらゆる代入経路 (manual setattr / KV rule / KivyMD 内部
+    # メソッド) で色属性が青に戻るのを防ぐ最強の防御。
+    # ``__setattr__`` を override して色属性への代入を横取りし、
+    # ターゲット値で固定する。``on_<prop>`` ハンドラとの二重防御。
+    # フォーカス時にしても青色文字が出ないように ``foreground_color`` /
+    # ``text_color`` / ``text_color_focus`` / ``text_color_normal`` /
+    # ``disabled_foreground_color`` / ``cursor_color`` も白いまま維持。
+    _COLOR_VALUE_GUARDS = {
+        "selection_color": [0, 0, 0, 0],
+    }
+    # Phase 280: 白色維持対象プロパティ一覧。``__setattr__`` で代入時に
+    # ターゲット値 (Theme.TEXT_COLOR) に固定する。``hint_text_color`` /
+    # ``helper_text_color`` / ``line_color_*`` は枠線やヒントの色なので
+    # ここでは保護せず、``line_color_focus`` のみ枠線用に白維持する。
+    _WHITE_GUARDED = frozenset(
+        {
+            "foreground_color",
+            "text_color",
+            "text_color_focus",
+            "text_color_normal",
+            "disabled_foreground_color",
+            "cursor_color",
+            "line_color_focus",
+        }
+    )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Phase 280: 色属性の代入を完全横取り。
+        # - ``selection_color`` は ``[0, 0, 0, 0]`` (完全透明) に固定
+        # - ``foreground_color`` / ``text_color`` / ``text_color_focus``
+        #   / ``text_color_normal`` / ``disabled_foreground_color``
+        #   / ``cursor_color`` / ``line_color_focus`` は ``Theme.TEXT_COLOR``
+        #   (白) を維持。これで 1 フレームだけ青が出るのも防ぐ。
+        if name in self._COLOR_VALUE_GUARDS:
+            target = self._COLOR_VALUE_GUARDS[name]
+            if value != target:
+                value = target
+        elif name in self._WHITE_GUARDED:
+            target = list(Theme.TEXT_COLOR)
+            if value != target:
+                value = target
+        super().__setattr__(name, value)
+
     def on_kv_post(self, base_widget: Any) -> None:
         # Phase 281 (tofu-fix): KivyMD 1.2.0's internal ``TextfieldLabel``
         # does not reliably inherit ``font_name`` from the parent
@@ -148,6 +192,271 @@ class LabelledTextInput(MDTextField):
         # Roboto (which has no JP glyphs and renders as tofu).
         super().on_kv_post(base_widget)
         _sync_font_to_hint_labels(self)
+        # Phase 280: KivyMD 1.2.0 内部の ``set_default_colors`` メソッド
+        # (``_set_color`` 経由) がテーマ更新時に ``selection_color`` を
+        # ``[0.184, 0.655, 0.831, 0.5]`` (青 50% 透明) に戻してしまう、
+        # あるいは ``foreground_color`` を ``theme_cls.primary_color``
+        # (青) に戻してしまう副作用を Python レベルで compensate。
+        # KV rule だけの override ではタイミング次第で反映漏れが
+        # 起きるので、``_set_color`` を override して上書き対象プロパティを
+        # 白 Theme.TEXT_COLOR と完全透明に固定する。
+        self._hardcoded_color_attrs = {
+            "selection_color",
+            "foreground_color",
+            "cursor_color",
+            "text_color_focus",
+            "text_color_normal",
+        }
+        # Phase 280: カーソルの目標色を保持 (``on_focus`` で再適用する)。
+        # ユーザー要望に従い白 ``[1, 1, 1, 1]`` で固定。白文字編集位置の
+        # 目印として、白い縦線が BOX_BACKGROUND_COLOR (やや明るい紺) の
+        # 上で高コントラストで表示される。文字本体 (白) とカーソル (白)
+        # の境界は幅 2.5sp の縦線形状で識別可能。
+        self._target_cursor_color = [1, 1, 1, 1]
+        # Phase 280: KivyMD 1.2.0 の stub KV にはカーソルのキャンバス描画が
+        # 含まれていない (KivyMD 0.104.1 から削除された)。 canvas.after に
+        # 自前で ``Color`` + ``Rectangle`` 命令を追加し、``cursor_color`` /
+        # ``cursor_pos`` / ``cursor_width`` / ``line_height`` の各プロパティに
+        # 明示的に bind して、KV rule の ``self.cursor_color`` binding で
+        # 起きない問題 (初回評価時に古い [1, 0, 0, 1] が残る) を克服する。
+        # グループ ``kivymd_cursor`` を付けて cleanup 可能にする。
+        from kivy.graphics import Color as _KColor
+        from kivy.graphics import Rectangle as _KRect
+
+        # 初期状態はフォーカスなし → 透明 (非表示)
+        with self.canvas.after:
+            self._cursor_color_instr = _KColor(0, 0, 0, 0)
+            self._cursor_rect_instr = _KRect(
+                pos=self.cursor_pos,
+                size=(self.cursor_width, -self.line_height),
+            )
+        self.bind(
+            cursor_color=self._update_cursor_canvas,
+            cursor_pos=self._update_cursor_canvas,
+            cursor_width=self._update_cursor_canvas,
+            line_height=self._update_cursor_canvas,
+            focus=self._update_cursor_canvas,
+        )
+
+        # Phase 280: KivyMD 1.2.0 の private カラープロパティ
+        # ``_text_color_focus`` / ``_text_color_normal`` / ``_hint_text_color`` /
+        # ``_hint_text_color_focus`` / ``_hint_text_color_normal`` /
+        # ``_line_color_focus`` / ``_line_color_normal`` / ``_icon_left_color`` /
+        # ``_icon_right_color`` がフォーカス時に ``theme_cls.primary_color``
+        # (青) にフォールバックするのを防ぐ。``set_default_colors`` が
+        # ``_set_color`` 経由でこれらを更新するため、``on_<prop>`` ハンドラ
+        # で次フレーム復元する。``functools.partial`` で各プロパティ名を
+        # キャプチャして、正しい属性を白に書き戻す。
+
+        def _make_kivymd_color_handler(_attr_name: str):
+            def _handler(instance: Any, value: Any) -> None:
+                if not value or len(value) < 4:
+                    return
+                r, g, b, a = value[:4]
+                # 青系判定: 青 > 赤+緑 かつ 青 > 0.3 (大体の青色域)
+                is_bluish = b > (r + g) * 0.6 and b > 0.3
+                if is_bluish:
+                    from kivy.clock import Clock
+
+                    def _reset_kivymd_color(_dt: float, attr: str = _attr_name) -> None:
+                        target = list(Theme.TEXT_COLOR)
+                        current = getattr(self, attr, None)
+                        if (
+                            current
+                            and len(current) >= 4
+                            and current[2] > (current[0] + current[1]) * 0.6
+                        ):
+                            # 強制 setattr で書き戻し。``__setattr__``
+                            # 横取りで白に固定される。
+                            try:
+                                object.__setattr__(self, attr, target)
+                            except Exception:
+                                setattr(self, attr, target)
+                            self.canvas.ask_update()
+
+                    Clock.schedule_once(_reset_kivymd_color, 0)
+
+            return _handler
+
+        for _kivymd_color_attr in (
+            "_text_color_focus",
+            "_text_color_normal",
+            "_hint_text_color",
+            "_hint_text_color_focus",
+            "_hint_text_color_normal",
+            "_line_color_focus",
+            "_line_color_normal",
+            "_icon_left_color",
+            "_icon_right_color",
+            "_max_length_text_color",
+        ):
+            with contextlib.suppress(Exception):
+                self.bind(
+                    **{_kivymd_color_attr: _make_kivymd_color_handler(_kivymd_color_attr)}
+                )
+
+    def _on_kivymd_text_color(self, instance: Any, value: Any) -> None:
+        # Phase 280: KivyMD 1.2.0 の ``_text_color_focus`` 系プロパティが
+        # フォーカス時に ``theme_cls.primary_color`` (青) に切り替わる
+        # 副作用を compensate。値を見て、青系 (B > R+G) なら白に矯正。
+        # ``text_color_focus`` 系を ``Theme.TEXT_COLOR`` に bind しても
+        # ``_text_color_focus`` は別プロパティのため、青が残る。
+        if not value or len(value) < 4:
+            return
+        r, g, b, a = value[:4]
+        # 青系判定: 青 > 赤+緑 かつ 青 > 0.3 (大体の青色域)
+        is_bluish = b > (r + g) * 0.6 and b > 0.3
+        if is_bluish:
+            from kivy.clock import Clock
+
+            def _reset_kivymd_color(_dt: float) -> None:
+                attr = getattr(self, "_last_kivymd_color_attr", "_text_color_focus")
+                target = list(Theme.TEXT_COLOR)
+                current = getattr(self, attr, None)
+                if (
+                    current
+                    and len(current) >= 4
+                    and current[2] > (current[0] + current[1]) * 0.6
+                ):
+                    # KivyMD の ``on_<prop>`` ハンドラは通常未定義なので、
+                    # 強制 setattr で書き戻し。``__setattr__`` 横取りで
+                    # 白に固定される。
+                    try:
+                        object.__setattr__(self, attr, target)
+                    except Exception:
+                        setattr(self, attr, target)
+                    self.canvas.ask_update()
+
+            self._last_kivymd_color_attr = "_text_color_focus"
+            Clock.schedule_once(_reset_kivymd_color, 0)
+
+    def _update_cursor_canvas(self, *_args: Any) -> None:
+        # Phase 280: ``cursor_color`` / ``cursor_pos`` / ``cursor_width``
+        # / ``line_height`` / ``focus`` のいずれかが変化したら Canvas 命令を
+        # 最新値に更新する。Kivy canvas 動的 binding では初回評価時に古い値
+        # (例: cursor_color の TextInput デフォルト [1, 0, 0, 1]) が残る
+        # ため、明示的に ``self.cursor_color`` を ``_cursor_color_instr.rgba``
+        # にコピーする。
+        # フォーカス時のみ可視 (alpha=1)、非フォーカス時は完全に透明 (alpha=0)
+        # にして「選択したところだけカーソル表示」要件を満たす。
+        instr = getattr(self, "_cursor_color_instr", None)
+        rect = getattr(self, "_cursor_rect_instr", None)
+        if instr is not None:
+            if self.focus:
+                instr.rgba = self.cursor_color
+            else:
+                instr.rgba = [0, 0, 0, 0]
+        if rect is not None:
+            rect.pos = self.cursor_pos
+            rect.size = (self.cursor_width, -self.line_height)
+
+    def _set_color(self, attr_name: str, color: Any, updated: bool) -> None:
+        # Phase 280: ハードコードした色属性は KivyMD 1.2.0 内部の
+        # ``set_default_colors`` (``_set_color``) から上書きさせない。
+        # それ以外の属性 (line_color_normal/focus, hint_text_color など)
+        # は通常通り親クラスの挙動に従う。
+        if attr_name in getattr(self, "_hardcoded_color_attrs", set()):
+            return
+        super()._set_color(attr_name, color, updated)
+
+    def on_focus(self, instance: Any, focus: bool) -> None:
+        # Phase 280: フォーカスが移った瞬間に KivyMD 1.2.0 が
+        # ``set_default_colors(updated=True)`` をトリガーして色属性を
+        # テーマデフォルトに戻すことがあるので、その直後に自前の白系
+        # プロパティを強制再適用する。``super().on_focus()`` 後に
+        # 上書きする順序で必ず白を維持。
+        super().on_focus(instance, focus)
+        self.foreground_color = Theme.TEXT_COLOR
+        self.cursor_color = getattr(self, "_target_cursor_color", [1, 1, 1, 1])
+        self.selection_color = [0, 0, 0, 0]
+        self.text_color_focus = Theme.TEXT_COLOR
+        self.text_color_normal = Theme.TEXT_COLOR
+        # Canvas 命令も即時更新 (``_update_cursor_canvas`` 内で focus 判定)
+        self._update_cursor_canvas()
+        # canvas.after の 'selection' グループ Color 命令を直接透明化
+        self._scrub_selection_canvas()
+        # canvas 全体を強制再描画 (Windows DWM の古いフレームキャッシュを無効化)
+        self.canvas.ask_update()
+
+    def on_selection_color(self, instance: Any, value: Any) -> None:
+        # Phase 280: ユーザー報告「選択すると青色文字になる」問題の
+        # 最終防御。KivyMD 1.2.0 内部の ``set_default_colors`` 系が
+        # 動的に ``selection_color`` を ``theme_cls.primary_color`` (青)
+        # に戻しても、その直後に ``on_selection_color`` が発火して
+        # ここで [0, 0, 0, 0] (完全透明) に戻す。遅延フレームで再設定
+        # することで、TextInput 内部の選択範囲ハイライト用 Color 命令の
+        # ``rgba`` も次の draw frame で透明に上書きされる。
+        if value != [0, 0, 0, 0]:
+            from kivy.clock import Clock
+
+            def _reset_selection_color(_dt: float) -> None:
+                # 再帰防止: 既に [0, 0, 0, 0] なら何もしない
+                if list(self.selection_color) != [0, 0, 0, 0]:
+                    self.selection_color = [0, 0, 0, 0]
+                # TextInput 内部の canvas.after 'selection' グループの
+                # Color 命令を直接透明化 (値プロパティが正しくても
+                # 描画の命令キャッシュが残るケースに対応)。
+                self._scrub_selection_canvas()
+
+            Clock.schedule_once(_reset_selection_color, 0)
+
+    def _scrub_selection_canvas(self) -> None:
+        # Phase 280: TextInput._draw_selection() が canvas.after に
+        # ``Color(*self.selection_color, group='selection')`` を追加
+        # する。この Color 命令の rgba が ``[0.184, 0.655, 0.831, 0.5]``
+        # (青 50% 透明) の場合、青いハイライトとして描画される。
+        # 値プロパティ ``selection_color`` を ``[0, 0, 0, 0]`` にしても、
+        # TextInput 内部に追加済み Color 命令の rgba が古い値で残る
+        # ことがあるため、直接 canvas.after を歩いて 'selection'
+        # グループの Color 命令を全て透明化する。
+        from kivy.graphics import Color as _KColor
+
+        for instr in self.canvas.after.get_group("selection"):
+            if isinstance(instr, _KColor):
+                instr.rgba = [0, 0, 0, 0]
+
+    def on_foreground_color(self, instance: Any, value: Any) -> None:
+        # Phase 280: 同上の防御を ``foreground_color`` にも。
+        # KivyMD 1.2.0 内部の何かがフォーカス時に ``theme_cls.primary_color``
+        # (青) に ``foreground_color`` を変えても、次フレームで白に戻す。
+        # Kivy の ``ColorProperty.__set__`` は Cython で ``__setattr__`` を
+        # 経由せず ``self.__dict__`` を直接書き換えるため、``__setattr__``
+        # 横取りは機能しない。``on_<prop>`` ハンドラで Kivy の Property
+        # バインディング経由で値を書き戻し、``canvas.ask_update()`` で
+        # 描画も強制更新する。
+        if value != Theme.TEXT_COLOR:
+            from kivy.clock import Clock
+
+            def _reset_fg_color(_dt: float) -> None:
+                if list(self.foreground_color) != list(Theme.TEXT_COLOR):
+                    self.foreground_color = Theme.TEXT_COLOR
+                self.canvas.ask_update()
+
+            Clock.schedule_once(_reset_fg_color, 0)
+
+    def on_text_color_focus(self, instance: Any, value: Any) -> None:
+        # Phase 280: 同上の防御を ``text_color_focus`` にも。
+        if value != Theme.TEXT_COLOR:
+            from kivy.clock import Clock
+
+            def _reset_tcf(_dt: float) -> None:
+                if list(self.text_color_focus) != list(Theme.TEXT_COLOR):
+                    self.text_color_focus = Theme.TEXT_COLOR
+                self.canvas.ask_update()
+
+            Clock.schedule_once(_reset_tcf, 0)
+
+    def on_text_color_normal(self, instance: Any, value: Any) -> None:
+        # Phase 280: 同上の防御を ``text_color_normal`` にも。
+        if value != Theme.TEXT_COLOR:
+            from kivy.clock import Clock
+
+            def _reset_tcn(_dt: float) -> None:
+                if list(self.text_color_normal) != list(Theme.TEXT_COLOR):
+                    self.text_color_normal = Theme.TEXT_COLOR
+                self.canvas.ask_update()
+
+            Clock.schedule_once(_reset_tcn, 0)
 
     def on_font_name(self, instance: Any, value: str) -> None:
         # font_name changes (e.g. theme switch or programmatic
