@@ -110,6 +110,35 @@ class TestSymptomDetectionOnRealKarte:
         detected = detect_symptoms_from_karte(karte)
         assert SymptomId.FIRST_MOVE_CONFUSION in detected
 
+    def test_capture_oversight_fires_on_capture_race_loss(self):
+        """2026-07: capture_race_loss tags must map to HintCategory.MISSED_CAPTURE
+        so the CAPTURE_OVERSIGHT detector (tag + avg points > 1.0) fires.
+
+        Real golden kartes don't carry capture_race_loss today, so we
+        assemble a minimal karte with one capture_race_loss move to pin
+        the wiring end-to-end.
+        """
+        karte = {
+            "important_moves": [
+                {
+                    "move_number": 12,
+                    "player": "black",
+                    "primary_tag": MeaningTagId.CAPTURE_RACE_LOSS.value,
+                    "mistake_type": "blunder",
+                    "loss_clamped": 4.0,
+                    "reason_codes": ["heavy"],
+                }
+            ],
+            "summary": {"total_moves": 50},
+            "mistake_streaks": {"black": [], "white": []},
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        # The remap is now in effect.
+        assert HintCategory.MISSED_CAPTURE in ctx.hint_categories
+        # And the detector fires.
+        detected = detect_symptoms_from_karte(karte)
+        assert SymptomId.CAPTURE_OVERSIGHT in detected
+
     @pytest.mark.parametrize("golden", GOLDEN_KARTES)
     def test_detection_returns_valid_symptom_ids(self, golden):
         detected = detect_symptoms_from_karte(_load_karte(golden))

@@ -98,7 +98,12 @@ def _collect_hint_categories(karte: dict[str, Any]) -> tuple[HintCategory, ...]:
     # also: heavy / cut / low_liberties tag → HintCategory
     tags = _collect_meaning_tags(karte)
     tag_to_hint: dict[str, HintCategory] = {
-        "capture_race_loss": HintCategory.LOW_LIBERTIES,
+        # 2026-07: capture_race_loss used to map to LOW_LIBERTIES, which
+        # had no consumer detector — it was a silent orphan. The
+        # CAPTURE_OVERSIGHT detector requires MISSED_CAPTURE, so we now
+        # remap this tag directly to the correct hint category. No other
+        # symptom_index entry references LOW_LIBERTIES, so this is safe.
+        "capture_race_loss": HintCategory.MISSED_CAPTURE,
         "life_death_error": HintCategory.SELF_CAPTURE_LIKE,
         "shape_mistake": HintCategory.BAD_SHAPE,
         "overplay": HintCategory.HEAVY_GROUP,

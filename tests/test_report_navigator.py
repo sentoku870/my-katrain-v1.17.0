@@ -74,6 +74,38 @@ def test_find_recent_reports_nonexistent_dir(tmp_path: Path):
     assert find_recent_reports(missing) == []
 
 
+def test_find_recent_reports_recurses_into_subdirectories(tmp_path: Path):
+    """2026-07: batch analysis writes reports under ``reports/karte/`` /
+    ``reports/summary/``. ``find_recent_reports`` must recurse so the LLM
+    Coach popup can auto-fill batch output without a manual selection."""
+    sub = tmp_path / "reports" / "karte"
+    sub.mkdir(parents=True)
+    nested = sub / "karte_batch_20260101-0000.json"
+    _touch_with_mtime(nested, 1500)
+
+    # Also a non-JSON peer that must NOT be matched
+    (sub / "notes.txt").write_text("ignore me")
+
+    reports = find_recent_reports(tmp_path)
+    assert len(reports) == 1
+    assert reports[0].path == nested
+    assert reports[0].report_type == "karte"
+
+
+def test_find_latest_llm_input_picks_nested_batch_report(tmp_path: Path):
+    """The end-to-end path: nested batch karte is selected over a flat
+    (older) summary when the nested file is newer."""
+    _touch_with_mtime(tmp_path / "summary_root.json", 1000)
+    nested = tmp_path / "reports" / "summary" / "summary_batch.json"
+    nested.parent.mkdir(parents=True)
+    _touch_with_mtime(nested, 2000)
+
+    result = find_latest_llm_input(tmp_path)
+    assert result is not None
+    assert result.path == nested
+    assert result.report_type == "summary"
+
+
 # --- find_latest_llm_input (Phase 227-C) ---
 
 
