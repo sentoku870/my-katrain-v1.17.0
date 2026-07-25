@@ -78,7 +78,7 @@ class TestPromptConfig:
         )
         assert cfg.max_lexicon_entries == 7
         assert cfg.include_expanded is True
-        assert cfg.schema_version == "3.4"
+        assert cfg.schema_version == "3.5"
         assert cfg.player_rank_str is None
         assert cfg.average_points_lost is None
 

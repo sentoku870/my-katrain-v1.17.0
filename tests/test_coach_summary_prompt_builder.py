@@ -84,7 +84,7 @@ class TestSummaryPromptConfig:
         )
         assert cfg.player_name is None
         assert cfg.player_rank is None
-        assert cfg.schema_version == "3.4"
+        assert cfg.schema_version == "3.5"
         assert cfg.max_patterns == 10
 
     def test_frozen(self):

@@ -33,9 +33,12 @@ return plain Python data structures (no Kivy widgets, no
 :class:`GameNode`). Safe to call from CLI / tests / GUI.
 
 Phase 270 schema: the aggregated view is rendered with
-``schema_version = "3.5"``. Existing 3.4 summary consumers continue
+``schema_version = "3.6"``. Existing summary consumers continue
 to work because the aggregation is opt-in: callers that do not pass
 karte JSONs see the same prompt body as before.
+
+(2026-07: bumped 3.5 -> 3.6 because the base report schema moved to
+3.5; the aggregated view stays one step ahead of the base schema.)
 """
 
 from __future__ import annotations
@@ -645,7 +648,7 @@ class AggregatedKarteView:
             :func:`build_meaning_tag_label_map`.
         games_count: Number of karte JSONs that contributed at
             least one field. ``0`` for an empty input.
-        schema_version: Always ``"3.5"`` for this Phase 270 view.
+        schema_version: Always ``"3.6"`` for this Phase 270 view.
     """
 
     reason_tags_by_color: dict[str, dict[str, int]]
@@ -655,7 +658,7 @@ class AggregatedKarteView:
     data_quality_aggregate: dict[str, Any]
     meaning_tag_label_map: dict[str, str]
     games_count: int
-    schema_version: str = "3.5"
+    schema_version: str = "3.6"
 
 
 def aggregate_kartes(

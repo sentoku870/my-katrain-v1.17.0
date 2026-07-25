@@ -230,20 +230,31 @@ def _karte_symptom_ids(karte: dict[str, Any]) -> set[str]:
             category = weakness.get("category")
             if category:
                 ids.add(str(category))
-    # important_moves[].meaning_tag_id (Phase 148+)
+    # important_moves[].primary_tag (Phase 148+)
+    # Dual-read (2026-07 fix): real Karte uses ``primary_tag`` /
+    # ``mistake_type`` (legacy fallback: ``meaning_tag_id`` /
+    # ``category`` / ``mistake_category``).
     for move in karte.get("important_moves", []) or []:
-        mtag = move.get("meaning_tag_id")
+        mtag = move.get("primary_tag") or move.get("meaning_tag_id")
         if mtag:
             ids.add(str(mtag))
         # Also collect mistake category strings
-        cat = move.get("category") or move.get("mistake_category")
+        cat = move.get("mistake_type") or move.get("category") or move.get("mistake_category")
         if cat:
             ids.add(str(cat).lower())
     # reason_tags_distribution (Phase 149 C-3)
+    # Dual-read: real Karte is a flat ``{tag: count}`` map (legacy
+    # fallback: nested ``by_category``).
     for color in ("black", "white"):
         rt = karte.get("reason_tags_distribution", {}).get(color, {}) or {}
-        for key in rt.get("by_category") or {}:
-            ids.add(str(key))
+        by_category = rt.get("by_category")
+        if isinstance(by_category, dict):
+            for key in by_category:
+                ids.add(str(key))
+        else:
+            for key, value in rt.items():
+                if isinstance(value, (int, float)):
+                    ids.add(str(key))
     return ids
 
 
@@ -263,18 +274,27 @@ def _karte_symptom_ids_by_color(karte: dict[str, Any]) -> dict[str, set[str]]:
             if cat:
                 out[color].add(str(cat))
         for move in karte.get("important_moves", []) or []:
-            owner = str(move.get("color", "")).lower()
+            # Dual-read (2026-07 fix): real Karte uses ``player`` for the
+            # owning side (legacy fallback: ``color``), and
+            # ``primary_tag`` / ``mistake_type`` for the ids.
+            owner = str(move.get("player") or move.get("color") or "").lower()
             if owner not in out:
                 continue
-            mtag = move.get("meaning_tag_id")
+            mtag = move.get("primary_tag") or move.get("meaning_tag_id")
             if mtag:
                 out[owner].add(str(mtag))
-            cat = move.get("category") or move.get("mistake_category")
+            cat = move.get("mistake_type") or move.get("category") or move.get("mistake_category")
             if cat:
                 out[owner].add(str(cat).lower())
         rt = karte.get("reason_tags_distribution", {}).get(color, {}) or {}
-        for key in rt.get("by_category") or {}:
-            out[color].add(str(key))
+        by_category = rt.get("by_category")
+        if isinstance(by_category, dict):
+            for key in by_category:
+                out[color].add(str(key))
+        else:
+            for key, value in rt.items():
+                if isinstance(value, (int, float)):
+                    out[color].add(str(key))
     return out
 
 
@@ -288,13 +308,19 @@ def _karte_move_count(karte: dict[str, Any]) -> int | None:
 
 
 def _karte_max_points_lost(karte: dict[str, Any]) -> float | None:
-    """Return max pointsLost across important moves for sanity bounds."""
+    """Return max pointsLost across important moves for sanity bounds.
+
+    Dual-read (2026-07 fix): real Karte stores per-move loss as
+    ``loss_clamped`` (legacy fallback: ``points_lost``).
+    """
     moves = karte.get("important_moves", []) or []
     if not moves:
         return None
     losses: list[float] = []
     for m in moves:
-        v = m.get("points_lost")
+        v = m.get("loss_clamped")
+        if not isinstance(v, (int, float)):
+            v = m.get("points_lost")
         if isinstance(v, (int, float)):
             losses.append(float(v))
     return max(losses) if losses else None

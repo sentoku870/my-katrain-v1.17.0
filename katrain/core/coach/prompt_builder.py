@@ -79,7 +79,7 @@ class PromptConfig:
     llm_required_symptom_ids: tuple[SymptomId, ...] = ()
     max_lexicon_entries: int = 7
     include_expanded: bool = True
-    schema_version: str = "3.4"
+    schema_version: str = "3.5"
     player_rank_str: str | None = None
     average_points_lost: float | None = None
     player_color: str | None = None
@@ -129,8 +129,9 @@ PlayerColor: {player_color_label}   <!-- Phase 225.6: 'black' / 'white' / 'unkno
 2. DO NOT invent move numbers, coordinates, or scores. Every number must
    match the JSON.
 3. Every symptom_id you mention MUST exist in the Karte JSON's
-   ``weaknesses[<player_color>]`` or ``important_moves[*].meaning_tag_id``
-   field. When ``PlayerColor`` is set, focus your review on that side's
+   ``weaknesses[<player_color>]``, ``important_moves[*].primary_tag``,
+   or ``critical_3[<player_color>][*].meaning_tag_id`` field. When
+   ``PlayerColor`` is set, focus your review on that side's
    weaknesses only.
 4. Use the Lexicon definitions injected below verbatim for terminology.
 5. End your response with the line

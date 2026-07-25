@@ -54,8 +54,8 @@ def test_batch_json_stages_1_to_4():
 
     # 2. Verify Schema Version (Stage 3)
     print(f"Schema Version: {data.get('schema_version')}")
-    assert data.get("schema_version") == "3.4", (
-        "Schema version should be 3.4 (Phase 157: summary-side even/handicapped split + top-level win_loss_analysis removed)"
+    assert data.get("schema_version") == "3.5", (
+        "Schema version should be 3.5 (2026-07: coaching-context enrichment — winrate/score fields + best_move)"
     )
 
     # 3. Verify Games List (Stage 2)

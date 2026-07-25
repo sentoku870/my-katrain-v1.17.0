@@ -5,7 +5,7 @@
 > 157 / 158 / 225 での拡張、Phase 221 / 227 / 228 でのサマリ対応、
 > Phase 231 / 232 でのリファクタを反映した最新版（**2026-07-24**）。
 
-このドキュメントは現役スキーマ v3.3 / v3.4 を対象とする。古い v2.x 系の
+このドキュメントは現役スキーマ v3.5 を対象とする。古い v2.x 系の
 JSON を開いた場合のマイグレーションは**未実装**（v2 系はゴールデン
 テストでも対象外）。
 
@@ -62,32 +62,34 @@ python -m katrain.core.coach.cli <summary.json> --summary-mode  # 複数局
 
 ---
 
-## 2. 単局カルテ（Karte）スキーマ v3.3
+## 2. 単局カルテ（Karte）スキーマ v3.5
 
 ### 2.1 トップレベル
 
 ```python
 class KarteReport(TypedDict):
-    schema_version: str                              # 常に "3.3"
+    schema_version: str                              # 常に "3.5"
     meta: MetaData
     summary: dict[str, Any]
     important_moves: list[MistakeItem]
     weaknesses: dict[str, list[WeaknessItem]] | None        # {"black": [...], "white": [...]}
     weaknesses_meta: dict[str, WeaknessMeta] | None          # Phase 158-I
+    weaknesses_by_tag: dict[str, list[WeaknessTagItem]]     # v3.5 追加（§2.6a）
+    score_trajectory: list[ScoreTrajectoryPoint]            # v3.5 追加（§2.6b）
     mistake_streaks: dict[str, list[StreakItem]] | None
     critical_3: dict[str, list[CriticalMoveItem]] | None    # {"black": [...], "white": [...]}
     data_quality: DataQualityStats | None
     reason_tags_distribution: dict[str, dict[str, int]] | None
     win_loss_analysis: dict[str, Any] | None                # Phase 154-D
     loss_progression: list[dict[str, Any]] | None
-    opponent_strength_loss_correlation: dict[str, dict[str, Any]] | None  # Phase 155-D
+    opponent_strength_loss_correlation: None                # v3.5 から常に None（単局では相関不能）
 ```
 
 ### 2.2 `meta` セクション
 
 | フィールド | 型 | 必須 | 説明 |
 |----------|----|----|------|
-| `schema_version` | `str` | ✓ | 常に `"3.3"` |
+| `schema_version` | `str` | ✓ | 常に `"3.5"` |
 | `schema_hash` | `str` | ✓ | Phase 158-I 追加。schema_version + 各種定数の SHA-1 先頭 8 文字。LLM 側でこのプロジェクトのビルドバージョンを識別 |
 | `run_id` | `str` | ✓ | `run_<ts>_<8文字ハッシュ>` 形式。同一生成実行内の一意性保証 |
 | `game_id` | `str` | ✓ | `Game.game_id` または `unknown` |
@@ -101,8 +103,9 @@ class KarteReport(TypedDict):
 | `board_size` | `[int, int]` | ✓ | 盤サイズ（[19, 19] 形式） |
 | `skill_preset` | `str` | ✓ | `"beginner"` / `"standard"` / `"advanced"` / `"auto"` |
 | `loss_unit` | `str` | ✓ | 常に `"territory_points"` |
+| `score_perspective` | `str` | ✓ | v3.5 追加。常に `"black"`。`score_before` / `score_after` / `score_trajectory` が黒視点（正=黒リード）であることを明示 |
 | `definitions` | `Definitions \| None` | - | opt-in (`include_definitions=True` 時のみ埋まる) |
-| `player_info` | `{"black": {"name": str, "rank": str \| None}, "white": {...}}` | - | Phase 225.6 追加。SGF BR/WR から抽出 |
+| `player_info` | `{"black": {"name": str, "rank": str \| None, "color": "B"}, "white": {..., "color": "W"}}` | - | Phase 225.6 追加。SGF BR/WR から抽出。`color` は Phase 236 追加の安定識別子 |
 
 ### 2.3 `summary` セクション
 
@@ -124,8 +127,8 @@ class KarteReport(TypedDict):
 
 ```python
 class MistakeItem(TypedDict):
-    game_name: str
-    game_id: str | None
+    # v3.5: 単局カルテでは game_name / game_id を省略（全手が meta と同値で冗長なため）。
+    #       Summary の top_mistakes では複数局識別のため引き続き付与される。
     move_number: int
     player: str                              # "black" | "white"
     coords: str                              # GTP 座標
@@ -136,7 +139,20 @@ class MistakeItem(TypedDict):
     mistake_type: str                        # "inaccuracy" / "mistake" / "blunder"
     reason_codes: list[str]                  # Phase 158-F で正規化済み
     primary_tag: str | None                  # MeaningTagId enum value
+    # --- v3.5 (2026-07) 追加: コーチングコンテキスト ---
+    winrate_lost: float | None               # この手の勝率損失 (0.0-1.0, 4桁丸め)
+    score_before: float | None               # 着手前の形勢 (黒視点, 2桁丸め)
+    score_after: float | None                # 着手後の形勢 (黒視点, 2桁丸め)
+    score_stdev: float | None                # KataGo root scoreStdev (2桁丸め)
+    difficulty_score: float | None           # 局面難易度 0.0-1.0 (大きいほど難しい)
 ```
+
+> v3.5 の新規 5 フィールドは、解析データがない手（未解析・旧 KataGo）では
+> すべて `None` になる。`score_before` / `score_after` は**黒視点**
+> （`meta.score_perspective` 参照）。これらの追加により、LLM は
+> 「どれくらいのリード局面でどれだけ落としたか」を語れるようになり、
+> coach 層の勝率系・局面評価系の症状検出器（EVALUATION_ERRORS /
+> POSITION_EVALUATION 等）も実データで動作する。
 
 ### 2.5 `weaknesses` セクション
 
@@ -176,6 +192,43 @@ class WeaknessMeta(TypedDict):
     loss_coverage_pct: float                 # covered_loss / total_loss × 100
 ```
 
+### 2.6a `weaknesses_by_tag` セクション（v3.5 追加）
+
+`weaknesses`（phase × category）が「いつ・どれくらい」の診断軸なのに対し、
+こちらは**意味タグ（12 種類の診断カテゴリ）軸**で「どんな種類のミスか」を
+集計する。LLM は「死活の誤判断が 3 件・計 15.0 目」のような、コーチングに
+直結する弱点の言語化ができる。
+
+```python
+class WeaknessTagItem(TypedDict):
+    tag: str                                 # MeaningTagId enum value（例: "life_death_error"）
+    count: int                               # このタグの重要ミス手数
+    total_loss: float                        # 2 桁丸め
+    avg_loss: float
+    evidence: list[MoveEvidence]             # 代表手（信頼度連動で 1-3 件）
+```
+
+- 集計対象: `important_moves` に分類済みの意味タグを持つ手（同色、タグ非 None）
+- 並び順: `total_loss` 降順（同値はタグ名昇順）、**上位 3 タグ**まで
+- タグが付かなかった場合は空リスト
+
+### 2.6b `score_trajectory` セクション（v3.5 追加）
+
+形勢（scoreLead）の推移を **10 手ごと + 最終手** でサンプリングした
+コンパクトなカーブ（19 路で ~25 点・約 1KB）。`loss_progression` が
+「損失の分布」しか示さないのに対し、こちらは実際のリード推移なので、
+LLM は「終始劣勢」「中盤で逆転」「大きくリード後に崩壊」といった
+**対局の流れ**を叙述できる。
+
+```python
+class ScoreTrajectoryPoint(TypedDict):
+    move: int                                # 手数（1-indexed）
+    score: float                             # その手後の形勢（黒視点・1 桁丸め）
+```
+
+- 視点は常に黒（`meta.score_perspective` 参照）
+- 未解析手（`score_after` が None）はサンプルを欠番（0 を捏造しない）
+
 ### 2.7 `mistake_streaks` セクション
 
 連続ミスのストリーク。`{"black": [...], "white": [...]}` 形式。
@@ -205,12 +258,18 @@ class CriticalMoveItem(TypedDict):
     player: str                              # "B" / "W"
     score_loss: float
     meaning_tag_id: str | None               # MeaningTagId enum value
+    meaning_tag_label: str | None            # タグの人間可読ラベル（lang 依存）
     game_phase: str
     position_difficulty: str                 # "easy" / "normal" / "strict" / "unknown"
     area: str | None
-    reason_tags: list[str]
+    reason_tags: list[str]                   # v3.5 から REASON_CODE_ALIASES 正規化済み
     complexity_discounted: bool
+    best_move: str | None                    # v3.5 追加。着手前局面の KataGo 最善手 (GTP)
 ```
+
+> v3.5 の `best_move` は pre-move ノード（`node.parent`）の候補手リスト
+> 先頭（order=0）から取得する。LLM がルール 2（座標の捏造禁止）を
+> 守ったまま「正解の方向性」を述べられるようにするためのフィールド。
 
 > **Phase 158-G**: `player_filter` を渡して greedy セレクタが該当
 > プレイヤーの候補のみから選ぶように修正。**Phase 158-H**: pre-classified
@@ -255,13 +314,13 @@ Phase 154-D / 155-D で追加。詳細は各 Phase のスペックを参照:
 
 ---
 
-## 3. 複数局サマリ（Summary）スキーマ v3.4
+## 3. 複数局サマリ（Summary）スキーマ v3.5
 
 ### 3.1 トップレベル
 
 ```python
 class SummaryReport(TypedDict):
-    schema_version: str                              # 常に "3.4"
+    schema_version: str                              # 常に "3.5"
     meta: MetaData
     games: list[GameMeta]
     players: dict[str, SummaryPlayerStats]           # プレイヤー名 → 統計
@@ -349,10 +408,9 @@ LLM 出力の検証は 6 種類:
 ### 4.1 スキーマバージョン
 
 ```python
-REPORT_SCHEMA_VERSION = "3.4"
-# Phase 157-C: even/handicapped split + loss_progression dict
-# Phase 157-D: top-level win_loss_analysis removed
-# Phase 158-A/B: bug fixes
+REPORT_SCHEMA_VERSION = "3.5"
+# 2026-07: coaching-context enrichment (MistakeItem +5 fields,
+#          CriticalMoveItem.best_move, meta.score_perspective)
 ```
 
 ### 4.2 ミス分類閾値
@@ -458,6 +516,7 @@ REPORT_SCHEMA_HASH = sha1(
 | 3.4 | 221 | `detect_json_type` で karte / summary 自動判別 |
 | 3.4 | 225.6 | Karte `meta.player_info` 追加（BR/WR） |
 | 3.4 | 228 | Summary Shape B 対応（`players.<name>.mistakes`） |
+| 3.5 | 2026-07 | コーチング強化: MistakeItem に `winrate_lost` / `score_before` / `score_after` / `score_stdev` / `difficulty_score`、CriticalMoveItem に `best_move`、`meta.score_perspective` 追加。critical_3 の reason_tags をエイリアス正規化。coach 層のフィールド名不一致（症状検出が実データで不発だった問題）を修繕。`weaknesses_by_tag` / `score_trajectory` 新設、単局 `opponent_strength_loss_correlation` を None 化、単局 `important_moves` の `game_name` / `game_id` 省略、`unknown` プレースホルダータグの出力抑制 |
 
 ---
 

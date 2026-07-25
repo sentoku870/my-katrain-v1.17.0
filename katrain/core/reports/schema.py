@@ -49,6 +49,10 @@ class MetaData(TypedDict, total=False):
     data_status: str | None  # Summary only
     game_id: str | None  # Karte only
     loss_unit: str
+    # Schema 3.5: perspective of ``score_before`` / ``score_after`` /
+    # ``score_trajectory`` values. Always ``"black"`` (positive = black
+    # leads). Declared explicitly so LLM consumers never guess.
+    score_perspective: NotRequired[str]
     skill_preset: str | None
     definitions: Definitions | None
     # Karte-specific fields
@@ -90,8 +94,12 @@ class GameMeta(TypedDict):
 
 
 class MistakeItem(TypedDict):
-    game_name: str
-    game_id: str | None
+    # Schema 3.5 (2026-07): ``game_name`` / ``game_id`` are now
+    # optional — the single-game Karte omits them (every item would
+    # repeat ``meta`` values); the Summary keeps them because its
+    # ``top_mistakes`` span multiple games.
+    game_name: NotRequired[str]
+    game_id: NotRequired[str | None]
     move_number: int
     player: str  # "black" | "white"
     coords: str
@@ -102,6 +110,14 @@ class MistakeItem(TypedDict):
     mistake_type: str
     reason_codes: list[str]
     primary_tag: str | None
+    # Schema 3.5 (2026-07): coaching-context fields. All are ``None``
+    # when the underlying analysis data is unavailable (unanalyzed
+    # move, old KataGo, etc.).
+    winrate_lost: float | None  # winrate loss caused by this move (0.0-1.0)
+    score_before: float | None  # score lead BEFORE the move, BLACK perspective
+    score_after: float | None  # score lead AFTER the move, BLACK perspective
+    score_stdev: float | None  # KataGo root scoreStdev at this position
+    difficulty_score: float | None  # position difficulty 0.0-1.0 (higher = harder)
     # Phase 158-I: Summary-only. True when this entry was also
     # surfaced in the corresponding individual Karte's
     # ``important_moves`` block. ``None`` on Karte output (always
@@ -181,6 +197,21 @@ class WeaknessItem(TypedDict):
     evidence: list[MoveEvidence]
 
 
+class WeaknessTagItem(TypedDict):
+    """Schema 3.5: one meaning-tag weakness bucket.
+
+    Complements the phase × category view (``weaknesses``) with the
+    diagnostic axis — *what kind* of mistake (e.g. ``life_death_error``)
+    rather than *when / how big*.
+    """
+
+    tag: str  # MeaningTagId value (e.g. "life_death_error")
+    count: int  # number of important mistakes with this tag
+    total_loss: float  # 2-dp rounded
+    avg_loss: float
+    evidence: list[MoveEvidence]  # representative moves (1-3)
+
+
 class PriorityItem(TypedDict):
     """Reserved for future practice-priority section (Phase 153-B: removed from output).
 
@@ -214,11 +245,17 @@ class CriticalMoveItem(TypedDict):
     player: str  # "B" / "W"
     score_loss: float
     meaning_tag_id: str | None
+    meaning_tag_label: str | None  # human-readable tag label (``lang``-dependent)
     game_phase: str
     position_difficulty: str
     area: str | None
     reason_tags: list[str]
     complexity_discounted: bool
+    # Schema 3.5 (2026-07): KataGo's best move (GTP) for the position
+    # BEFORE this move was played. ``None`` when the pre-move position
+    # has no analysis. Lets the LLM coach state the correct direction
+    # without inventing coordinates.
+    best_move: str | None
 
 
 class DataQualityStats(TypedDict):
@@ -241,14 +278,26 @@ class DataQualityStats(TypedDict):
 # --- Karte Specific (Phase 149 C-3: v3.0 with extended sections) ---
 
 
+class ScoreTrajectoryPoint(TypedDict):
+    """Schema 3.5: one sampled point of the game's score-lead curve."""
+
+    move: int  # move number (1-indexed)
+    score: float  # score lead AFTER that move, BLACK perspective (1-dp)
+
+
 class KarteReport(TypedDict):
-    """Karte JSON v3.3 (Phase 153-A/B/C + Phase 154-D + Phase 155-D).
+    """Karte JSON (schema 3.5, 2026-07).
 
-    Schema 3.2 → 3.3: Added ``opponent_strength_loss_correlation`` section
-    for per-player opponent-rank correlation.
-
-    The remaining fields are stable since 3.0 (weaknesses, mistake_streaks,
-    critical_3, data_quality, reason_tags_distribution).
+    Schema 3.4 → 3.5: coaching-context enrichment —
+    ``MistakeItem`` gains ``winrate_lost`` / ``score_before`` /
+    ``score_after`` / ``score_stdev`` / ``difficulty_score``;
+    ``CriticalMoveItem`` gains ``best_move``; ``meta`` gains
+    ``score_perspective``; new ``weaknesses_by_tag`` (meaning-tag
+    weakness axis) and ``score_trajectory`` (game-flow curve) sections;
+    ``important_moves`` drops the redundant ``game_name`` / ``game_id``
+    keys; single-game ``opponent_strength_loss_correlation`` is now
+    ``None`` (it could never be computed from one game). Also declares
+    the long-present ``weaknesses_meta`` section in the type system.
     """
 
     schema_version: str
@@ -256,6 +305,13 @@ class KarteReport(TypedDict):
     summary: dict[str, Any]
     important_moves: list[MistakeItem]
     weaknesses: dict[str, list[WeaknessItem]] | None
+    # Coverage statistics for the weaknesses aggregation (Phase 158-I).
+    # Present in real output since 3.4; declared in the type system in 3.5.
+    weaknesses_meta: NotRequired[dict[str, dict[str, Any]]]
+    # Schema 3.5: meaning-tag weakness aggregation (diagnostic axis).
+    weaknesses_by_tag: NotRequired[dict[str, list[WeaknessTagItem]]]
+    # Schema 3.5: sampled score-lead curve (every 10 moves + final).
+    score_trajectory: NotRequired[list[ScoreTrajectoryPoint]]
     mistake_streaks: dict[str, list[StreakItem]] | None
     critical_3: dict[str, list[CriticalMoveItem]] | None
     data_quality: DataQualityStats | None
@@ -264,4 +320,7 @@ class KarteReport(TypedDict):
     win_loss_analysis: dict[str, Any] | None
     loss_progression: list[dict[str, Any]] | None
     # Phase 155-D: opponent-strength loss correlation (per-player).
+    # Schema 3.5: always ``None`` on single-game Karte output — one game
+    # can never yield a correlation, and the full block wasted ~15% of
+    # the payload. The Summary keeps its per-player block.
     opponent_strength_loss_correlation: dict[str, dict[str, Any]] | None

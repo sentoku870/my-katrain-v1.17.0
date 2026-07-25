@@ -19,7 +19,7 @@ from katrain.core.reports.constants import (
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
 REPORT_SCHEMA_VERSION: Final[str] = (
-    "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 158-A/B: bug fixes.
+    "3.5"  # 2026-07: coaching-context enrichment — MistakeItem gains winrate_lost/score_before/score_after/score_stdev/difficulty_score; CriticalMoveItem gains best_move; meta gains score_perspective.
 )
 
 
