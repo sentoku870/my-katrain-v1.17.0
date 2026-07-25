@@ -31,9 +31,23 @@ def _save_general_settings(
     the preset is auto-derived.  We still persist the resolved preset
     name into ``general/skill_preset`` so existing readers (and legacy
     configs that pre-date Phase 229) keep working unchanged.
+
+    Phase 272: ``player_rank`` is normalised to one of the 5 CoachMode
+    keys (``"beginner"`` / ``"intermediate"`` / ``"dan"`` / ``"advanced"``
+    / ``"expert"``). Legacy free-text values are mapped via
+    :func:`katrain.common.player_rank_mode.parse_mode_key`. This keeps
+    the Spinner state in sync with the persisted config and lets every
+    downstream consumer rely on a stable internal representation.
     """
+    from katrain.core.coach.player_rank_mode import parse_mode_key
+
     general = ctx.config("general") or {}
-    general["player_rank"] = player_rank.strip()
+    # Normalise to a CoachMode key. If the Spinner emits a valid key
+    # it is returned unchanged; if the input is a legacy rank text
+    # ("4d" / "4段") it is mapped to the nearest mode. Invalid input
+    # falls back to ``"intermediate"`` (the documented safe default).
+    rank_key = parse_mode_key(player_rank) or "intermediate"
+    general["player_rank"] = rank_key
     # Persist the resolved preset so old code paths reading
     # ``general/skill_preset`` continue to work without modification.
     general["skill_preset"] = skill_preset
@@ -137,37 +151,38 @@ def migrate_default_user_rank(
     ctx: FeatureContext,
     current_settings: dict[str, Any],
 ) -> None:
-    """Phase 230-E: Fold the legacy ``default_user_rank`` into ``player_rank``.
+    """Phase 230-E + Phase 272-B: clear legacy ``default_user_rank``.
 
     The export tab used to expose a ``ユーザー棋力 (任意)`` field that wrote
     to ``mykatrain_settings.default_user_rank``. Phase 229-D already
     reads ``general/player_rank`` first in the LLM Coach fallback chain,
-    so the duplicate input has been removed. This helper transparently
-    migrates any pre-existing ``default_user_rank`` value so users do
-    not lose their setting.
+    so the duplicate input has been removed.
 
-    Rules:
-    - ``player_rank`` empty + ``default_user_rank`` set → copy across.
-    - ``player_rank`` set + ``default_user_rank`` set → keep ``player_rank``.
-    - ``default_user_rank`` always cleared after migration.
-    - No-op when ``default_user_rank`` is already empty.
+    Phase 272-B: with the analysis tab switched to a 5-level Spinner,
+    ``general/player_rank`` is always populated with a valid mode key.
+    The legacy ``default_user_rank`` value is now treated as **stale**
+    and is unconditionally cleared so it cannot leak into the LLM
+    Coach popup via the fallback chain.
+
+    Rules (Phase 272-B):
+
+    - ``default_user_rank`` empty → no-op.
+    - ``default_user_rank`` set → always clear, regardless of
+      ``player_rank``. Log the cleared value so users notice the change.
 
     This function lives in the Kivy-free savers module so it can be
     unit-tested without a Kivy environment.
     """
+    import logging
+
     legacy_rank = (current_settings.get("default_user_rank") or "").strip()
     if not legacy_rank:
         return
 
-    general = ctx.config("general") or {}
-    if not isinstance(general, dict):
-        general = {}
-    current_player_rank = (general.get("player_rank") or "").strip()
-
-    if not current_player_rank:
-        general["player_rank"] = legacy_rank
-        ctx.set_config_section("general", general)
-        ctx.save_config("general")
+    logging.info(
+        "Phase 272-B: clearing stale mykatrain_settings.default_user_rank=%r",
+        legacy_rank,
+    )
 
     # Clear the legacy field so the export tab stays clean on future opens.
     updated_settings = dict(current_settings)

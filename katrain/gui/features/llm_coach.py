@@ -53,13 +53,19 @@ def resolve_rank_fallback_chain(
     general_player_rank: str | None = None,
     default_user_rank: str | None = None,
 ) -> str | None:
-    """Pick the rank to display in the LLM Coach popup (Phase 229-D).
+    """Pick the rank to display in the LLM Coach popup (Phase 272-B).
 
-    The priority chain (first non-empty wins):
+    Priority chain (first non-empty wins):
 
-    1. Karte/SGF ``info`` dict (``_pick_detected_rank``)
-    2. ``general/player_rank`` (the new global setting from Phase 229-C)
-    3. ``mykatrain_settings.default_user_rank`` (Phase 225.8 legacy fallback)
+    1. ``general/player_rank`` (the analysis-tab "what the user wants"
+       setting — always wins over Karte/SGF, because the user just
+       changed it explicitly). Phase 272-B: this was demoted to slot 2
+       in the legacy implementation, but user feedback (PR-B) made it
+       clear that the analysis-tab spinner should be authoritative.
+    2. Karte/SGF ``info`` dict (``_pick_detected_rank``)
+    3. ``mykatrain_settings.default_user_rank`` (Phase 225.8 legacy
+       fallback; Phase 272-B also clears this on save so it should
+       normally be empty).
 
     Args:
         info: The Karte/SGF player info dict, or ``None`` if unavailable.
@@ -76,12 +82,12 @@ def resolve_rank_fallback_chain(
         This function is a pure helper with no Kivy dependency so it
         can be unit-tested on CI without a display.
     """
+    if general_player_rank:
+        return general_player_rank
     if info:
         detected = _pick_detected_rank(info, perspective_value)
         if detected:
             return detected
-    if general_player_rank:
-        return general_player_rank
     if default_user_rank:
         return default_user_rank
     return None
@@ -162,6 +168,7 @@ def validate_llm_response(
     llm_text: str,
     *,
     rank: str | None = None,
+    player_color: str | None = None,
 ) -> tuple[bool, str]:
     """Validate a user-pasted LLM response against a Karte JSON.
 
@@ -174,11 +181,24 @@ def validate_llm_response(
     Markdown. The popup detects this marker to surface a status
     warning so the user knows the displayed report is incomplete.
 
+    Phase 272: ``llm_text`` is preprocessed via
+    :func:`katrain.core.coach.popup_logic.strip_prompt_overhead` so that
+    pasting the prompt template + answer together does not produce
+    spurious ``<id1>`` / ``<id2>`` ``unknown_symptom_id`` warnings.
+
+    Phase 272-B: accepts an optional ``player_color`` so the validator
+    uses the same ``PlayerColor`` that was used to generate the prompt.
+    Previously the validator always ran with ``PlayerColor=None``
+    (unknown), so the "wrong side reviewed" demotion never fired.
+
     Args:
         ctx: FeatureContext for logging. May be None (e.g. unit tests).
         karte_path: Path to the Karte JSON used as ground truth.
         llm_text: The user-pasted LLM response.
         rank: Optional rank string passed through to the prompt builder.
+        player_color: Optional ``"B"`` / ``"W"`` / ``None`` to forward to
+            the prompt builder so the validator sees the same ground
+            truth as the prompt.
 
     Returns:
         (is_clean, markdown_report). ``is_clean`` mirrors
@@ -186,12 +206,24 @@ def validate_llm_response(
     """
     from katrain.core.coach.cli import build_prompt as _build_prompt
     from katrain.core.coach.llm_validator import validate_llm_output
+    from katrain.core.coach.popup_logic import strip_prompt_overhead
+
+    # Phase 272: strip the prompt overhead so the validator only sees
+    # the LLM answer body. If the user pasted the prompt verbatim and
+    # there is no answer, surface a friendly error instead of running
+    # an empty validation.
+    cleaned = strip_prompt_overhead(llm_text)
+    if not cleaned:
+        msg = i18n._("mykatrain:llm-coach:empty-response-after-strip")
+        if ctx is not None:
+            ctx.log(msg, OUTPUT_ERROR)
+        return False, msg
 
     try:
         karte = _read_karte(karte_path)
-        prompt = _build_prompt(karte, rank=rank)
+        prompt = _build_prompt(karte, rank=rank, player_color=player_color)
         report = validate_llm_output(
-            llm_text,
+            cleaned,
             karte,
             prompt,
             config=prompt.config,
@@ -437,8 +469,19 @@ def validate_summary_llm_response(
         schema_version=str(summary.get("schema_version", "unknown")),
     )
     try:
+        # Phase 272: strip the prompt overhead (HTML instruction
+        # comment + Karte/Summary JSON fence) so the validator only
+        # sees the actual LLM answer body.
+        from katrain.core.coach.popup_logic import strip_prompt_overhead
+
+        cleaned = strip_prompt_overhead(llm_text)
+        if not cleaned:
+            msg = i18n._("mykatrain:llm-coach:empty-response-after-strip")
+            if ctx is not None:
+                ctx.log(msg, OUTPUT_ERROR)
+            return False, msg
         prompt = build_summary_weakness_prompt(summary, cfg)
-        report = validate_summary_llm_output(llm_text, summary, prompt)
+        report = validate_summary_llm_output(cleaned, summary, prompt)
     except Exception as exc:  # noqa: BLE001
         msg = i18n._("mykatrain:llm-coach:summary-build-failed").format(error=str(exc))
         if ctx is not None:

@@ -63,6 +63,11 @@ def rank_to_skill_preset(rank: Rank | str | None) -> str:
     (ASCII ``"5k"`` / ``"7d"``, kanji ``"4段"`` / ``"5級"``, full-width
     digits, ``"4kyu"`` / ``"5dan"`` synonyms, etc.).
 
+    Phase 272: also accepts a 5-level ``CoachMode`` value (e.g.
+    ``"beginner"``, ``"advanced"``) directly. The Spinner in the
+    analysis tab emits these keys, so the function no longer needs to
+    parse the legacy rank text in the common case.
+
     Returns ``DEFAULT_SKILL_PRESET`` (``"standard"``) when the input is
     ``None`` / empty / unrecognised, so callers can chain without an
     explicit default.
@@ -75,7 +80,22 @@ def rank_to_skill_preset(rank: Rank | str | None) -> str:
     if rank is None:
         return DEFAULT_SKILL_PRESET
     if isinstance(rank, str):
-        key = canonical_rank_key(rank)
+        cleaned = rank.strip()
+        # Phase 272: CoachMode keys short-circuit to their matching
+        # preset (5-way mapping; BEGINNER → "relaxed", INTERMEDIATE →
+        # "beginner", DAN → "standard", ADVANCED → "advanced",
+        # EXPERT → "pro").
+        try:
+            from katrain.core.coach.master_db import (
+                CoachMode,
+                skill_preset_for_mode,
+            )
+
+            mode = CoachMode(cleaned.lower())
+            return skill_preset_for_mode(mode)
+        except (ValueError, ImportError):
+            pass
+        key = canonical_rank_key(cleaned)
         if not key:
             return DEFAULT_SKILL_PRESET
         from katrain.common.rank import _RANK_ORDER

@@ -331,6 +331,9 @@ class TestOnGenerateSummary:
         content.karte_path_input.text = str(karte)
         content.path_type = "karte"
         content.ids["response_input"].text = ""
+        # Phase 272-B: bypass the auto-block guard.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         with (
             patch("katrain.gui.features.llm_coach.build_llm_prompt") as mock_build,
             patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip,

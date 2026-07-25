@@ -161,6 +161,9 @@ class TestPhase2253OnGenerateUsesIds:
         # Property is stale (empty) but ids has the real path
         content.karte_path_input.text = ""
         content.ids["karte_path_input"].text = "/real/path.json"
+        # Phase 272-B: bypass the auto-block guard.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         fake_prompt = MagicMock()
         fake_prompt.full_markdown = "# PROMPT"
         with (

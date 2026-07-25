@@ -44,6 +44,7 @@ Public API
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -381,6 +382,43 @@ def cap_response_text(text: str) -> tuple[str, str | None]:
         text[:MAX_RESPONSE_INPUT_CHARS],
         i18n._("mykatrain:llm-coach:paste-too-long").format(original=len(text), kept=MAX_RESPONSE_INPUT_CHARS),
     )
+
+
+# Phase 272: strip the prompt template + Karte JSON fence from a
+# pasted prompt+answer before running the validator. Without this the
+# Tier-1 regex matched the template's ``参照した症状ID: [<id1>, <id2>, ...]``
+# line and fabricated 3 HIGH-severity ``unknown_symptom_id`` warnings.
+_PROMPT_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_PROMPT_JSON_FENCE_RE = re.compile(r"```json\s*.*?\s*```", re.DOTALL)
+
+
+def strip_prompt_overhead(text: str) -> str:
+    r"""Strip the Phase 211 HTML instruction block + Karte JSON fence.
+
+    The user typically pastes the full LLM Coach Markdown output (which
+    contains both the system-instruction HTML comment block at the top
+    and the Karte JSON triple-backtick ``json ... ``` fence) along with
+    the LLM answer body. Running the validator on the *whole* pasted
+    text causes the Tier-1 symptom-id regex to match the template's
+    placeholder line (``[<id1>, <id2>, ...]``) and the Tier-3
+    safety-net grep to sweep every id from the embedded Karte JSON.
+
+    This helper removes those two overhead blocks so the validator only
+    sees the LLM answer body. Pure function, safe for unit tests.
+
+    Args:
+        text: The full pasted text from the response input.
+
+    Returns:
+        The text with HTML comment blocks and triple-backtick ``json``
+        fences removed, then stripped. Returns the original ``text``
+        unchanged when no overhead blocks are present (the common case
+        for users who paste only the answer).
+    """
+    if not text:
+        return text
+    cleaned = _PROMPT_JSON_FENCE_RE.sub("", _PROMPT_HTML_COMMENT_RE.sub("", text))
+    return cleaned.strip()
 
 
 def resolve_summary_rank(

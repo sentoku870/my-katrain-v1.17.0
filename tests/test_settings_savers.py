@@ -34,8 +34,9 @@ class TestSaveGeneralSettings:
         assert payload["pv_filter_level"] == "medium"
         # Original lang preserved.
         assert payload["lang"] == "en"
-        # Phase 229: player_rank defaults to "" when omitted.
-        assert payload["player_rank"] == ""
+        # Phase 272: empty player_rank normalises to "intermediate"
+        # (the documented safe default).
+        assert payload["player_rank"] == "intermediate"
 
         ctx.save_config.assert_called_once_with("general")
 
@@ -46,26 +47,48 @@ class TestSaveGeneralSettings:
         _save_general_settings(ctx, "auto", "auto")
         section_name, payload = ctx.set_config_section.call_args.args
         assert section_name == "general"
-        assert payload == {"skill_preset": "auto", "pv_filter_level": "auto", "player_rank": ""}
+        assert payload == {
+            "skill_preset": "auto",
+            "pv_filter_level": "auto",
+            "player_rank": "intermediate",
+        }
 
     def test_persists_player_rank_when_provided(self):
-        """Phase 229: player_rank is the primary input from the analysis tab."""
+        """Phase 272: free-text rank is normalised to a mode key on save."""
         from katrain.gui.features.settings_popup_savers import _save_general_settings
 
         ctx = _make_ctx(initial={})
-        _save_general_settings(ctx, skill_preset="advanced", pv_filter_level="auto", player_rank="5d")
+        _save_general_settings(ctx, skill_preset="beginner", pv_filter_level="auto", player_rank="5k")
         _, payload = ctx.set_config_section.call_args.args
-        assert payload["player_rank"] == "5d"
-        assert payload["skill_preset"] == "advanced"  # resolved preset still saved
+        assert payload["player_rank"] == "intermediate"  # 5k → intermediate
+        assert payload["skill_preset"] == "beginner"  # resolved preset still saved
 
     def test_player_rank_whitespace_stripped(self):
-        """Phase 229: leading/trailing whitespace in the rank input is ignored."""
+        """Phase 272: whitespace is stripped and the rank is normalised to a mode key."""
         from katrain.gui.features.settings_popup_savers import _save_general_settings
 
         ctx = _make_ctx(initial={})
         _save_general_settings(ctx, "standard", "auto", player_rank="  4段  ")
         _, payload = ctx.set_config_section.call_args.args
-        assert payload["player_rank"] == "4段"
+        assert payload["player_rank"] == "advanced"  # 4段 → advanced
+
+    def test_player_rank_mode_key_passes_through(self):
+        """Phase 272: a valid mode key is stored unchanged."""
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
+
+        ctx = _make_ctx(initial={})
+        _save_general_settings(ctx, "advanced", "auto", player_rank="advanced")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["player_rank"] == "advanced"
+
+    def test_player_rank_invalid_falls_back_to_intermediate(self):
+        """Phase 272: invalid input falls back to the documented safe default."""
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
+
+        ctx = _make_ctx(initial={})
+        _save_general_settings(ctx, "standard", "auto", player_rank="xyzzy")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["player_rank"] == "intermediate"
 
 
 class TestSaveBeginnerHintsSettings:
@@ -367,9 +390,16 @@ class TestSaveCritical3MaxMoves:
 
 
 class TestMigrateDefaultUserRank:
-    """Phase 230-E: ``default_user_rank`` → ``player_rank`` マイグレーション。"""
+    """Phase 272-B: ``default_user_rank`` is unconditionally cleared.
 
-    def test_copies_when_player_rank_empty(self):
+    The legacy "copy into player_rank when empty" behaviour was
+    removed because the analysis-tab Spinner always populates
+    ``general/player_rank`` with a valid mode key now. Carrying over
+    a stale ``default_user_rank`` would leak into the LLM Coach
+    popup via the fallback chain.
+    """
+
+    def test_clears_default_user_rank_without_touching_player_rank(self):
         from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
 
         initial = {
@@ -381,19 +411,20 @@ class TestMigrateDefaultUserRank:
 
         migrate_default_user_rank(ctx, current_settings)
 
-        # general/player_rank に "4段" が保存される
-        general_call = ctx.set_config_section.call_args_list[0]
-        assert general_call.args == ("general", {"player_rank": "4段"})
-        ctx.save_config.assert_any_call("general")
+        # Phase 272-B: no automatic copy into general/player_rank.
+        general_calls = [c for c in ctx.set_config_section.call_args_list if c.args[0] == "general"]
+        assert len(general_calls) == 0
 
         # default_user_rank はクリアされる
+        mykatrain_call = next(c for c in ctx.set_config_section.call_args_list if c.args[0] == "mykatrain_settings")
+        assert mykatrain_call.args[1]["default_user_rank"] == ""
         assert current_settings["default_user_rank"] == ""
 
-    def test_keeps_player_rank_when_both_set(self):
+    def test_clears_even_when_player_rank_already_set(self):
         from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
 
         initial = {
-            "general": {"player_rank": "5k"},
+            "general": {"player_rank": "advanced"},
             "mykatrain_settings": {"default_user_rank": "4段"},
         }
         ctx = _make_ctx(initial=initial)
@@ -401,8 +432,7 @@ class TestMigrateDefaultUserRank:
 
         migrate_default_user_rank(ctx, current_settings)
 
-        # general/player_rank は上書きされない（5k のまま）
-        # general セクションへの set_config_section は呼ばれない
+        # general/player_rank は上書きされない（advanced のまま）
         general_calls = [c for c in ctx.set_config_section.call_args_list if c.args[0] == "general"]
         assert len(general_calls) == 0
 
@@ -414,7 +444,7 @@ class TestMigrateDefaultUserRank:
 
         ctx = _make_ctx(
             initial={
-                "general": {"player_rank": "5k"},
+                "general": {"player_rank": "advanced"},
                 "mykatrain_settings": {"default_user_rank": ""},
             }
         )
@@ -428,7 +458,7 @@ class TestMigrateDefaultUserRank:
     def test_noop_when_default_user_rank_missing(self):
         from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
 
-        ctx = _make_ctx(initial={"general": {"player_rank": "5k"}})
+        ctx = _make_ctx(initial={"general": {"player_rank": "advanced"}})
         current_settings = {}
 
         migrate_default_user_rank(ctx, current_settings)
@@ -436,7 +466,7 @@ class TestMigrateDefaultUserRank:
         ctx.set_config_section.assert_not_called()
         ctx.save_config.assert_not_called()
 
-    def test_strips_whitespace(self):
+    def test_strips_whitespace_before_clearing(self):
         from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
 
         initial = {
@@ -448,8 +478,8 @@ class TestMigrateDefaultUserRank:
 
         migrate_default_user_rank(ctx, current_settings)
 
-        general_call = ctx.set_config_section.call_args_list[0]
-        assert general_call.args[1]["player_rank"] == "4段"
+        # Whitespace stripped before checking emptiness.
+        assert current_settings["default_user_rank"] == ""
 
 
 class TestBuildKifunarabeConfig:

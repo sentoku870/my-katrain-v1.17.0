@@ -127,6 +127,17 @@ msgstr ""
 "Auto-detect failed: 'default_user_name' is not set in mykatrain settings. "
 "Open Settings → mykatrain → Default User Name and fill it in."
 
+msgid "mykatrain:llm-coach:auto-detect-user-not-found"
+msgstr ""
+"Default user '{user}' does not match Black '{black}' or White '{white}'."
+" Please select 'Black' or 'White' explicitly."
+
+msgid "mykatrain:llm-coach:auto-detect-blocked-on-generate"
+msgstr ""
+"Generation blocked: auto-detection failed. Default user '{user}' matches"
+" neither Black '{black}' nor White '{white}'."
+" Please select 'Black' or 'White' explicitly."
+
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "Auto-detect error: {error}"
 
@@ -1344,6 +1355,21 @@ msgid "mykatrain:settings:player_rank_usage"
 msgstr ""
 "Used for both analysis thresholds and LLM Coach fallback (when Karte/SGF has"
 " no rank info)"
+
+msgid "mykatrain:settings:rank-mode-beginner"
+msgstr "BEGINNER (entry - 10 kyu)"
+
+msgid "mykatrain:settings:rank-mode-intermediate"
+msgstr "INTERMEDIATE (9 kyu - 4 kyu)"
+
+msgid "mykatrain:settings:rank-mode-dan"
+msgstr "DAN (3 kyu - 2 dan)"
+
+msgid "mykatrain:settings:rank-mode-advanced"
+msgstr "ADVANCED (3 dan - 5 dan)"
+
+msgid "mykatrain:settings:rank-mode-expert"
+msgstr "EXPERT (6 dan and above)"
 
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "Candidate Filter (excl. best):"
@@ -2881,6 +2907,11 @@ msgstr "⚠ Display truncated ({base})"
 msgid "mykatrain:llm-coach:paste-too-long"
 msgstr ""
 "LLM response too long ({original} chars), truncated to first {kept} chars"
+
+msgid "mykatrain:llm-coach:empty-response-after-strip"
+msgstr ""
+"After stripping the prompt section, no answer remains. Please paste only the"
+" LLM answer."
 
 #. Phase 251: per-category hint toggle label
 msgid "mykatrain:settings:self_atari"

@@ -85,6 +85,10 @@ def _make_content(path_type: str = "karte") -> Any:
     # production ``__init__`` would normally set up.
     content._pending_clock_events = []
     content._rank_detect_retries = 0
+    # Phase 272-B: cached Karte/SGF player info (set by the
+    # populate_karte_player_info helper). The generate / validate
+    # handlers read this so a missing value falls back to ``{}``.
+    content._last_player_info = {}
 
     # Phase 230-F (CI fix): default config mock that returns the
     # supplied ``default`` arg instead of leaking ``return_value``

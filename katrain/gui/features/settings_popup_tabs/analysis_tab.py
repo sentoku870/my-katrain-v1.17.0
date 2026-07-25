@@ -59,14 +59,25 @@ def _build_engine_section(inner: BoxLayoutType, state: _SettingsPopupContext) ->
 
 
 def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Add the player_rank text input + auto-derived preset label (Phase 229).
+    """Add the player_rank spinner + auto-derived preset label (Phase 272).
 
-    Before Phase 229 this section was a 6-way radio button group
-    (``auto`` / ``relaxed`` / ``beginner`` / ``standard`` / ``advanced``
-    / ``pro``).  The replacement is a single text field for the user's
-    rank; the analysis-side preset is derived from it via
-    :func:`katrain.core.analysis.resolve_skill_preset` and shown as a
-    label below the input.
+    Phase 229 (pre-272) used a free-text ``TextInput`` so users could
+    type any rank notation (``"4d"`` / ``"4段"`` / ``"５級"``). That
+    input drove both the analysis-side preset (via
+    :func:`katrain.core.analysis.resolve_skill_preset`) and the LLM
+    Coach fallback chain.
+
+    Phase 272 collapses the user input to a 5-level
+    :class:`CoachMode` selector (``BEGINNER`` / ``INTERMEDIATE`` /
+    ``DAN`` / ``ADVANCED`` / ``EXPERT``). The Spinner emits one of
+    these keys directly; downstream code reads the same key from
+    ``state.selected_player_rank[0]`` and forwards it to
+    :func:`katrain.common.player_rank_mode.parse_mode_key`. Legacy
+    free-text values in existing config files are migrated on save
+    via :func:`katrain.common.player_rank_mode.migrate_general_player_rank`.
+
+    The Spinner's labels include a short kyu/dan range hint so the
+    user can still see roughly which rank bucket each mode covers.
     """
     _add_searchable_label(inner, "mykatrain:settings:player_rank", state)
 
@@ -74,43 +85,68 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
 
     # Kivy imports — kept local to avoid pulling them at module import
     # time (mirrors the pattern used elsewhere in this module).
-    from kivy.uix.textinput import TextInput
+    from kivy.uix.spinner import Spinner
 
-    rank_input = TextInput(
-        text=state.selected_player_rank[0],
-        multiline=False,
-        size_hint_x=0.4,
-        hint_text=i18n._("mykatrain:settings:player_rank_example"),
+    # 5-level mode labels. Each value is the i18n key for the label,
+    # stored in the same order as CoachMode.values so the popup and
+    # the saved config always agree.
+    mode_labels = (
+        "mykatrain:settings:rank-mode-beginner",
+        "mykatrain:settings:rank-mode-intermediate",
+        "mykatrain:settings:rank-mode-dan",
+        "mykatrain:settings:rank-mode-advanced",
+        "mykatrain:settings:rank-mode-expert",
+    )
+    mode_keys = ("beginner", "intermediate", "dan", "advanced", "expert")
+    label_texts = tuple(i18n._(k) for k in mode_labels)
+
+    # Initial value: honour a previously-saved mode key. If the stored
+    # value is legacy free-text (e.g. "4d" from a pre-272 config), map
+    # it via parse_mode_key so the Spinner can select the right row.
+    from katrain.core.coach.player_rank_mode import is_valid_mode_key, parse_mode_key
+
+    initial_raw = state.selected_player_rank[0]
+    initial_key = parse_mode_key(initial_raw) if not is_valid_mode_key(initial_raw) else initial_raw.lower()
+    if initial_key not in mode_keys:
+        initial_key = "intermediate"
+    initial_index = mode_keys.index(initial_key)
+    state.selected_player_rank[0] = initial_key
+    initial_label = label_texts[initial_index]
+
+    rank_input = Spinner(
+        text=initial_label,
+        values=list(label_texts),
+        size_hint_x=0.55,
         font_name=Theme.DEFAULT_FONT,
-        foreground_color=Theme.TEXT_COLOR,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
     )
 
-    def _on_rank_text(instance: TextInput, value: str) -> None:
-        # Phase 229: persist user input and refresh the derived preset
-        # label.  We resolve via the same helper the analysis code uses,
-        # so the UI can never disagree with the runtime preset.
+    def _on_rank_select(_sp: Spinner, value: str) -> None:
+        # Phase 272: Spinner emits a localised label. Map it back to
+        # the corresponding mode key (not the label text) so downstream
+        # code always sees a stable, language-independent value.
         from katrain.core.analysis import resolve_skill_preset
 
-        new_value = value.strip()
+        try:
+            idx = label_texts.index(value)
+        except ValueError:
+            return
+        new_value = mode_keys[idx]
         state.selected_player_rank[0] = new_value
         state.selected_skill_preset[0] = resolve_skill_preset(
             state.ctx.config("general/skill_preset"),
             new_value,
         )
-        # Update the inferred label without rebuilding the layout.
         if hasattr(state, "_rank_inferred_label"):
             state._rank_inferred_label.text = _format_rank_inferred_label(new_value, state.selected_skill_preset[0])
-        # Phase 246-A (H2): also refresh the PV filter status because
-        # AUTO mode depends on the resolved preset, which itself depends
-        # on the rank string.
         _refresh_pv_filter_status(state)
 
-    rank_input.bind(text=_on_rank_text)
+    rank_input.bind(text=_on_rank_select)
     rank_layout.add_widget(rank_input)
 
     # Spacer so the inferred label has room to render next to the input.
-    rank_layout.add_widget(Label(size_hint_x=0.6))
+    rank_layout.add_widget(Label(size_hint_x=0.45))
 
     inner.add_widget(rank_layout)
     if state.register_searchable is not None:
@@ -131,8 +167,6 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
         font_size="13sp",
     )
     inferred_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    # Phase 229: stash the label on state so the text callback above
-    # can refresh it without rebuilding the layout (avoids focus loss).
     state._rank_inferred_label = inferred_label
     inner.add_widget(inferred_label)
 

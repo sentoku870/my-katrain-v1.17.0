@@ -97,6 +97,44 @@ __all__ = [
 ]
 
 
+# Phase 272-B: map between the LLM Coach popup's rank Spinner labels
+# and the stable :class:`CoachMode` keys used by every downstream
+# consumer. The Spinner shows localised labels (e.g. ``"ADVANCED（三段〜五段）"``)
+# but we always store and forward the key (``"advanced"``) so the
+# analysis tab and the popup stay in sync.
+_RANK_SPINNER_LABELS: tuple[str, ...] = (
+    "BEGINNER（入門〜10級）",
+    "INTERMEDIATE（9級〜4級）",
+    "DAN（3級〜二段）",
+    "ADVANCED（三段〜五段）",
+    "EXPERT（六段以上）",
+)
+_RANK_SPINNER_KEYS: tuple[str, ...] = (
+    "beginner",
+    "intermediate",
+    "dan",
+    "advanced",
+    "expert",
+)
+_RANK_LABEL_TO_KEY: dict[str, str] = dict(zip(_RANK_SPINNER_LABELS, _RANK_SPINNER_KEYS, strict=True))
+_RANK_KEY_TO_LABEL: dict[str, str] = dict(zip(_RANK_SPINNER_KEYS, _RANK_SPINNER_LABELS, strict=True))
+
+
+def rank_spinner_label_to_key(label: str) -> str | None:
+    """Reverse-map a localised Spinner label back to a :class:`CoachMode` key."""
+    return _RANK_LABEL_TO_KEY.get(label)
+
+
+def rank_spinner_key_to_label(key: str) -> str:
+    """Forward-map a :class:`CoachMode` key to a localised Spinner label.
+
+    Falls back to the ``"intermediate"`` label when the key is unknown
+    (which should not happen in practice because the analysis tab
+    Spinner always emits valid keys).
+    """
+    return _RANK_KEY_TO_LABEL.get(key, _RANK_KEY_TO_LABEL["intermediate"])
+
+
 # Phase 226-B (B1): cap how many times ``_populate_rank_and_perspective``
 # re-schedules itself when the karte path is still empty. Without this
 # cap the popup would re-schedule forever (and keep referencing widgets
@@ -220,6 +258,11 @@ class LLMCoachPopupContent(BoxLayout):
         # 0.4s-delayed auto-populate would clobber a manual change
         # made during the delay window).
         self._summary_perspective_user_set: bool = False
+        # Phase 272-B: cached Karte/SGF player info (set by
+        # ``populate_karte_player_info``). Used by the generate /
+        # validate handlers to surface precise auto-detect error
+        # messages. ``{}`` placeholder when no Karte is loaded yet.
+        self._last_player_info: dict[str, Any] = {}
         super().__init__(**kwargs)
 
     # ---- Lifecycle -----------------------------------------------------
@@ -647,9 +690,21 @@ class LLMCoachPopupContent(BoxLayout):
         the existing flow runs. For summary, the multi-game
         :func:`build_summary_llm_prompt` is invoked with the player
         name resolved from the perspective selector.
+
+        Phase 272-B: ``rank_input`` is now a Spinner. Read the
+        localised label and convert to the stable ``CoachMode`` key
+        before forwarding to the prompt builder.
+
+        Phase 272-B (post-merge fix): synchronously populate the
+        cached ``_last_player_info`` when it is missing or came from a
+        missing-source stub, so the auto-block guard below renders the
+        actual Karte black/white names instead of ``?`` placeholders.
         """
         karte_path = self._read_text("karte_path_input")
-        rank = self._read_text("rank_input") or None
+        rank_label = self._read_text("rank_input") or ""
+        # Phase 272-B: Spinner stores the localised label. Convert to
+        # the stable mode key so downstream code stays language-free.
+        rank = rank_spinner_label_to_key(rank_label) or rank_label or None
         if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
             return
@@ -675,10 +730,46 @@ class LLMCoachPopupContent(BoxLayout):
             )
             return
 
+        # Phase 272-B (post-merge fix): the rank/perspective populator
+        # runs on a 0.2s Clock schedule, so a user who clicks the
+        # generate button before the schedule fires would otherwise
+        # hit the auto-block guard with ``_last_player_info = {}``
+        # (and therefore ``black_name = "?"`` / ``white_name = "?"``).
+        # Run the populator synchronously here so the auto-block
+        # guard has the actual Karte black/white names.
+        if (
+            self.path_type == "karte"
+            and self._last_player_info.get("source") != "karte_meta"
+            and self._last_player_info.get("source") != "sgf_file"
+        ):
+            with contextlib.suppress(Exception):
+                # Fall through to the normal guard below; if the
+                # populator fails, the auto-block message will still
+                # surface a useful hint.
+                self._populate_karte_player_info(karte_path, self._read_player_settings())
+
         # Default: karte path (Phase 225.6)
         from katrain.gui.features.llm_coach import build_llm_prompt
 
         player_color = _resolve_player_color(self.perspective_value, self.detected_player_color)
+        # Phase 272-B: block generation when the user is in auto mode
+        # but auto-detection failed. Without this guard, the prompt
+        # silently emits ``PlayerColor: unknown`` and the LLM reviews
+        # both colours together, which the user explicitly rejected.
+        if self.perspective_value == _PERSPECTIVE_AUTO_INTERNAL and player_color is None:
+            settings = self._read_player_settings()
+            info = self._last_player_info
+            black_name = (info.get("black") or {}).get("name") or "?"
+            white_name = (info.get("white") or {}).get("name") or "?"
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-blocked-on-generate").format(
+                    user=settings.get("default_user", ""),
+                    black=black_name,
+                    white=white_name,
+                ),
+                error=True,
+            )
+            return
         ok, content = build_llm_prompt(
             self.katrain,
             karte_path,
@@ -744,9 +835,14 @@ class LLMCoachPopupContent(BoxLayout):
         Phase 242-B: also surface a truncation warning when the
         validator's report was cut off at ``_MAX_REPORT_CHARS`` so
         the user knows the displayed issue counts are incomplete.
+
+        Phase 272-B: ``rank_input`` is now a Spinner. Read the
+        localised label and convert to the stable ``CoachMode`` key
+        before forwarding to the prompt builder.
         """
         karte_path = self._read_text("karte_path_input")
-        rank = self._read_text("rank_input") or None
+        rank_label = self._read_text("rank_input") or ""
+        rank = rank_spinner_label_to_key(rank_label) or rank_label or None
         response_text = self._read_text("response_input")
         if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
@@ -761,6 +857,18 @@ class LLMCoachPopupContent(BoxLayout):
             self._on_validate_summary(karte_path, response_text, rank)
             return
 
+        # Phase 272-B (post-merge fix): synchronously populate the
+        # cached ``_last_player_info`` before resolving ``player_color``.
+        # Without this, the validator would mirror an auto-detection
+        # failure that hadn't actually been computed yet.
+        if (
+            self.path_type == "karte"
+            and self._last_player_info.get("source") != "karte_meta"
+            and self._last_player_info.get("source") != "sgf_file"
+        ):
+            with contextlib.suppress(Exception):
+                self._populate_karte_player_info(karte_path, self._read_player_settings())
+
         # Phase 241-B: same guard for the validate path. Validation
         # against an unrecognised JSON would run the Karte validator
         # over the wrong data and produce meaningless warnings.
@@ -773,11 +881,20 @@ class LLMCoachPopupContent(BoxLayout):
 
         from katrain.gui.features.llm_coach import validate_llm_response
 
+        # Phase 272-B: when the popup was opened with auto mode and
+        # auto-detection failed, the generation would have used
+        # PlayerColor=unknown. The validator must mirror that choice
+        # so its "wrong side reviewed" demotion works correctly, but
+        # we still surface a status warning so the user knows they
+        # should re-detect by selecting Black/White manually.
+        player_color = _resolve_player_color(self.perspective_value, self.detected_player_color)
+
         is_clean, markdown = validate_llm_response(
             self.katrain,
             karte_path,
             response_text,
             rank=rank,
+            player_color=player_color,
         )
         # Always render the full report into the ScrollView first.
         self._set_result(markdown)

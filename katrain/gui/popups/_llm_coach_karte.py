@@ -40,6 +40,11 @@ def populate_karte_player_info(popup: LLMCoachPopupContent, karte_path: str, set
 
     Equivalent to ``LLMCoachPopupContent._populate_karte_player_info``
     (Phase 272-E).
+
+    Phase 272-B: stash the detected info on ``popup._last_player_info``
+    so :meth:`on_generate_and_copy` can render a precise error message
+    when auto-detection fails (the player names from the Karte are
+    not known to the generate handler otherwise).
     """
     try:
         from katrain.gui.features.llm_coach import detect_player_info
@@ -50,7 +55,16 @@ def populate_karte_player_info(popup: LLMCoachPopupContent, karte_path: str, set
             i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
             error=True,
         )
+        # Phase 272-B (post-merge fix): mark the cache as missing so
+        # the generate / validate handlers' safety check recognises a
+        # genuine detect failure instead of treating an empty cache
+        # as "first invocation".
+        popup._last_player_info = {"source": "missing"}
         return
+
+    # Phase 272-B: cache so the generate handler can produce a precise
+    # error message when auto-detection fails.
+    popup._last_player_info = info
 
     apply_karte_rank_fallback(
         popup,
@@ -73,6 +87,11 @@ def apply_karte_rank_fallback(
     """Run the 3-tier rank fallback chain for a Karte JSON.
 
     Equivalent to ``LLMCoachPopupContent._apply_karte_rank_fallback``.
+
+    Phase 272-B: the rank_input widget is now a Spinner. We convert
+    the resolved value into the corresponding localised label before
+    setting it on the widget, and only set it when the current value
+    is empty (so manual user edits aren't overwritten).
     """
     from katrain.gui.features.llm_coach import resolve_rank_fallback_chain
 
@@ -86,7 +105,21 @@ def apply_karte_rank_fallback(
         popup.detected_rank = detected
         current = popup._read_text("rank_input")
         if not current:
-            popup._set_widget_text("rank_input", detected)
+            # Phase 272-B: Spinner needs a label, not a raw rank.
+            # ``detected`` may be a free-text value like ``"4d"`` /
+            # ``"4段"`` from the Karte, or an already-normalised mode
+            # key like ``"advanced"`` from ``general/player_rank``.
+            # Normalise first so the Spinner label is always a
+            # 5-level entry.
+            try:
+                from katrain.core.coach.player_rank_mode import parse_mode_key
+                from katrain.gui.popups.llm_coach_popup import rank_spinner_key_to_label
+
+                mode_key = parse_mode_key(detected) or "intermediate"
+                label = rank_spinner_key_to_label(mode_key)
+            except ImportError:
+                label = detected
+            popup._set_widget_text("rank_input", label)
     popup._refresh_rank_hint()
 
 
@@ -120,6 +153,12 @@ def update_karte_status_summary(
     """Surface the Karte detection result in the status line.
 
     Equivalent to ``LLMCoachPopupContent._update_karte_status_summary``.
+
+    Phase 272-B: when ``color is None`` (auto-detection failed), display
+    a dedicated error message naming the actual player names from the
+    Karte so the user understands why the perspective is unresolved.
+    Previously the status showed ``color="?"`` with no actionable
+    advice, which led to silent "PlayerColor: unknown" prompts.
     """
     if not default_user:
         popup._set_status(
@@ -134,7 +173,17 @@ def update_karte_status_summary(
     elif color == "W":
         color_label = i18n._("mykatrain:llm-coach:perspective-white")
     else:
-        color_label = "?"
+        # Phase 272-B: name the actual players so the user knows
+        # exactly why auto-detection failed.
+        popup._set_status(
+            i18n._("mykatrain:llm-coach:auto-detect-user-not-found").format(
+                user=default_user,
+                black=black_name,
+                white=white_name,
+            ),
+            error=True,
+        )
+        return
     popup._set_status(
         i18n._("mykatrain:llm-coach:auto-detect-summary").format(
             user=default_user,
