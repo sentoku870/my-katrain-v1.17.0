@@ -1,8 +1,8 @@
 {
-  "schema_version": "3.4",
+  "schema_version": "3.5",
   "meta": {
-    "schema_version": "3.4",
-    "schema_hash": "17051dec",
+    "schema_version": "3.5",
+    "schema_hash": "c2c31dd8",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -33,6 +33,7 @@
     ],
     "skill_preset": "standard",
     "loss_unit": "territory_points",
+    "score_perspective": "black",
     "definitions": null,
     "date_range": null
   },
@@ -72,7 +73,12 @@
       "reason_codes": [
         "unknown"
       ],
-      "primary_tag": "territorial_loss"
+      "primary_tag": "territorial_loss",
+      "winrate_lost": 0.0,
+      "score_before": 0.0,
+      "score_after": -2.5,
+      "score_stdev": null,
+      "difficulty_score": 1.0
     },
     {
       "game_name": "Game [DATE] [TIME]",
@@ -88,7 +94,12 @@
       "reason_codes": [
         "heavy"
       ],
-      "primary_tag": "territorial_loss"
+      "primary_tag": "territorial_loss",
+      "winrate_lost": 0.0,
+      "score_before": -2.2,
+      "score_after": -8.2,
+      "score_stdev": null,
+      "difficulty_score": 1.0
     },
     {
       "game_name": "Game [DATE] [TIME]",
@@ -104,7 +115,12 @@
       "reason_codes": [
         "heavy"
       ],
-      "primary_tag": "territorial_loss"
+      "primary_tag": "territorial_loss",
+      "winrate_lost": 0.0,
+      "score_before": -8.2,
+      "score_after": 3.8,
+      "score_stdev": null,
+      "difficulty_score": 1.0
     }
   ],
   "weaknesses": {
@@ -196,9 +212,10 @@
         "position_difficulty": "only",
         "area": "edge",
         "reason_tags": [
-          "heavy_loss"
+          "heavy"
         ],
-        "complexity_discounted": false
+        "complexity_discounted": false,
+        "best_move": "T6"
       },
       {
         "move_number": 5,
@@ -213,7 +230,8 @@
         "reason_tags": [
           "unknown"
         ],
-        "complexity_discounted": false
+        "complexity_discounted": false,
+        "best_move": "D16"
       }
     ],
     "white": [
@@ -228,9 +246,10 @@
         "position_difficulty": "only",
         "area": "edge",
         "reason_tags": [
-          "heavy_loss"
+          "heavy"
         ],
-        "complexity_discounted": false
+        "complexity_discounted": false,
+        "best_move": "B3"
       }
     ]
   },

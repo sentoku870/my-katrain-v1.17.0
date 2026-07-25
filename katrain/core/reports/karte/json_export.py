@@ -196,6 +196,10 @@ def build_karte_json(
         "board_size": common_meta["board_size"],
         "skill_preset": effective_preset,
         "loss_unit": "territory_points",
+        # Schema 3.5: declare the perspective of score_before /
+        # score_after / score_trajectory values so LLM consumers never
+        # guess (positive = black leads).
+        "score_perspective": "black",
         "definitions": definitions if include_definitions else None,
         "date_range": None,
     }

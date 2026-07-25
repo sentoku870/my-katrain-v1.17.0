@@ -62,6 +62,15 @@ class MoveExtractor:
         # 6. Primary Tag
         primary_tag = move.meaning_tag_id
 
+        # 7. Coaching context (schema 3.5): winrate loss / score lead
+        # (BLACK perspective) / uncertainty / difficulty. All None when
+        # the underlying analysis data is unavailable.
+        winrate_lost = move.winrate_loss
+        score_before = move.score_before
+        score_after = move.score_after
+        score_stdev = move.score_stdev
+        difficulty_score = move.position_difficulty_score
+
         return {
             "game_name": game_name,
             "game_id": game_id,
@@ -75,6 +84,11 @@ class MoveExtractor:
             "mistake_type": mistake_type,
             "reason_codes": reason_codes,
             "primary_tag": primary_tag,
+            "winrate_lost": round(winrate_lost, 4) if winrate_lost is not None else None,
+            "score_before": round(score_before, 2) if score_before is not None else None,
+            "score_after": round(score_after, 2) if score_after is not None else None,
+            "score_stdev": round(score_stdev, 2) if score_stdev is not None else None,
+            "difficulty_score": round(difficulty_score, 2) if difficulty_score is not None else None,
         }
 
 

@@ -79,7 +79,7 @@ class PromptConfig:
     llm_required_symptom_ids: tuple[SymptomId, ...] = ()
     max_lexicon_entries: int = 7
     include_expanded: bool = True
-    schema_version: str = "3.4"
+    schema_version: str = "3.5"
     player_rank_str: str | None = None
     average_points_lost: float | None = None
     player_color: str | None = None

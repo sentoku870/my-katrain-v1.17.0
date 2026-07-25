@@ -26,14 +26,14 @@ Phase 228-B additions:
 Phase 270 additions:
 - When ``SummaryPromptConfig.kartes`` is provided, runs the new
   :mod:`katrain.core.coach.karte_aggregator` pipeline to surface
-  six per-game fields that the summary path currently drops
-  (``reason_tags_distribution`` / ``area`` / ``position_difficulty``
-  / ``data_quality`` / ``meaning_tag_label`` / loss-progression
-  spikes). The aggregated view is rendered as one extra Markdown
-  block, the body header ``Schema:`` line is bumped to ``"3.5"``,
-  and the system instruction is updated so the LLM treats the new
-  block as a valid reference. Existing 3.4 callers (no ``kartes``
-  argument) see the exact same prompt body as before.
+   six per-game fields that the summary path currently drops
+   (``reason_tags_distribution`` / ``area`` / ``position_difficulty``
+   / ``data_quality`` / ``meaning_tag_label`` / loss-progression
+   spikes). The aggregated view is rendered as one extra Markdown
+   block, the body header ``Schema:`` line is bumped to ``"3.6"``,
+   and the system instruction is updated so the LLM treats the new
+   block as a valid reference. Existing 3.5 callers (no ``kartes``
+   argument) see the exact same prompt body as before.
 
 Public API:
 - :class:`SummaryPromptConfig` — frozen config dataclass
@@ -67,10 +67,12 @@ from katrain.core.coach.tones import ToneVoice, voice_summary
 # Phase 270: schema version that the prompt body shows when
 # ``SummaryPromptConfig.kartes`` is populated. Kept as a module
 # constant so tests and downstream code can refer to it without
-# re-deriving from the docs. The 3.4 default in
+# re-deriving from the docs. The 3.5 default in
 # :class:`SummaryPromptConfig` is intentionally retained for back-
-# compatibility — callers that do not pass kartes still see 3.4.
-SCHEMA_VERSION_WITH_KARTES: str = "3.5"
+# compatibility — callers that do not pass kartes still see 3.5.
+# (2026-07: bumped 3.5 -> 3.6 because the base report schema moved to
+# 3.5; the with-kartes view stays one step ahead.)
+SCHEMA_VERSION_WITH_KARTES: str = "3.6"
 
 # --- Configuration dataclass ---
 
@@ -93,7 +95,7 @@ class SummaryPromptConfig:
             the body header for the LLM to calibrate vocabulary.
         schema_version: Summary JSON schema version (informational).
             When ``kartes`` is provided the prompt body actually
-            displays :data:`SCHEMA_VERSION_WITH_KARTES` (``"3.5"``)
+            displays :data:`SCHEMA_VERSION_WITH_KARTES` (``"3.6"``)
             regardless of this value — the field is kept for
             downstream consumers that want to record the version
             they asked for.
@@ -102,8 +104,8 @@ class SummaryPromptConfig:
         kartes: Optional tuple of single-game Karte JSON dicts to
             aggregate. When provided, :func:`build_summary_weakness_prompt`
             runs the Phase 270 aggregator and renders a new
-            ``Aggregated Karte View (schema 3.5)`` section in the
-            body. Defaults to ``None`` (3.4 back-compat — no
+            ``Aggregated Karte View (schema 3.6)`` section in the
+            body. Defaults to ``None`` (3.5 back-compat — no
             aggregated view, no schema bump).
     """
 
@@ -112,7 +114,7 @@ class SummaryPromptConfig:
     games_analyzed: int
     player_name: str | None = None
     player_rank: str | None = None
-    schema_version: str = "3.4"
+    schema_version: str = "3.5"
     max_patterns: int = 10
     kartes: tuple[dict[str, Any], ...] | None = None
 
@@ -655,9 +657,9 @@ def build_summary_weakness_prompt(
 
     Phase 270: when ``config.kartes`` is non-empty the function
     runs the multi-karte aggregator and renders a new ``Aggregated
-    Karte View (schema 3.5)`` section. The body header's ``Schema:``
-    line is also bumped to ``"3.5"`` so downstream consumers can
-    tell the two versions apart at a glance. Existing 3.4 callers
+    Karte View (schema 3.6)`` section. The body header's ``Schema:``
+    line is also bumped to ``"3.6"`` so downstream consumers can
+    tell the two versions apart at a glance. Existing 3.5 callers
     (no ``kartes``) get the exact same prompt body as before.
 
     Args:
@@ -687,7 +689,7 @@ def build_summary_weakness_prompt(
     # Phase 270: aggregated view from per-game kartes. When the
     # config provides any karte JSONs, run the aggregator once and
     # inject the result as a new body section. The body header's
-    # ``Schema:`` line is bumped to 3.5 in that case so consumers
+    # ``Schema:`` line is bumped to 3.6 in that case so consumers
     # can tell the two versions apart.
     kartes_provided = bool(config.kartes)
     aggregated_view: AggregatedKarteView | None = None

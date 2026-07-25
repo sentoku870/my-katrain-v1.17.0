@@ -29,7 +29,7 @@ KataGo 解析を元に「カルテ（Karte）」を生成し、LLM 囲碁コー�
 
 | 機能 | 詳細 |
 |------|------|
-| Karte / Summary JSON 出力 | 単局 (v3.3) / 複数局サマリ (v3.4) |
+| Karte / Summary JSON 出力 | 単局 / 複数局サマリ ともに v3.5 |
 | LLM Coach GUI 統合 | 手動貼付ワークフロー + 5 ルール検証 |
 | 棋譜並べ (Kifunarabe) | 重要局面反復学習 + 履歴永続化 |
 | Beginner Hints | 9 系統 23 カテゴリ |

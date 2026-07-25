@@ -13,7 +13,7 @@ coaching コメントを得る用途に使います。
 
 | 機能 | 概要 |
 |------|------|
-| **Karte / Summary JSON 出力** | 単局 (v3.3) と複数局サマリ (v3.4) の JSON レポート。LLM に貼る前提の軽量形式 |
+| **Karte / Summary JSON 出力** | 単局・複数局サマリ (v3.5) の JSON レポート。LLM に貼る前提の軽量形式 |
 | **LLM Coach GUI（手動貼付）** | マイ Katrain メニュー「LLM コーチ（手動貼付）」から、プロンプト生成 → クリップボード → 応答貼付 → 検証の 1 サイクルを実行 |
 | **複数局 LLM コーチ** | Summary JSON からの集約サマリプロンプト生成・バリデーション (Shape A/B) |
 | **棋譜並べ (Kifunarabe)** | 重要局面反復学習モード。履歴永続化 + 弱点自動 export |
@@ -109,7 +109,7 @@ GitHub Actions の **Run workflow** から手動実行します。
 |---------|------|
 | [`docs/usage-guide.md`](docs/usage-guide.md) | 利用者ガイド（起動・Karte / Summary 出力・LLM Coach・棋譜並べ・Beginner Hints・PV Filter・重要局面・棋力・設定・FAQ） |
 | [`docs/architecture.md`](docs/architecture.md) | 開発者向けアーキテクチャ（レイヤー依存・パッケージ責務・データフロー・変更時の注意点） |
-| [`docs/karte-schema.md`](docs/karte-schema.md) | Karte / Summary JSON スキーマ正本（v3.3 / v3.4） |
+| [`docs/karte-schema.md`](docs/karte-schema.md) | Karte / Summary JSON スキーマ正本（v3.5） |
 | [`docs/i18n-workflow.md`](docs/i18n-workflow.md) | 翻訳ファイル更新手順 |
 | [`docs/kivy-testing.md`](docs/kivy-testing.md) | headless Kivy テスト手順 |
 | [`docs/resources/`](docs/resources/) | 囲碁用語 YAML（Lexicon 注入データ） |

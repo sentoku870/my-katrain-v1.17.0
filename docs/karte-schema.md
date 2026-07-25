@@ -5,7 +5,7 @@
 > 157 / 158 / 225 での拡張、Phase 221 / 227 / 228 でのサマリ対応、
 > Phase 231 / 232 でのリファクタを反映した最新版（**2026-07-24**）。
 
-このドキュメントは現役スキーマ v3.3 / v3.4 を対象とする。古い v2.x 系の
+このドキュメントは現役スキーマ v3.5 を対象とする。古い v2.x 系の
 JSON を開いた場合のマイグレーションは**未実装**（v2 系はゴールデン
 テストでも対象外）。
 
@@ -62,13 +62,13 @@ python -m katrain.core.coach.cli <summary.json> --summary-mode  # 複数局
 
 ---
 
-## 2. 単局カルテ（Karte）スキーマ v3.3
+## 2. 単局カルテ（Karte）スキーマ v3.5
 
 ### 2.1 トップレベル
 
 ```python
 class KarteReport(TypedDict):
-    schema_version: str                              # 常に "3.3"
+    schema_version: str                              # 常に "3.5"
     meta: MetaData
     summary: dict[str, Any]
     important_moves: list[MistakeItem]
@@ -87,7 +87,7 @@ class KarteReport(TypedDict):
 
 | フィールド | 型 | 必須 | 説明 |
 |----------|----|----|------|
-| `schema_version` | `str` | ✓ | 常に `"3.3"` |
+| `schema_version` | `str` | ✓ | 常に `"3.5"` |
 | `schema_hash` | `str` | ✓ | Phase 158-I 追加。schema_version + 各種定数の SHA-1 先頭 8 文字。LLM 側でこのプロジェクトのビルドバージョンを識別 |
 | `run_id` | `str` | ✓ | `run_<ts>_<8文字ハッシュ>` 形式。同一生成実行内の一意性保証 |
 | `game_id` | `str` | ✓ | `Game.game_id` または `unknown` |
@@ -101,8 +101,9 @@ class KarteReport(TypedDict):
 | `board_size` | `[int, int]` | ✓ | 盤サイズ（[19, 19] 形式） |
 | `skill_preset` | `str` | ✓ | `"beginner"` / `"standard"` / `"advanced"` / `"auto"` |
 | `loss_unit` | `str` | ✓ | 常に `"territory_points"` |
+| `score_perspective` | `str` | ✓ | v3.5 追加。常に `"black"`。`score_before` / `score_after` / `score_trajectory` が黒視点（正=黒リード）であることを明示 |
 | `definitions` | `Definitions \| None` | - | opt-in (`include_definitions=True` 時のみ埋まる) |
-| `player_info` | `{"black": {"name": str, "rank": str \| None}, "white": {...}}` | - | Phase 225.6 追加。SGF BR/WR から抽出 |
+| `player_info` | `{"black": {"name": str, "rank": str \| None, "color": "B"}, "white": {..., "color": "W"}}` | - | Phase 225.6 追加。SGF BR/WR から抽出。`color` は Phase 236 追加の安定識別子 |
 
 ### 2.3 `summary` セクション
 
@@ -136,7 +137,20 @@ class MistakeItem(TypedDict):
     mistake_type: str                        # "inaccuracy" / "mistake" / "blunder"
     reason_codes: list[str]                  # Phase 158-F で正規化済み
     primary_tag: str | None                  # MeaningTagId enum value
+    # --- v3.5 (2026-07) 追加: コーチングコンテキスト ---
+    winrate_lost: float | None               # この手の勝率損失 (0.0-1.0, 4桁丸め)
+    score_before: float | None               # 着手前の形勢 (黒視点, 2桁丸め)
+    score_after: float | None                # 着手後の形勢 (黒視点, 2桁丸め)
+    score_stdev: float | None                # KataGo root scoreStdev (2桁丸め)
+    difficulty_score: float | None           # 局面難易度 0.0-1.0 (大きいほど難しい)
 ```
+
+> v3.5 の新規 5 フィールドは、解析データがない手（未解析・旧 KataGo）では
+> すべて `None` になる。`score_before` / `score_after` は**黒視点**
+> （`meta.score_perspective` 参照）。これらの追加により、LLM は
+> 「どれくらいのリード局面でどれだけ落としたか」を語れるようになり、
+> coach 層の勝率系・局面評価系の症状検出器（EVALUATION_ERRORS /
+> POSITION_EVALUATION 等）も実データで動作する。
 
 ### 2.5 `weaknesses` セクション
 
@@ -205,12 +219,18 @@ class CriticalMoveItem(TypedDict):
     player: str                              # "B" / "W"
     score_loss: float
     meaning_tag_id: str | None               # MeaningTagId enum value
+    meaning_tag_label: str | None            # タグの人間可読ラベル（lang 依存）
     game_phase: str
     position_difficulty: str                 # "easy" / "normal" / "strict" / "unknown"
     area: str | None
-    reason_tags: list[str]
+    reason_tags: list[str]                   # v3.5 から REASON_CODE_ALIASES 正規化済み
     complexity_discounted: bool
+    best_move: str | None                    # v3.5 追加。着手前局面の KataGo 最善手 (GTP)
 ```
+
+> v3.5 の `best_move` は pre-move ノード（`node.parent`）の候補手リスト
+> 先頭（order=0）から取得する。LLM がルール 2（座標の捏造禁止）を
+> 守ったまま「正解の方向性」を述べられるようにするためのフィールド。
 
 > **Phase 158-G**: `player_filter` を渡して greedy セレクタが該当
 > プレイヤーの候補のみから選ぶように修正。**Phase 158-H**: pre-classified
@@ -255,13 +275,13 @@ Phase 154-D / 155-D で追加。詳細は各 Phase のスペックを参照:
 
 ---
 
-## 3. 複数局サマリ（Summary）スキーマ v3.4
+## 3. 複数局サマリ（Summary）スキーマ v3.5
 
 ### 3.1 トップレベル
 
 ```python
 class SummaryReport(TypedDict):
-    schema_version: str                              # 常に "3.4"
+    schema_version: str                              # 常に "3.5"
     meta: MetaData
     games: list[GameMeta]
     players: dict[str, SummaryPlayerStats]           # プレイヤー名 → 統計
@@ -349,10 +369,9 @@ LLM 出力の検証は 6 種類:
 ### 4.1 スキーマバージョン
 
 ```python
-REPORT_SCHEMA_VERSION = "3.4"
-# Phase 157-C: even/handicapped split + loss_progression dict
-# Phase 157-D: top-level win_loss_analysis removed
-# Phase 158-A/B: bug fixes
+REPORT_SCHEMA_VERSION = "3.5"
+# 2026-07: coaching-context enrichment (MistakeItem +5 fields,
+#          CriticalMoveItem.best_move, meta.score_perspective)
 ```
 
 ### 4.2 ミス分類閾値
@@ -458,6 +477,7 @@ REPORT_SCHEMA_HASH = sha1(
 | 3.4 | 221 | `detect_json_type` で karte / summary 自動判別 |
 | 3.4 | 225.6 | Karte `meta.player_info` 追加（BR/WR） |
 | 3.4 | 228 | Summary Shape B 対応（`players.<name>.mistakes`） |
+| 3.5 | 2026-07 | コーチング強化: MistakeItem に `winrate_lost` / `score_before` / `score_after` / `score_stdev` / `difficulty_score`、CriticalMoveItem に `best_move`、`meta.score_perspective` 追加。critical_3 の reason_tags をエイリアス正規化。coach 層のフィールド名不一致（症状検出が実データで不発だった問題）を修繕 |
 
 ---
 

@@ -26,12 +26,46 @@ from katrain.core.analysis.critical_moves import select_critical_moves
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
 from katrain.core.batch.stats import get_area_from_gtp
 from katrain.core.constants.output import OUTPUT_DEBUG, OUTPUT_INFO
+from katrain.core.reports.definitions import REASON_CODE_ALIASES
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval
     from katrain.core.reports.karte.sections.context import KarteContext
 
 logger = logging.getLogger(__name__)
+
+
+def get_best_move_gtp(game: Any, move_number: int) -> str | None:
+    """Return KataGo's best move (GTP) for the position BEFORE ``move_number``.
+
+    The candidate list of the *pre-move* node (``node.parent``) holds the
+    moves KataGo considered for that position; the first candidate is the
+    best one (order=0). This is the same pattern as
+    :func:`get_context_info_for_move` (see its "CRITICAL FIX" comment).
+
+    Args:
+        game: Game object
+        move_number: Target move number (1-indexed)
+
+    Returns:
+        GTP string of the best move, or None when the node / pre-move
+        analysis is unavailable (never raises).
+    """
+    try:
+        node = game._find_node_by_move_number(move_number)
+        if not node:
+            return None
+        parent_node = getattr(node, "parent", None)
+        if parent_node is None:
+            return None
+        candidate_moves = getattr(parent_node, "candidate_moves", None)
+        if not candidate_moves:
+            return None
+        best = candidate_moves[0].get("move")
+        return str(best) if best is not None else None
+    except Exception:
+        logger.debug("get_best_move_gtp failed for move #%s", move_number, exc_info=True)
+        return None
 
 
 def get_context_info_for_move(game: Any, move_eval: MoveEval) -> dict[str, Any]:
@@ -260,6 +294,18 @@ def critical_3_section_for(
         if not meaning_tag_label:
             meaning_tag_label = None
 
+        # Schema 3.5: KataGo's best move for the pre-move position, so
+        # the LLM coach can state the correct direction without
+        # inventing coordinates.
+        best_move = get_best_move_gtp(ctx.game, cm.move_number)
+
+        # Normalize reason tags through the same alias map used by
+        # ``important_moves`` so both sections speak the same vocabulary
+        # (e.g. ``heavy_loss`` -> ``heavy``).
+        normalized_reason_tags = (
+            sorted({REASON_CODE_ALIASES.get(t, t) for t in cm.reason_tags}) if cm.reason_tags else []
+        )
+
         result.append(
             {
                 "move_number": cm.move_number,
@@ -271,8 +317,9 @@ def critical_3_section_for(
                 "game_phase": cm.game_phase,
                 "position_difficulty": cm.position_difficulty.lower() if cm.position_difficulty else "unknown",
                 "area": area,
-                "reason_tags": list(cm.reason_tags) if cm.reason_tags else [],
+                "reason_tags": normalized_reason_tags,
                 "complexity_discounted": bool(cm.complexity_discounted),
+                "best_move": best_move,
             }
         )
 

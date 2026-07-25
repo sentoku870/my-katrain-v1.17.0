@@ -554,7 +554,7 @@ class TestAggregateKartes:
         view = aggregate_kartes([])
         assert isinstance(view, AggregatedKarteView)
         assert view.games_count == 0
-        assert view.schema_version == "3.5"
+        assert view.schema_version == "3.6"
         assert view.reason_tags_by_color == {}
         # area_difficulty_matrix always returns the full 3x5 grid
         # (zero-filled) so renderers can iterate without None-checks.
@@ -706,18 +706,18 @@ class TestSummaryPromptIntegration:
 
     # --- Back-compat ---
 
-    def test_no_kartes_keeps_schema_3_4(self, sample_summary, base_config):
+    def test_no_kartes_keeps_schema_3_5(self, sample_summary, base_config):
         prompt = build_summary_weakness_prompt(sample_summary, base_config)
-        assert "> Schema: 3.4" in prompt.body_markdown
+        assert "> Schema: 3.5" in prompt.body_markdown
         assert "Aggregated Karte View" not in prompt.body_markdown
 
     def test_no_kartes_default_config(self, base_config):
         assert base_config.kartes is None
-        assert base_config.schema_version == "3.4"
+        assert base_config.schema_version == "3.5"
 
     # --- Phase 270 active path ---
 
-    def test_kartes_bumps_schema_to_3_5(self, sample_summary, sample_karte, base_config):
+    def test_kartes_bumps_schema_to_3_6(self, sample_summary, sample_karte, base_config):
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
@@ -726,7 +726,7 @@ class TestSummaryPromptIntegration:
         )
         prompt = build_summary_weakness_prompt(sample_summary, cfg)
         assert f"> Schema: {SCHEMA_VERSION_WITH_KARTES}" in prompt.body_markdown
-        assert SCHEMA_VERSION_WITH_KARTES == "3.5"
+        assert SCHEMA_VERSION_WITH_KARTES == "3.6"
 
     def test_kartes_renders_aggregated_section(self, sample_summary, sample_karte, base_config):
         cfg = SummaryPromptConfig(
@@ -756,9 +756,9 @@ class TestSummaryPromptIntegration:
             kartes=(),
         )
         # Empty kartes → bool(kartes) is False → aggregated view off,
-        # schema stays at 3.4.
+        # schema stays at the base 3.5.
         prompt = build_summary_weakness_prompt(sample_summary, cfg)
-        assert "> Schema: 3.4" in prompt.body_markdown
+        assert "> Schema: 3.5" in prompt.body_markdown
         assert "Aggregated Karte View" not in prompt.body_markdown
 
     def test_two_kartes_aggregated(self, sample_summary, base_config):
@@ -805,4 +805,4 @@ class TestSummaryPromptIntegration:
         )
         prompt = build_summary_weakness_prompt(sample_summary, cfg)
         # Schema still bumped because at least one karte survived.
-        assert "> Schema: 3.5" in prompt.body_markdown
+        assert "> Schema: 3.6" in prompt.body_markdown
