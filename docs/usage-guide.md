@@ -27,16 +27,18 @@ uv run python -m katrain
 
 | 操作 | 効果 |
 |------|------|
-| マイ Katrain メニュー → **単局カルテ出力** | 現在の局の Karte を `reports/karte/karte_<date>_<id>.json` (schema v3.3) に書き出し |
+| マイ Katrain メニュー → **カルテ出力** | 現在の局の Karte を `karte_output_directory` 直下の `karte_<base>_<YYYYMMDD-HHMM>.json`（schema v3.5）に書き出し |
 
 JSON スキーマの正本は [`docs/karte-schema.md`](./karte-schema.md) を参照。
 
 ### 2.2 複数局サマリ（Summary）
 
+複数局サマリの作成は **バッチ解析** メニューからのみ可能です
+（Phase 230-A.2 で「複数局サマリ作成」メニューは廃止されました）。
+
 | 操作 | 効果 |
 |------|------|
-| マイ Katrain メニュー → **複数局サマリ作成** | 登録済み複数局をまとめて `reports/karte/summary_<date>_<id>.json` (schema v3.4) に書き出し |
-| マイ Katrain メニュー → **バッチ解析** | フォルダ指定で SGF 一括解析＋Summary 生成 |
+| マイ Katrain メニュー → **バッチ解析** | フォルダ指定で SGF 一括解析＋Karte / Summary 生成（出力先: `<input_dir>/reports/karte/`, `reports/summary/`、schema v3.5） |
 
 LLM Coach popup は両 JSON を型自動判別してプロンプト生成します。
 
@@ -51,11 +53,11 @@ LLM Coach popup は両 JSON を型自動判別してプロンプト生成しま�
 4. 「プロンプト生成」ボタン → Markdown 風プロンプトをクリップボードへコピー
 5. ChatGPT / Claude / Gemini 等に手動で貼り付け
 6. LLM の応答をコピー → popup の「応答貼付」欄にペースト
-7. 「検証実行」で 6 ルールの自動チェック（HIGH / MEDIUM / LOW）
+7. 「検証実行」で 5 ルールの自動チェック（HIGH / MEDIUM / LOW）
 8. 「検証結果をコピー」で警告込み結果をコピー
 ```
 
-### 3.2 検証 6 ルール
+### 3.2 検証 5 ルール
 
 LLM 出力に対して以下を自動検出します。
 
@@ -63,10 +65,9 @@ LLM 出力に対して以下を自動検出します。
 |----------|------|-----|
 | HIGH | 症状 ID が無効 | 未知の SymptomId |
 | HIGH | 着手番号が範囲外 | total_moves を超える #50 |
+| MEDIUM | 相手側症状の混入 | `PlayerColor` 指定時に逆側の `weaknesses` を引用 |
 | MEDIUM | pointsLost が天井超過 | `ceiling + tolerance` を超える値 |
-| MEDIUM | Karte なのに鳥瞰違反 | 単局プロンプトに総括を書く |
 | LOW | Lexicon 外語句の引用 | 注入していない用語を「」付きで言及 |
-| LOW | トーン整合性 | Configured voice と矛盾する口調 |
 
 検証エラーが出ても abort しません。警告込みで結果を返すので、LLM の出力を再プロンプトの参考にしてください。
 
@@ -165,7 +166,7 @@ KataGo 解析の候補手を盤面表示前に「ノイズ」間引き。初期�
 
 ## 8. 棋力プリセット
 
-`mykatrain_settings.player_rank` で `10k` / `5d` 等の棋力を入力すると、AI 対局・LLM Coach・Beginner Hints・PV Filter のすべてが自動連動します。
+`general.player_rank`（解析設定タブ）で `10k` / `5d` 等の棋力を入力すると、AI 対局・LLM Coach・Beginner Hints・PV Filter のすべてが自動連動します（Phase 230-E で `mykatrain_settings.default_user_rank` から移行済み）。
 
 ```
 例: player_rank = "5d" の場合

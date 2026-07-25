@@ -13,6 +13,11 @@ from pathlib import Path
 
 # --- Constants ---
 
+# Patterns use ``**/`` so the LLM Coach popup can also auto-fill
+# batch-generated reports. Batch analysis writes to
+# ``<input_dir>/reports/karte/`` and ``<input_dir>/reports/summary/``
+# (one level deep), so the previous non-recursive glob missed them and
+# users had to fall back to the manual ``参照`` button (2026-07 fix).
 REPORT_PATTERNS = {
     "karte": "karte_*.json",
     "summary": "summary_*.json",
@@ -38,7 +43,11 @@ class ReportInfo:
 
 
 def find_recent_reports(output_dir: Path, limit: int = 10) -> list[ReportInfo]:
-    """Find recent reports in the output directory.
+    """Find recent reports in the output directory (recursively).
+
+    Searches all subdirectories so batch-generated reports written under
+    ``<dir>/reports/karte/`` and ``<dir>/reports/summary/`` are picked
+    up alongside single-game outputs.
 
     Args:
         output_dir: Directory to search in.
@@ -52,7 +61,7 @@ def find_recent_reports(output_dir: Path, limit: int = 10) -> list[ReportInfo]:
 
     reports = []
     for report_type, pattern in REPORT_PATTERNS.items():
-        for path in output_dir.glob(pattern):
+        for path in output_dir.glob(f"**/{pattern}"):
             if path.is_file():
                 try:
                     mtime = path.stat().st_mtime
