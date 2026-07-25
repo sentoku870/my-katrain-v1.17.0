@@ -127,6 +127,10 @@ class TestOnGenerateAndCopy:
     def test_success_path_copies_to_clipboard(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/some/path/karte.json"
+        # Phase 272-B: bypass the auto-block guard by picking an
+        # explicit perspective.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         fake_prompt = MagicMock()
         fake_prompt.full_markdown = "# PROMPT\nhello"
 
@@ -141,6 +145,9 @@ class TestOnGenerateAndCopy:
     def test_build_failure_shows_error(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/missing.json"
+        # Phase 272-B: bypass the auto-block guard.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         with patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(False, "err-msg")):
             content.on_generate_and_copy()
         assert content.status_label.text == "err-msg"
@@ -149,6 +156,9 @@ class TestOnGenerateAndCopy:
     def test_clipboard_failure_shows_error(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/x.json"
+        # Phase 272-B: bypass the auto-block guard.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         with (
             patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")),
             patch(
@@ -162,14 +172,19 @@ class TestOnGenerateAndCopy:
     def test_rank_passed_through(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/x.json"
-        content.rank_input.text = " 5k "
+        # Phase 272-B: rank_input is a Spinner. Set the localised label
+        # for INTERMEDIATE which maps to the mode key "intermediate".
+        content.rank_input.text = "INTERMEDIATE（9級〜4級）"
+        # Phase 272-B: bypass the auto-block guard.
+        content.perspective_value = "B"
+        content.detected_player_color = "B"
         with (
             patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")) as spy,
             patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
         ):
             content.on_generate_and_copy()
-        # ``rank`` is forwarded as the stripped value
-        assert spy.call_args.kwargs.get("rank") == "5k"
+        # ``rank`` is forwarded as the Spinner label's mode key.
+        assert spy.call_args.kwargs.get("rank") == "intermediate"
 
 
 class TestOnClearResponse:
