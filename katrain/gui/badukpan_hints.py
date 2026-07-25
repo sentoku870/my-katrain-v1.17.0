@@ -39,6 +39,10 @@ from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe import build_kifunarabe_options
 from katrain.core.study.kifunarabe_constants import (
+    KIFUNARABE_CANDIDATE_POOL_DEFAULT,
+    KIFUNARABE_CANDIDATE_POOL_KEY,
+    KIFUNARABE_NEAR_THRESHOLD_DEFAULT,
+    KIFUNARABE_NEAR_THRESHOLD_KEY,
     KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
     KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
     KIFUNARABE_SHOW_DIGITS_DEFAULT,
@@ -173,12 +177,20 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
 
     # Phase 177: kifunarabe (棋譜並べ) mode drives its own choice set:
     # the recorded (actual) move plus (max_hints-1) KataGo top candidates.
-    # Independent of the regular "Top Moves" toggle so the existing UX
-    # stays exactly as before.
+    # Phase 290: the pool itself is configurable (``near_actual`` adds
+    # alternatives whose ``pointsLost`` is similar to the actual move's,
+    # so the puzzle is harder than a plain top-KataGo list).
     kifu_max_hints = _kifunarabe_max_hints(katrain)
     in_kifu = bool(getattr(katrain, "kifunarabe_mode", False))
     if in_kifu and kifu_max_hints > 0 and not game_ended and not katrain.is_fog_active():
-        option_gtps = build_kifunarabe_options(current_node, kifu_max_hints)
+        pool_value = katrain.config(KIFUNARABE_CANDIDATE_POOL_KEY, KIFUNARABE_CANDIDATE_POOL_DEFAULT)
+        threshold_value = katrain.config(KIFUNARABE_NEAR_THRESHOLD_KEY, KIFUNARABE_NEAR_THRESHOLD_DEFAULT)
+        option_gtps = build_kifunarabe_options(
+            current_node,
+            kifu_max_hints,
+            candidate_pool=pool_value,
+            near_threshold_points=threshold_value,
+        )
         hint_moves = _kifunarabe_options_to_hint_moves(current_node, option_gtps)
     elif (
         katrain.analysis_controls.hints.active

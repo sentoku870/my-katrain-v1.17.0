@@ -99,10 +99,14 @@ LLM 出力に対して以下を自動検出します。
 
 | キー | デフォルト | 効果 |
 |------|:---------:|------|
+| `kifunarabe/candidate_pool` | `near_actual` | 選択肢のプール（`top_kata` = KataGo 上位 / `near_actual` = 実戦手と同評価の手） |
+| `kifunarabe/near_threshold` | `2.0` | `near_actual` のときの実戦手からの評価差の許容範囲（点）。小さいほど候補が減って難しくなる |
 | `kifunarabe/show_digits` | False | 候補マーカーに数字（勝率 / スコア / visits）表示 |
 | `kifunarabe/show_actual_border` | False | 実戦手に枠線 |
 | `kifunarabe/uniform_color` | True | 全マーカー同色（ランキング非表示） |
 | `kifunarabe/auto_toggle_markers` | True | 「次の一手」「ドット」を自動 OFF |
+
+`near_actual` モードでは、各局面で実戦手の `pointsLost`（KataGo の観点での損失）と同程度の候補手を提示する。KataGo 上位ばかりだと正解が一目で分かってしまう場合に使う。閾値内の候補が不足する場合は `top_kata` 順で穴埋めされる。実戦手が KataGo の候補リストに存在しない局面では、実戦手の子ノードの解析から自動で `pointsLost` 推定する。
 
 履歴は `~/.katrain/kifunarabe_history/` に JSON 保存。summary popup の「履歴」ボタンで直近 50 件表示。
 

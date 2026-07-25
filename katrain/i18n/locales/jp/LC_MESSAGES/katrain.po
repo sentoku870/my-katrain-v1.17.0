@@ -259,7 +259,7 @@ msgid "kifunarabe:summary:next_sgf"
 msgstr "次の棋譜"
 
 msgid "kifunarabe:summary:abort"
-msgstr "中断して棋譜並べ終了"
+msgstr "中断して終了"
 
 # Phase 179-B2
 msgid "kifunarabe:summary:critical3"
@@ -1799,13 +1799,27 @@ msgstr "全マーカーを同色で表示する（KataGoの色グラデーショ
 msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "棋譜並べ中、「次の着手」と「ドット表示」を自動的に切り替える"
 
+msgid "mykatrain:settings:kifunarabe_candidate_pool"
+msgstr "候補手プール"
+
+msgid "mykatrain:settings:kifunarabe_pool_top_kata"
+msgstr "KataGo 上位"
+
+msgid "mykatrain:settings:kifunarabe_pool_near_actual"
+msgstr "実戦手と同評価"
+
+msgid "mykatrain:settings:kifunarabe_near_threshold"
+msgstr "近接閾値 (点)"
+
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr ""
 "「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n"
 "並べるプロの棋譜を保存しているフォルダを指定してください。\n"
 "空欄の場合、通常のSGF読込フォルダにフォールバックします。\n"
 "\n"
-"デフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"
+"デフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。\n"
+"\n"
+"「候補手プール」を「実戦手と同評価」にすると、KataGo の pointsLost が実戦手の評価値から「近接閾値 (点)」の範囲内にある候補手を提示します。KataGo 上位だけでは正解が分かりやすく物足りない場合にお試しください。閾値内の候補が不足する場合は従来通り KataGo 順で補充されます。"
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "自動セットアップ"
