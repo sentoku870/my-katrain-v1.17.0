@@ -179,6 +179,47 @@ class TestSaveMyKatrainSettings:
         _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode")
         ctx.update_engine_config.assert_not_called()
 
+    def test_preserves_batch_options_sub_dict(self):
+        """2026-07: ``batch_options`` (written by the batch popup) must
+        survive a myKatrain settings save. Without this, every save
+        wipes the user's batch input/output dirs and checkboxes.
+        """
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        existing_batch = {"input_dir": "/tmp/in", "generate_karte": True}
+        ctx = _make_ctx(initial={"mykatrain_settings": {"batch_options": existing_batch}})
+
+        _save_mykatrain_settings(
+            ctx,
+            default_user_name="alice",
+            karte_output_directory="/tmp/out",
+            batch_export_input_directory="/tmp/in",
+            karte_format="standard",
+            opponent_info_mode="auto",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["batch_options"] == existing_batch
+
+    def test_preserves_advanced_params_sub_dict(self):
+        """2026-07: ``advanced_params`` (analysis sensitivity knobs read
+        by ``internal_params``) must survive a myKatrain settings save.
+        """
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        existing_adv = {"threshold_score_stdev_chaos": 25.0}
+        ctx = _make_ctx(initial={"mykatrain_settings": {"advanced_params": existing_adv}})
+
+        _save_mykatrain_settings(
+            ctx,
+            default_user_name="alice",
+            karte_output_directory="/tmp/out",
+            batch_export_input_directory="/tmp/in",
+            karte_format="standard",
+            opponent_info_mode="auto",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["advanced_params"] == existing_adv
+
 
 class TestSaveImportantMovesLevel:
     """Phase 248-B1: ``important_moves_level`` is persisted by the saver."""

@@ -242,7 +242,15 @@ def _save_mykatrain_settings(
     if n < 1 or n > 10:
         n = 3
 
+    # 2026-07: read the current section and spread unknown sub-dicts
+    # (``batch_options`` owned by the batch popup, ``advanced_params``
+    # owned by the analysis sensitivity knobs) so saving myKatrain
+    # settings does not silently wipe them. Same pattern as
+    # :func:`batch_analysis_controller._persist_batch_options`.
+    current = ctx.config("mykatrain_settings") or {}
+
     mykatrain_settings = {
+        **current,
         "default_user_name": default_user_name,
         # Phase 225.8: optional default user rank (e.g. "4段" / "5k").
         # The LLM Coach uses this as a fallback when no Karte is loaded
