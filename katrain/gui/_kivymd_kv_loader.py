@@ -44,6 +44,7 @@ import atexit
 import os
 import shutil
 import tempfile
+from typing import Any
 
 __all__ = ["ensure_kivymd_kv_stubs", "uix_path_override", "STUB_KV"]
 
@@ -339,20 +340,20 @@ def ensure_kivymd_kv_stubs() -> str:
 
     _original_draw_selection = TextInput._draw_selection
 
-    def _katrain_patched_draw_selection(self, *args, **kwargs):
+    def _katrain_patched_draw_selection(self: Any, *args: Any, **kwargs: Any) -> Any:
         # ``_draw_selection`` 呼び出し時に ``self.selection_color`` を
         # 強制的に ``[0, 0, 0, 0]`` (完全透明) にする。元の値は
         # 関数終了後に復元 (副作用を最小化)。
         original = self.selection_color
         self.selection_color = [0, 0, 0, 0]
         try:
-            return _original_draw_selection(self, *args, **kwargs)
+            result = _original_draw_selection(self, *args, **kwargs)
         finally:
             self.selection_color = original
+        return result
 
     TextInput._draw_selection = _katrain_patched_draw_selection
     TextInput._katrain_selection_disabled = True
-
     return stub_root
 
 

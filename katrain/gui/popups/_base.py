@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+from collections.abc import Callable
 from typing import Any
 
 from kivy.clock import Clock
@@ -177,9 +178,9 @@ class LabelledTextInput(MDTextField):
             if value != target:
                 value = target
         elif name in self._WHITE_GUARDED:
-            target = list(Theme.TEXT_COLOR)
-            if value != target:
-                value = target
+            _target: list[float] = list(Theme.TEXT_COLOR)
+            if value != _target:
+                value = _target
         super().__setattr__(name, value)
 
     def on_kv_post(self, base_widget: Any) -> None:
@@ -248,7 +249,7 @@ class LabelledTextInput(MDTextField):
         # で次フレーム復元する。``functools.partial`` で各プロパティ名を
         # キャプチャして、正しい属性を白に書き戻す。
 
-        def _make_kivymd_color_handler(_attr_name: str):
+        def _make_kivymd_color_handler(_attr_name: str) -> Callable[[Any, Any], None]:
             def _handler(instance: Any, value: Any) -> None:
                 if not value or len(value) < 4:
                     return
