@@ -1107,6 +1107,9 @@ msgstr "集約サマリプロンプト"
 msgid "mykatrain:llm-coach:summary-build-failed"
 msgstr "集約サマリプロンプト生成失敗: {error}"
 
+msgid "mykatrain:llm-coach:summary-validate-failed"
+msgstr "集約サマリ検証失敗: {error}"
+
 msgid "mykatrain:llm-coach:summary-copy-success"
 msgstr "✅ 集約サマリプロンプトをコピーしました ({chars}文字, {games}局, {patterns}パターン)"
 
