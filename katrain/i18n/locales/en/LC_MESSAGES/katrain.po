@@ -768,6 +768,10 @@ msgstr "Show history"
 msgid "kifunarabe:summary:important_moves"
 msgstr "Important moves"
 
+# Phase 292-B: replaced the no-op Important moves button with a Replay button
+msgid "kifunarabe:summary:replay"
+msgstr "Replay"
+
 msgid "stats:winrate"
 msgstr "Win Rate"
 

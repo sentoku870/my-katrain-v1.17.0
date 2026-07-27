@@ -5,6 +5,7 @@ All tests run without Kivy via dependency injection (mocks for ctx/game/etc.).
 
 import unittest
 from typing import Any
+from unittest.mock import MagicMock
 
 # ----------------------------------------------------------------------------
 # Test doubles
@@ -642,6 +643,233 @@ class TestSummaryPopupDismissal(unittest.TestCase):
 
         self.assertEqual(dismissed, [True])
         self.assertIsNone(controller._summary_popup)
+
+
+# Phase 292-B: the summary popup's "Replay" handler reads
+# ``controller._last_config`` to pre-fill the setup popup. Verify the
+# attribute is initialised to None and snapshotted on every session
+# end path (abort / natural end via ``_end_session``) so a re-opened
+# popup always has the previous settings at hand.
+class TestLastConfigSnapshot(unittest.TestCase):
+    def test_last_config_starts_as_none(self) -> None:
+        controller, _refs = make_controller()
+        self.assertIsNone(getattr(controller, "_last_config", "<absent>"))
+
+    def test_abort_session_snapshots_last_config(self) -> None:
+        """``abort_session`` writes ``self._session.config`` to
+        ``_last_config`` BEFORE clearing ``_session``, so the summary
+        popup's "Replay" handler can still read it on the next click.
+        """
+        from katrain.core.study.kifunarabe import (
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
+
+        controller, refs = make_controller(mode_on=False)
+        cfg = KifunarabeConfig(turn="W", max_hints=2, max_moves=100, auto_export_weaknesses=True)
+        sess = KifunarabeSession(cfg)
+        sess.record_guess(move_number=1, expected_gtp="D4", guessed_gtp="D4")
+        controller._session = sess
+        refs["mode_state"]["value"] = True
+
+        controller.abort_session()
+
+        last = controller._last_config
+        self.assertIsNotNone(last)
+        self.assertEqual(last.turn, "W")
+        self.assertEqual(last.max_hints, 2)
+        self.assertEqual(last.max_moves, 100)
+        self.assertTrue(last.auto_export_weaknesses)
+        # ``_session`` was cleared in the same call.
+        self.assertIsNone(controller._session)
+
+    def test_end_session_snapshots_last_config(self) -> None:
+        """The natural-end path (``_end_session``) also snapshots the
+        config before clearing ``_session``.
+        """
+        from katrain.core.study.kifunarabe import (
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
+
+        controller, refs = make_controller(mode_on=True)
+        cfg = KifunarabeConfig(turn="B", max_hints=0, max_moves=50)
+        sess = KifunarabeSession(cfg)
+        sess.record_guess(move_number=1, expected_gtp="D4", guessed_gtp="D4")
+        controller._session = sess
+
+        controller._end_session(show_summary=False)
+
+        last = controller._last_config
+        self.assertIsNotNone(last)
+        self.assertEqual(last.turn, "B")
+        self.assertEqual(last.max_hints, 0)
+        self.assertEqual(last.max_moves, 50)
+        self.assertFalse(last.auto_export_weaknesses)
+        self.assertIsNone(controller._session)
+
+    def test_end_session_no_snapshot_when_no_active_session(self) -> None:
+        """If ``_session`` is None at end time, ``_last_config`` is left
+        untouched. This protects against accidentally clobbering a
+        previously-snapshotted config when ``disable_if_needed`` is
+        called on an already-inactive controller.
+        """
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        controller, _refs = make_controller(mode_on=True)
+        # Pre-seed _last_config with a sentinel config.
+        sentinel = KifunarabeConfig(turn="W", max_hints=5, max_moves=0)
+        controller._last_config = sentinel
+        controller._session = None
+
+        controller._end_session(show_summary=True)
+
+        # Sentinel is unchanged because there was no active session.
+        self.assertIs(controller._last_config, sentinel)
+
+
+# Phase 292-B (rev): starting a new kifunarabe session from the end
+# of the SGF (no ordered children) must rewind to ``game.root`` so
+# ``_auto_advance_until_user_turn`` has positions to advance through.
+class TestRewindOnStartSession(unittest.TestCase):
+    def _make_rewind_controller(self, current_node, root_node):
+        """Build a controller whose ``_get_game`` returns a fake game
+        with the requested node topology.
+        """
+        controller, _refs = make_controller(mode_on=True)
+        fake_game = MagicMock(name="game")
+        fake_game.current_node = current_node
+        fake_game.root = root_node
+        fake_game.undo.side_effect = lambda *_args, **_kw: setattr(fake_game, "current_node", root_node)
+
+        # Replace the DI getter so ``_get_game`` returns our fake.
+        controller._get_game = lambda: fake_game  # type: ignore[method-assign]
+        return controller, fake_game
+
+    def test_rewind_skipped_when_game_at_root(self) -> None:
+        """If ``current_node is root``, ``_rewind_if_at_end_of_mainline``
+        does nothing (no undo called).
+        """
+        root = MagicMock(name="root", ordered_children=[MagicMock()])
+        controller, fake_game = self._make_rewind_controller(root, root)
+        controller._rewind_if_at_end_of_mainline()
+        fake_game.undo.assert_not_called()
+
+    def test_rewind_skipped_when_mid_game(self) -> None:
+        """If ``current_node`` has ordered children (user navigated
+        mid-game), the rewind is skipped so we don't yank them back
+        to the root unexpectedly.
+        """
+        root = MagicMock(name="root", ordered_children=[MagicMock()])
+        current = MagicMock(name="current", ordered_children=[MagicMock()])
+        controller, fake_game = self._make_rewind_controller(current, root)
+        controller._rewind_if_at_end_of_mainline()
+        fake_game.undo.assert_not_called()
+
+    def test_rewind_runs_when_at_end_of_mainline(self) -> None:
+        """If the current node has no ordered children AND is not the
+        root (``_ordered_children == []``), the rewind jumps to root
+        via ``set_current_node(root)`` and then walks any
+        ``shortcut_from`` chain via ``undo(10000)``.
+        """
+        root = MagicMock(name="root", ordered_children=[MagicMock()])
+        current = MagicMock(name="current", ordered_children=[])
+        controller, fake_game = self._make_rewind_controller(current, root)
+        controller._rewind_if_at_end_of_mainline()
+        # ``set_current_node(root)`` should have been called once,
+        # followed by a belt-and-braces ``undo(10000)``.
+        fake_game.set_current_node.assert_called_once_with(root)
+        fake_game.undo.assert_called_once_with(10000)
+
+    def test_rewind_handles_missing_game(self) -> None:
+        controller, _refs = make_controller(mode_on=True)
+        controller._get_game = lambda: None  # type: ignore[method-assign]
+        # Should not raise.
+        controller._rewind_if_at_end_of_mainline()
+
+    def test_rewind_bounded_safety(self) -> None:
+        """If ``undo(1)`` somehow doesn't move toward ``root`` (e.g.
+        a mocked fixture that points back to the same node), the
+        10 000-iteration safety bound prevents an infinite loop.
+        """
+        root = MagicMock(name="root", ordered_children=[MagicMock()])
+        current = MagicMock(name="current", ordered_children=[])
+        controller, fake_game = self._make_rewind_controller(current, root)
+        # Override the undo side_effect: keep the cursor at ``current``
+        # every time to simulate a pathological SGF.
+        fake_game.undo.side_effect = lambda *_a, **_k: None
+        # This must terminate (not hang) thanks to the safety bound.
+        controller._rewind_if_at_end_of_mainline()
+        # The bound is 10 000 so the test only verifies termination,
+        # not exact call count.
+
+    def test_unconditional_rewind_to_root_always_fires(self) -> None:
+        """The Bug 2 helper, ``_rewind_to_root``, rewinds even when
+        the current node is mid-game (has ordered children). The
+        was_active-at-end-of-session boundary is what makes this safe
+        for the ``disable_if_needed`` path.
+        """
+        root = MagicMock(name="root", ordered_children=[MagicMock()])
+        current = MagicMock(
+            name="current",
+            ordered_children=[MagicMock()],  # mid-game: children present
+        )
+        controller, fake_game = self._make_rewind_controller(current, root)
+        controller._rewind_to_root()
+        fake_game.set_current_node.assert_called_once_with(root)
+        fake_game.undo.assert_called_once_with(10000)
+
+
+class TestDisableRewindsBoardOnEnd(unittest.TestCase):
+    """Phase 292-B (Bug 2 fix): ``disable_if_needed`` rewinds the
+    board to ``game.root`` when kifunarabe was actively running so the
+    user lands in a clean post-kifunarabe state.
+    """
+
+    def _make_active_controller(self):
+        controller, refs = make_controller(mode_on=True)
+
+        # Capture a "before" and "after" check around ``disable_if_needed``
+        # using the existing controller scaffolding.
+        class _GameStub:
+            def __init__(self) -> None:
+                self.current_node = "stub_current"
+                self.root = "stub_root"
+                self.set_current_node = MagicMock()
+                self.undo = MagicMock()
+
+        stub = _GameStub()
+        controller._get_game = lambda: stub  # type: ignore[method-assign]
+        return controller, stub
+
+    def test_disable_rewinds_when_was_active(self) -> None:
+        controller, stub = self._make_active_controller()
+        controller.disable_if_needed()
+        # The rewind must have fired; the controller should have
+        # called ``set_current_node(stub.root)`` and ``undo(10000)``.
+        stub.set_current_node.assert_called_once_with("stub_root")
+        stub.undo.assert_called_once_with(10000)
+
+    def test_disable_no_rewind_when_already_inactive(self) -> None:
+        """If kifunarabe was *already* off (mid-game navigate scenario)
+        the rewind is skipped so the user's manual cursor position is
+        preserved across the ``start_session`` path.
+        """
+        controller, _refs = make_controller(mode_on=False)
+
+        # Replace the game getter with a stub that fails the rewind
+        # if invoked: we want to assert it WAS NOT invoked.
+        class _GameStub:
+            current_node = "stub_current"
+            root = "stub_root"
+            set_current_node = MagicMock()
+            undo = MagicMock()
+
+        stub = _GameStub()
+        controller._get_game = lambda: stub  # type: ignore[method-assign]
+        controller.disable_if_needed()
+        stub.set_current_node.assert_not_called()
+        stub.undo.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -294,6 +294,10 @@ msgstr "履歴を見る"
 msgid "kifunarabe:summary:important_moves"
 msgstr "重要局面"
 
+# Phase 292-B: replaced the no-op 重要局面 button with a Replay button
+msgid "kifunarabe:summary:replay"
+msgstr "もう一度並べる"
+
 msgid "stats:winrate"
 msgstr "勝率"
 

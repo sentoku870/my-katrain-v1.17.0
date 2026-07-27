@@ -43,8 +43,14 @@ class KifunarabeSessionMixin:
     # references keep KifunarabeSession as a TYPE_CHECKING-only name.
     #
     # Phase 249-α: ``_source_sgf_path`` removed (no caller wrote to it).
+    # Phase 292-B: ``_last_config`` added — the previous-session
+    # ``KifunarabeConfig`` snapshot, written just before ``_session``
+    # is cleared on every exit path and read by the summary popup's
+    # "Replay" handler so the re-opened setup popup can pre-fill the
+    # turn / max_hints / max_moves fields.
     _session: "KifunarabeSession | None"
     _last_critical_3_highlight: int
+    _last_config: Any
 
     # -- public lifecycle entry points ---------------------------------------
 
@@ -53,14 +59,26 @@ class KifunarabeSessionMixin:
 
         Called when switching to PLAY mode, loading SGF, or other
         interrupting transitions.
+
+        Phase 292-B (Bug 2 fix): if kifunarabe was actively running
+        (mode was True at entry), also rewind the game to ``game.root``
+        so the board is left in a clean state. The mid-game cursor is
+        only preserved when kifunarabe was already inactive — i.e.
+        users navigating around their own SGF are not bothered.
         """
-        # Phase 181-B: dismiss any visible summary popup first so the
-        # user can always exit with one button press.
+        # Phase 181-B: dismiss any visible summary popup first so
+        # the user can always exit with one button press.
         self._dismiss_summary_popup_if_open()
         # Phase 177-H: put the saved toggle mask back where it was
         # before kifunarabe started.
         self._restore_analysis_toggles()
+        was_active = self._get_mode()
         self._end_session(show_summary=False)
+        # Bug 2 fix: when kifunarabe was actively running, leave
+        # the board in the empty / root state so Analyze / Play /
+        # もう一度並べる all start from a clean slate.
+        if was_active:
+            self._rewind_to_root()
 
     def start_session(self: Any, config: Any) -> None:
         """Start a new session with the given config and turn on the mode.
@@ -68,6 +86,12 @@ class KifunarabeSessionMixin:
         Behaviour:
         - Clears any existing kifunarabe session first
           (``disable_if_needed``).
+        - Phase 292-B (rev): if the game state is parked at the end
+          of the SGF (``current_node`` has no ordered children),
+          rewind to ``game.root`` so the new session has positions to
+          play through. This happens whenever the *previous* session
+          ran to its configured ``max_moves`` cap and is most visible
+          in the "もう一度並べる" (Replay) flow.
         - Phase 179-B1: fetches Critical 3 move numbers from the current
           game so the per-position highlight and summary hit-rate can
           use them.
@@ -80,6 +104,13 @@ class KifunarabeSessionMixin:
 
         # B3: clear any lingering session/state first.
         self.disable_if_needed()
+
+        # Phase 292-B (rev): rewind game state to ``root`` when the
+        # game is parked at the end of the mainline. We deliberately
+        # limit the check to "current node has no ordered children"
+        # so we do not disturb the user if they manually navigated
+        # mid-game before starting a fresh session.
+        self._rewind_if_at_end_of_mainline()
 
         # Phase 179-B1: fetch the Critical 3 set (max 6 entries).
         critical_3: list[int] = []
@@ -122,6 +153,89 @@ class KifunarabeSessionMixin:
 
         self._auto_advance_until_user_turn()
 
+    def _rewind_if_at_end_of_mainline(self: Any) -> None:
+        """Phase 292-B (rev): rewind ``game.current_node`` to ``game.root``
+        when the current node has no ordered children (i.e. we are
+        parked at the end of the SGF mainline).
+
+        Why only-when-at-end? After the previous kifunarabe session
+        ran to its ``max_moves`` cap the game cursor is parked on the
+        final move of the mainline; without this guard
+        ``_auto_advance_until_user_turn`` would immediately fire
+        ``_finish_position`` and the user would see the summary popup
+        re-appear without playing a single move. We avoid touching
+        the cursor when the user navigated mid-game (``root`` has
+        children and we are not at the very end) — that case is
+        rare in practice but the asymmetry is intentional.
+
+        Implementation: direct ``set_current_node(root)`` jumps in
+        O(1) (via the public API, which honors ``InsertModeController``
+        but only blocks when ``game.insert_mode`` is True — never the
+        case here). As a belt-and-braces fallback we also call
+        ``undo(10000)`` so any ``shortcut_from`` chains or downstream
+        mixin overrides don't strand the cursor short of root.
+        """
+        # Phase 292-B (Bug 2 fix): _rewind_to_root is the unconditional
+        # wrapper used by the "session just ended → reset board" paths.
+        # This conditional helper is a narrower variant that only fires
+        # when the cursor is parked at the SGF end; it intentionally
+        # leaves mid-game cursors alone so the "Re-watch from current
+        # position, but with new conditions" use case still works.
+        self._maybe_rewind_to_root(require_at_end=True)
+
+    def _rewind_to_root(self: Any) -> None:
+        """Phase 292-B (Bug 2 fix): unconditionally rewind the game to
+        ``game.root``. Used right after the kifunarabe session ends
+        (abort or natural max_moves) so the board is left in the same
+        clean state as a fresh app launch — Analyze/Play can resume
+        from the empty board, and a subsequent ``Open SGF`` /
+        ``もう一度並べる`` does not see ghosts of the kifunarabe game.
+
+        Errors are swallowed because a failed rewind is always better
+        than blocking the UI cleanup.
+        """
+        self._maybe_rewind_to_root(require_at_end=False)
+
+    def _maybe_rewind_to_root(self: Any, *, require_at_end: bool) -> None:
+        """Shared helper for the two rewind variants.
+
+        When ``require_at_end`` is True the rewind only fires if
+        ``current_node.ordered_children`` is empty (i.e. the cursor is
+        parked at the SGF mainline end). When False it rewinds in all
+        cases — used by the "session just ended" paths so the board
+        always resets.
+
+        The rewind itself uses the O(1) ``set_current_node(root)`` first
+        and a defensive ``undo(10000)`` second so any ``shortcut_from``
+        chains don't strand the cursor short of root.
+        """
+        game = self._get_game()
+        if game is None:
+            return
+        node = getattr(game, "current_node", None)
+        root = getattr(game, "root", None)
+        if node is None or root is None:
+            return
+        if node is root:
+            return
+        if require_at_end:
+            children = getattr(node, "ordered_children", None) or []
+            if children:
+                return  # mid-game: leave the cursor alone
+        with contextlib.suppress(Exception):
+            set_node = getattr(game, "set_current_node", None)
+            if callable(set_node):
+                set_node(root)
+        with contextlib.suppress(Exception):
+            undo = getattr(game, "undo", None)
+            if callable(undo):
+                undo(10000)
+        # Force a board redraw so the user sees the empty board.
+        with contextlib.suppress(Exception):
+            ctx = self._get_ctx()
+            if ctx is not None and hasattr(ctx, "update_state"):
+                ctx.update_state(redraw_board=True)
+
     def abort_session(self: Any) -> None:
         """User-requested abort of the kifunarabe session.
 
@@ -140,6 +254,13 @@ class KifunarabeSessionMixin:
         store and (opt-in) the weakness exporter, mirroring the
         natural end path so an aborted session still feeds the
         history and the Karte 連携 pipeline.
+
+        Phase 292-B (Bug 2 fix): rewinds the game to ``game.root``
+        after the session cleanup so the board is left in a clean
+        state. The user no longer has to load a fresh SGF to discard
+        the kifunarabe end-position; either a normal Analyze / Play
+        session or a fresh ``Open SGF`` picker can be entered
+        immediately without seeing the kifunarabe ghost stones.
         """
         # Phase 181-B: dismiss any visible summary popup first. This
         # is a no-op when no popup is open, and runs even when mode is
@@ -159,8 +280,16 @@ class KifunarabeSessionMixin:
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
         self._restore_analysis_toggles()
+        # Phase 292-B: snapshot the config before clearing ``_session``
+        # so the summary popup's "Replay" handler can pre-fill the
+        # setup popup with the previous turn / max_hints / max_moves.
+        if self._session is not None:
+            self._last_config = self._session.config
         self._session = None
         self._set_mode(False)
+        # Phase 292-B (Bug 2 fix): rewind the game to root. Done last
+        # so ``mode = False`` is committed before the GUI redraws.
+        self._rewind_to_root()
 
     def on_mode_change(self: Any, value: bool) -> None:
         """React to ``kifunarabe_mode`` property changes from the GUI.
@@ -214,8 +343,22 @@ class KifunarabeSessionMixin:
         # Phase 177-H: every "end" path must put the user's analysis
         # toggles back where they were before kifunarabe started.
         self._restore_analysis_toggles()
+        # Phase 292-B: snapshot the config before clearing ``_session``
+        # so the summary popup's "Replay" handler can pre-fill the
+        # setup popup with the previous turn / max_hints / max_moves.
+        if self._session is not None:
+            self._last_config = self._session.config
         self._session = None
         self._set_mode(False)
+        # Phase 292-B (Bug 2 fix): rewind to the SGF root when the
+        # session ENDS (show_summary=True). The ``disable_if_needed``
+        # path passes show_summary=False and is left untouched so
+        # transitioning from one kifunarabe to the next (or just
+        # backing out without finishing) keeps the user's manual
+        # cursor position. The ``abort_session`` path is handled by
+        # its own ``_rewind_to_root()`` call below.
+        if show_summary:
+            self._rewind_to_root()
         # Phase 249-α: ``_source_sgf_path = None`` removed (no caller
         # ever set the attribute, so there is nothing to clear).
 
