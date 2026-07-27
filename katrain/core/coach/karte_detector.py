@@ -82,6 +82,8 @@ from katrain.core.coach.symptom_index import (
 
 def detect_symptoms_from_karte(
     karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
 ) -> tuple[SymptomId, ...]:
     """Run auto-detection against the karte's derived SymptomContext.
 
@@ -93,11 +95,16 @@ def detect_symptoms_from_karte(
         winrate/scoreLead correlation)
 
     Order is the symptom-table order, which is stable across calls.
+
+    PR-04a (H5): ``player_color`` (``"black"`` / ``"white"`` /
+    ``None``) scopes the detection to one colour. ``None`` keeps the
+    legacy "both colours" behaviour. Use ``"black"`` / ``"white"`` so
+    opponent mistakes are not reported as the user's symptoms.
     """
-    ctx = build_symptom_context_from_karte(karte)
+    ctx = build_symptom_context_from_karte(karte, player_color=player_color)
     per_move = set(detect_auto_symptoms(ctx))
-    from_categories = set(_symptom_ids_from_weakness_categories(karte))
-    from_streaks = set(_symptom_ids_from_streaks(karte))
+    from_categories = set(_symptom_ids_from_weakness_categories(karte, player_color=player_color))
+    from_streaks = set(_symptom_ids_from_streaks(karte, player_color=player_color))
     from_aggregate = set(_symptom_ids_from_aggregate_patterns(karte))
     combined = per_move | from_categories | from_streaks | from_aggregate
     # Stable ordering by table order

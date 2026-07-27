@@ -221,6 +221,8 @@ def _board_size(karte: dict[str, Any]) -> int:
 
 def build_symptom_context_from_karte(
     karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
 ) -> SymptomContext:
     """Build a SymptomContext snapshot from a Karte JSON.
 
@@ -233,6 +235,11 @@ def build_symptom_context_from_karte(
     (FIRST_MOVE_CONFUSION, TOO_MANY_CHOICES, OVERCONCENTRATION,
     POST_JOSEKI_DIRECTION, ATTACK_WITH_PURPOSE) can fire against
     karte contexts.
+
+    PR-04a (H5): ``player_color`` (``"black"`` / ``"white"`` /
+    ``None``) scopes streak-derived fields (longest_streak /
+    total_streak_loss / streak_count / avg_streak_loss) to one
+    colour. ``None`` keeps the legacy "both colours" behaviour.
     """
     board_size = _board_size(karte)
     return SymptomContext(
@@ -252,11 +259,19 @@ def build_symptom_context_from_karte(
         weakness_concentration=extract_weakness_concentration(karte),
         board_size=board_size,
         current_phase=_infer_current_phase(karte, board_size=board_size),
+        # PR-04a: streak-derived fields scoped per colour.
+        longest_streak=extract_longest_streak(karte, player_color=player_color),
+        total_streak_loss=extract_total_streak_loss(karte, player_color=player_color),
+        streak_count=extract_streak_count(karte, player_color=player_color),
+        avg_streak_loss=extract_avg_streak_loss(karte, player_color=player_color),
+        player_color=player_color,
     )
 
 
 def _symptom_ids_from_weakness_categories(
     karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
 ) -> tuple[SymptomId, ...]:
     """Map weakness[*].category strings to SymptomId values.
 
@@ -267,10 +282,13 @@ def _symptom_ids_from_weakness_categories(
     meaning-tag path (:func:`_collect_meaning_tags`). This function is
     kept for legacy fixtures that stored SymptomId.value strings in the
     category field.
+
+    PR-04a (H5): ``player_color`` scopes the iteration to one colour.
     """
     out: list[SymptomId] = []
     seen: set[SymptomId] = set()
-    for color in ("black", "white"):
+    colors = (player_color,) if player_color in ("black", "white") else ("black", "white")
+    for color in colors:
         for w in karte.get("weaknesses", {}).get(color, []) or []:
             cat = str(w.get("category", "")).lower()
             if not cat:
@@ -282,7 +300,11 @@ def _symptom_ids_from_weakness_categories(
     return tuple(out)
 
 
-def _symptom_ids_from_streaks(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
+def _symptom_ids_from_streaks(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> tuple[SymptomId, ...]:
     """Phase 216: detect streak-based symptoms from karte.mistake_streaks
     and loss_progression.
 
@@ -297,11 +319,11 @@ def _symptom_ids_from_streaks(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
     Each detection is heuristic — actual thresholds are tentative and
     should be calibrated against golden games (Phase 217 future work).
     """
-    longest = extract_longest_streak(karte)
-    total_loss = extract_total_streak_loss(karte)
-    streak_count = extract_streak_count(karte)
+    longest = extract_longest_streak(karte, player_color=player_color)
+    total_loss = extract_total_streak_loss(karte, player_color=player_color)
+    streak_count = extract_streak_count(karte, player_color=player_color)
     loss_run = extract_consecutive_loss_run(karte)
-    avg_streak = extract_avg_streak_loss(karte)
+    avg_streak = extract_avg_streak_loss(karte, player_color=player_color)
 
     fired: list[SymptomId] = []
 
