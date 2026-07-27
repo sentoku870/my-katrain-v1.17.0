@@ -89,6 +89,12 @@ def _make_content(path_type: str = "karte") -> Any:
     # populate_karte_player_info helper). The generate / validate
     # handlers read this so a missing value falls back to ``{}``.
     content._last_player_info = {}
+    # PR-01 (⑥): the path the cached player info was computed against.
+    # Tests that need a populated cache also set this to the matching
+    # path so the generate / validate guards recognise it as fresh.
+    content._last_player_info_path = ""
+    # PR-01 (H-a): monotonic timestamp of the last validate call.
+    content._last_validate_at = 0.0
 
     # Phase 230-F (CI fix): default config mock that returns the
     # supplied ``default`` arg instead of leaking ``return_value``
