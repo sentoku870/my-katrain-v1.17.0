@@ -29,6 +29,8 @@ is Phase 224 (deferred).
 from __future__ import annotations
 
 import contextlib
+import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
@@ -263,6 +265,14 @@ class LLMCoachPopupContent(BoxLayout):
         # validate handlers to surface precise auto-detect error
         # messages. ``{}`` placeholder when no Karte is loaded yet.
         self._last_player_info: dict[str, Any] = {}
+        # PR-01 (⑥): path the cached ``_last_player_info`` was computed
+        # against. The cached entry is invalidated when the user changes
+        # the karte path so that browse / typed edits always re-detect.
+        self._last_player_info_path: str = ""
+        # PR-01 (H-a): monotonic timestamp of the last validation run
+        # (seconds since epoch). Used by ``_respect_validate_cooldown``
+        # to drop double-clicks without blocking the GUI thread.
+        self._last_validate_at: float = 0.0
         super().__init__(**kwargs)
 
     # ---- Lifecycle -----------------------------------------------------
@@ -517,33 +527,6 @@ class LLMCoachPopupContent(BoxLayout):
         self.perspective_value = _spinner_text_to_internal(raw)
         self._populate_rank_and_perspective()
 
-        # ---- Karte path detection ------------------------------------------
-        """KV-side callback: spinner selection changed -> re-detect rank.
-
-        Phase 226-B (B3): the spinner's ``text`` is the localised label
-        (e.g. ``"黒 (B)"`` / ``"白 (W)"`` / ``"自動"``) and depends on
-        the active language. We reverse-map it to the stable internal
-        value ``"B"`` / ``"W"`` / ``"auto"`` so the rest of the code
-        never has to ``startswith("黒")`` again.
-
-        Phase 227-D: for summary mode, the spinner shows player
-        names (or "全体俯瞰"). We don't reverse-map the text — we use
-        the spinner's index directly via :meth:`on_summary_perspective_changed`.
-        """
-        if self.path_type == "summary":
-            # The summary selector has its own callback; this branch
-            # is a defensive fallback in case Kivy fires on_text
-            # before the dedicated handler is wired.
-            self.on_summary_perspective_changed()
-            return
-        # Read the spinner value via ids (defensive against stale ref).
-        spinner = self._get_widget("perspective_select")
-        if spinner is None:
-            return
-        raw = getattr(spinner, "text", "") or ""
-        self.perspective_value = _spinner_text_to_internal(raw)
-        self._populate_rank_and_perspective()
-
     # ---- Karte path detection ------------------------------------------
 
     def _detect_path_type(self, path: str) -> str:
@@ -624,6 +607,11 @@ class LLMCoachPopupContent(BoxLayout):
         # Phase 241-E: a new path means a new player list, so the
         # user's previous spinner choice may not be valid anymore.
         self._summary_perspective_user_set = False
+        # PR-01 (⑥): invalidate the cached player info so the
+        # generate / validate guards do not silently reuse stale data
+        # from a previously opened file.
+        self._last_player_info = {}
+        self._last_player_info_path = ""
         if self._read_text("karte_path_input"):
             self._populate_rank_and_perspective()
 
@@ -650,7 +638,12 @@ class LLMCoachPopupContent(BoxLayout):
             # is set when the user picks via double-click.
             chosen = (instance.filename or "").strip() or (instance.selection[0] if instance.selection else "")
             if chosen:
-                self._set_widget_text("karte_path_input", str(chosen))
+                # PR-01 (⑥): ``on_text_validate`` (the only KV hook that
+                # binds to ``on_path_changed``) does NOT fire when text is
+                # written programmatically. Trigger the callback manually
+                # so the type label, rank and perspective refresh for the
+                # newly chosen file.
+                self._set_widget_text("karte_path_input", str(chosen), on_change=self.on_path_changed)
             # Always close the picker so the user isn't stuck on it.
             picker.dismiss()
 
@@ -739,13 +732,18 @@ class LLMCoachPopupContent(BoxLayout):
         # guard has the actual Karte black/white names.
         if (
             self.path_type == "karte"
-            and self._last_player_info.get("source") != "karte_meta"
-            and self._last_player_info.get("source") != "sgf_file"
+            and (self._last_player_info.get("source") != "karte_meta" or self._last_player_info_path != karte_path)
+            and (self._last_player_info.get("source") != "sgf_file" or self._last_player_info_path != karte_path)
         ):
             with contextlib.suppress(Exception):
                 # Fall through to the normal guard below; if the
                 # populator fails, the auto-block message will still
                 # surface a useful hint.
+                # PR-01 (⑥): invalidate the path-bound cache before
+                # re-populating so the new file's player info always
+                # wins over the previous file's cached values.
+                self._last_player_info = {}
+                self._last_player_info_path = ""
                 self._populate_karte_player_info(karte_path, self._read_player_settings())
 
         # Default: karte path (Phase 225.6)
@@ -820,6 +818,26 @@ class LLMCoachPopupContent(BoxLayout):
         self._set_widget_text("response_input", new_text)
         self._set_status(status, error=True)
 
+    def _respect_validate_cooldown(self) -> bool:
+        """PR-01 (H-a): drop accidental validate double-clicks.
+
+        The Karte validator is heavy (re-reads the JSON, rebuilds the
+        prompt, runs the 5-rule check) and runs synchronously on the
+        GUI thread. A user who mashes the validate button would queue
+        multiple passes and freeze the popup. We accept the first call
+        within ``_VALIDATE_COOLDOWN_SECS`` and return ``False`` for any
+        subsequent call that arrives inside the same window.
+
+        Returns:
+            True if the caller may proceed; False if the call must be
+            discarded (within cooldown).
+        """
+        now = time.monotonic()
+        if now - self._last_validate_at < _VALIDATE_COOLDOWN_SECS:
+            return False
+        self._last_validate_at = now
+        return True
+
     def on_validate(self) -> None:
         """Validate the user-pasted LLM response and show the report.
 
@@ -840,6 +858,12 @@ class LLMCoachPopupContent(BoxLayout):
         localised label and convert to the stable ``CoachMode`` key
         before forwarding to the prompt builder.
         """
+        # PR-01 (H-a): drop accidental double-clicks before doing any
+        # expensive work. ``_respect_validate_cooldown`` updates the
+        # timestamp on its first call within the window, so the second
+        # click is a no-op rather than running the validator twice.
+        if not self._respect_validate_cooldown():
+            return
         karte_path = self._read_text("karte_path_input")
         rank_label = self._read_text("rank_input") or ""
         rank = rank_spinner_label_to_key(rank_label) or rank_label or None
@@ -863,10 +887,14 @@ class LLMCoachPopupContent(BoxLayout):
         # failure that hadn't actually been computed yet.
         if (
             self.path_type == "karte"
-            and self._last_player_info.get("source") != "karte_meta"
-            and self._last_player_info.get("source") != "sgf_file"
+            and (self._last_player_info.get("source") != "karte_meta" or self._last_player_info_path != karte_path)
+            and (self._last_player_info.get("source") != "sgf_file" or self._last_player_info_path != karte_path)
         ):
             with contextlib.suppress(Exception):
+                # PR-01 (⑥): mirror the generate path — invalidate the
+                # path-bound cache so the new file always wins.
+                self._last_player_info = {}
+                self._last_player_info_path = ""
                 self._populate_karte_player_info(karte_path, self._read_player_settings())
 
         # Phase 241-B: same guard for the validate path. Validation
@@ -962,11 +990,20 @@ class LLMCoachPopupContent(BoxLayout):
         except AttributeError:
             return ""
 
-    def _set_widget_text(self, widget_id: str, text: str) -> None:
-        """Set the ``text`` of a child widget by id."""
+    def _set_widget_text(self, widget_id: str, text: str, *, on_change: Callable[[], Any] | None = None) -> None:
+        """Set the ``text`` of a child widget by id.
+
+        PR-01 (⑥): when ``on_change`` is supplied it is invoked AFTER the
+        text has been written. The Karte path widget needs this so that
+        programmatic writes (e.g. via the file browser) propagate through
+        ``on_path_changed`` — Kivy does NOT fire ``on_text_validate``
+        (the only path-bound KV hook) when ``text`` is set directly.
+        """
         widget = self._get_widget(widget_id)
         if widget is not None:
             widget.text = text
+        if on_change is not None:
+            on_change()
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.status_text = text

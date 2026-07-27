@@ -54,6 +54,7 @@ def build_karte_json(
     include_definitions: bool = False,
     dynamic_phase_detection: bool = True,
     max_critical_3_moves: int = 3,
+    snapshot: Any | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -94,11 +95,19 @@ def build_karte_json(
             static split.
         max_critical_3_moves: Phase 248-B2 — number of critical moves
             per player in the critical_3 section. Defaults to 3.
+        snapshot: Pre-computed EvalSnapshot (PR-01). When provided, the
+            function reuses it instead of calling ``game.build_eval_snapshot()``
+            again. This avoids a redundant pass over the entire move tree
+            for callers that already own a snapshot (e.g. the Karte builder
+            wrapper). When None (default), the snapshot is built inside
+            this function — preserving the legacy behaviour for all
+            existing direct callers and tests.
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
     """
-    snapshot = game.build_eval_snapshot()
+    if snapshot is None:
+        snapshot = game.build_eval_snapshot()
 
     # Phase 171: KataGo 専用化により mixed-engine / non-KataGo gate を削除。
 

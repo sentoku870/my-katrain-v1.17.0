@@ -284,7 +284,9 @@ def _build_karte_json_string_impl(
         player_filter=player_filter,
         skill_preset=skill_preset,
         lang=lang,
+        target_visits=target_visits,
         max_critical_3_moves=max_critical_3_moves,
+        snapshot=snapshot,
     )
 
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)

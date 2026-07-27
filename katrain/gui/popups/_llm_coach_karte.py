@@ -60,11 +60,16 @@ def populate_karte_player_info(popup: LLMCoachPopupContent, karte_path: str, set
         # genuine detect failure instead of treating an empty cache
         # as "first invocation".
         popup._last_player_info = {"source": "missing"}
+        popup._last_player_info_path = str(karte_path)
         return
 
     # Phase 272-B: cache so the generate handler can produce a precise
     # error message when auto-detection fails.
     popup._last_player_info = info
+    # PR-01 (⑥): remember the path so the generate / validate guards
+    # can detect a stale cache after the user picks a different file
+    # via the file browser.
+    popup._last_player_info_path = str(karte_path)
 
     apply_karte_rank_fallback(
         popup,
