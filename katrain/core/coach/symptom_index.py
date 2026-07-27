@@ -136,6 +136,17 @@ class SymptomContext:
             (FIRST_MOVE_CONFUSION, TOO_MANY_CHOICES, OVERCONCENTRATION,
             POST_JOSEKI_DIRECTION, ATTACK_WITH_PURPOSE) which were
             previously dead because per-move ``move_number`` is unknown.
+        longest_streak: PR-04a (H5) — longest consecutive-mistake streak
+            scoped to ``player_color``. ``0`` when unknown.
+        total_streak_loss: PR-04a — total points lost across all
+            mistake streaks for ``player_color``.
+        streak_count: PR-04a — number of mistake streaks for
+            ``player_color``.
+        avg_streak_loss: PR-04a — average total_loss per streak for
+            ``player_color``.
+        player_color: PR-04a — ``"black"`` / ``"white"`` / ``None``.
+            Detectors may consult this to enforce player-specific
+            rules; values are informational only.
     """
 
     points_lost: float | None = None
@@ -153,6 +164,12 @@ class SymptomContext:
     weakness_concentration: float | None = None
     board_size: int = 19
     current_phase: str = "unknown"
+    # PR-04a (H5): streak-derived fields scoped per colour.
+    longest_streak: int = 0
+    total_streak_loss: float = 0.0
+    streak_count: int = 0
+    avg_streak_loss: float = 0.0
+    player_color: str | None = None
 
     def is_phase(self, phase: str) -> bool:
         """Return True if the current move is in the given phase.

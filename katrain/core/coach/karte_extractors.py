@@ -130,41 +130,62 @@ def extract_good_move_count(karte: dict[str, Any]) -> int:
 # --- Phase 216: streak / loss-run aggregators ---
 
 
-def _all_streaks(karte: dict[str, Any]) -> list[dict[str, Any]]:
-    """Flatten mistake_streaks into a single list (both colours)."""
+def _all_streaks(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> list[dict[str, Any]]:
+    """Flatten mistake_streaks into a single list.
+
+    PR-04a (H5): accept ``player_color`` so callers can scope the
+    detection to one colour. ``"black"`` / ``"white"`` filter to that
+    side only; ``None`` (default) keeps the legacy "both colours"
+    behaviour for backwards compatibility.
+    """
     out: list[dict[str, Any]] = []
     streaks = karte.get("mistake_streaks", {}) or {}
-    for color in ("black", "white"):
+    colors = (player_color,) if player_color in ("black", "white") else ("black", "white")
+    for color in colors:
         for s in streaks.get(color, []) or []:
             if isinstance(s, dict):
                 out.append(s)
     return out
 
 
-def extract_longest_streak(karte: dict[str, Any]) -> int:
-    """Return the longest consecutive-mistake streak (in moves) across all colours.
+def extract_longest_streak(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> int:
+    """Return the longest consecutive-mistake streak (in moves).
 
-    A streak is a sequence of consecutive mistakes for the same player.
-    Used by OVERFIGHT detection (Phase 209 §4.1 row 18, 34).
+    PR-04a (H5): ``player_color`` (``"black"`` / ``"white"`` /
+    ``None``) scopes the detection to one colour. Used by OVERFIGHT
+    detection (Phase 209 §4.1 row 18, 34).
 
     Returns 0 when no streaks present.
     """
     counts: list[int] = []
-    for s in _all_streaks(karte):
+    for s in _all_streaks(karte, player_color=player_color):
         v = s.get("move_count")
         if isinstance(v, int):
             counts.append(v)
     return max(counts) if counts else 0
 
 
-def extract_total_streak_loss(karte: dict[str, Any]) -> float:
-    """Sum of total_loss across all mistake streaks.
+def extract_total_streak_loss(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> float:
+    """Sum of total_loss across mistake streaks.
 
-    Used by TILT_CHAIN detection — large accumulated streak loss indicates
+    PR-04a (H5): scopes to ``player_color`` when provided. Used by
+    TILT_CHAIN detection — large accumulated streak loss indicates
     increasing mistakes within a losing pattern.
     """
     total = 0.0
-    for s in _all_streaks(karte):
+    for s in _all_streaks(karte, player_color=player_color):
         v = s.get("total_loss")
         if isinstance(v, bool):
             # Guard against ``bool`` (subclass of int) being treated as a
@@ -176,13 +197,18 @@ def extract_total_streak_loss(karte: dict[str, Any]) -> float:
     return total
 
 
-def extract_streak_count(karte: dict[str, Any]) -> int:
+def extract_streak_count(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> int:
     """Return the total number of mistake streaks detected.
 
-    Used by SMALL_MOVE_ADDICTION (Phase 209 §4.1 row 11) — many small streaks
+    PR-04a (H5): ``player_color`` scopes the count. Used by
+    SMALL_MOVE_ADDICTION (Phase 209 §4.1 row 11) — many small streaks
     suggest a player is leaking points throughout the midgame.
     """
-    return len(_all_streaks(karte))
+    return len(_all_streaks(karte, player_color=player_color))
 
 
 def extract_consecutive_loss_run(karte: dict[str, Any]) -> int:
@@ -209,13 +235,18 @@ def extract_consecutive_loss_run(karte: dict[str, Any]) -> int:
     return longest
 
 
-def extract_avg_streak_loss(karte: dict[str, Any]) -> float:
-    """Average total_loss across all streaks.
+def extract_avg_streak_loss(
+    karte: dict[str, Any],
+    *,
+    player_color: str | None = None,
+) -> float:
+    """Average total_loss across streaks.
 
-    Returns 0.0 when no streaks present.
+    PR-04a (H5): ``player_color`` scopes the average. Returns 0.0
+    when no streaks present.
     """
     losses: list[float] = []
-    for s in _all_streaks(karte):
+    for s in _all_streaks(karte, player_color=player_color):
         raw_loss = s.get("total_loss")
         if isinstance(raw_loss, bool):
             continue
