@@ -28,7 +28,6 @@ from katrain.core.beginner.models import HintCategory
 from katrain.core.coach.karte_extractors import (
     extract_avg_points_lost,
     extract_avg_streak_loss,
-    extract_avg_winrate_lost,
     extract_consecutive_loss_run,
     extract_game_count,
     extract_good_move_count,
@@ -242,9 +241,18 @@ def build_symptom_context_from_karte(
     colour. ``None`` keeps the legacy "both colours" behaviour.
     """
     board_size = _board_size(karte)
+    avg_points = extract_avg_points_lost(karte)
     return SymptomContext(
-        points_lost=extract_avg_points_lost(karte),
-        winrate_lost=extract_avg_winrate_lost(karte),
+        # PR-04b (H6): ``points_lost`` / ``winrate_lost`` are documented
+        # as "current move's pointsLost / winrate drop" (SymptomContext
+        # docstring). For the Karte-derived context there is no
+        # current move, so set them to ``None``. The game-level average
+        # belongs in ``avg_points_lost`` (already populated below) and
+        # was being injected into the per-move field by mistake, which
+        # made the ATARI_BLINDNESS / EVALUATION_ERRORS thresholds
+        # effectively dead (they expect a per-move number).
+        points_lost=None,
+        winrate_lost=None,
         # Per-move fields default to None (Phase 215 uses aggregates).
         move_number=None,
         good_move_count=extract_good_move_count(karte),
@@ -254,7 +262,7 @@ def build_symptom_context_from_karte(
         is_endgame=_is_endgame_karte(karte),
         meaning_tag_ids=_collect_meaning_tags(karte),
         hint_categories=_collect_hint_categories(karte),
-        avg_points_lost=extract_avg_points_lost(karte),
+        avg_points_lost=avg_points,
         game_count=extract_game_count(karte),
         weakness_concentration=extract_weakness_concentration(karte),
         board_size=board_size,
