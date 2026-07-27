@@ -153,7 +153,7 @@ Role: You are a Go coach. The user has provided a multi-game Summary JSON
 Mode: {voice_summary}
 Level: {mode_label}
 Games: {games_analyzed}
-Focus: {focus_label}   <!-- '{player_name}' or '全体俯瞰 (bird's-eye)' -->
+Focus: {focus_label}      # '{player_name}' or '全体俯瞰 (bird's-eye)'
 Rank: {rank_label}
 
 [STRICT RULES — DO NOT VIOLATE]

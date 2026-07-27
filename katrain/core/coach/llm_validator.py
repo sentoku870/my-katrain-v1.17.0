@@ -198,16 +198,21 @@ _MOVE_NUMBER_RE = re.compile(
 )
 
 # Phase 226-A (A4): pointsLost patterns.
-# Captures the numeric value in group 1.  Multiple alternative phrasings
-# are accepted, but they all anchor on either the Japanese "目" unit
-# or an explicit English/Japanese label so that bare integers in the
-# prose do not leak in.
+# Captures the numeric value in group 1. PR-02 (S4) tightens the
+# Japanese ``目`` pattern so that bare ``N目`` (e.g. ``リード 15 目``,
+# ``コミ 6.5 目``, ``3 目 得``) does not trigger a false positive.
+# The number must either be followed by a loss-flavoured noun OR be
+# preceded by an explicit loss keyword. The English / labelled
+# alternatives are kept as-is — they already require their own anchor.
 _POINTS_LOST_RE = re.compile(
     r"(?:"
-    r"[-+]?\d+(?:\.\d+)?\s*目"  # "3.5目"
-    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"  # "損失 3.5"
-    r"|[-+]?\d+(?:\.\d+)?\s*(?:points?\.?\s*lost|loss|lost)\b"  # "3.0 points lost"
-    r"|(?:points?\.?\s*lost|loss)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"  # "points lost 3.5"
+    # "3目" + 損失系名詞: 損失 / 損 / ロス / 損出 / 損切り / 痛い / 痛い目
+    r"[-+]?\d+(?:\.\d+)?\s*目\s*(?:の\s*)?(?:損失|ロス|損|損出|損切り|痛い目?|痛い損失|の失点)"
+    # 損失ラベル + "3目": "損失 3目" / "ロス：3目"
+    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?\s*目"
+    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"
+    r"|[-+]?\d+(?:\.\d+)?\s*(?:points?\.?\s*lost|loss|lost)\b"
+    r"|(?:points?\.?\s*lost|loss)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"
     r")",
     re.IGNORECASE,
 )
@@ -639,6 +644,25 @@ def validate_llm_output(
             referenced_ids.append(sid)  # type: ignore[arg-type]
             seen_ids.add(sid)  # type: ignore[arg-type]
     referenced_ids_tuple = tuple(referenced_ids)
+
+    # PR-02 (S6): surface a LOW warning when the LLM response omits the
+    # ``参照した症状ID: [...]`` contract line AND does not mention any
+    # symptom ids in prose form (tier 3 safety-net grep also empty).
+    # Without this hint, validators below operate on a possibly-incomplete
+    # text and downstream users may believe the answer was cleanly
+    # accepted when it actually skipped the contract entirely.
+    if not referenced_ids:
+        issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.LOW,
+                kind="missing_contract_line",
+                message=(
+                    "出力契約「参照した症状ID: [...]」行が見つかりません。"
+                    "本文中に症状 ID の言及もないため、検証は実質スキップされています"
+                ),
+                context={},
+            )
+        )
 
     for sid in referenced_ids:  # type: ignore[assignment]
         if sid in ground_truth_symptoms:  # type: ignore[comparison-overlap]

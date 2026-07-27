@@ -122,7 +122,7 @@ Mode: {voice_summary}
 Level: {mode_label} ({mode_description})
 DetectedSymptoms: {detected_ids}
 CandidateSymptoms: {candidate_ids}
-PlayerColor: {player_color_label}   <!-- Phase 225.6: 'black' / 'white' / 'unknown' -->
+PlayerColor: {player_color_label}      # black / white / unknown (Phase 225.6)
 
 [STRICT RULES — DO NOT VIOLATE]
 1. DO NOT analyze the board independently. Use ONLY the data in the JSON.
@@ -130,7 +130,10 @@ PlayerColor: {player_color_label}   <!-- Phase 225.6: 'black' / 'white' / 'unkno
    match the JSON.
 3. Every symptom_id you mention MUST exist in the Karte JSON's
    ``weaknesses[<player_color>]``, ``important_moves[*].primary_tag``,
-   or ``critical_3[<player_color>][*].meaning_tag_id`` field. When
+   ``critical_3[<player_color>][*].meaning_tag_id``, or
+   ``reason_tags_distribution[*].tag`` field. PR-02 (S7-3): the last
+   source covers aggregated tag counts the LLM may cite when
+   describing the most frequent reason tag in the game. When
    ``PlayerColor`` is set, focus your review on that side's
    weaknesses only.
 4. Use the Lexicon definitions injected below verbatim for terminology.
