@@ -261,11 +261,7 @@ class LabelledTextInput(MDTextField):
                     def _reset_kivymd_color(_dt: float, attr: str = _attr_name) -> None:
                         target = list(Theme.TEXT_COLOR)
                         current = getattr(self, attr, None)
-                        if (
-                            current
-                            and len(current) >= 4
-                            and current[2] > (current[0] + current[1]) * 0.6
-                        ):
+                        if current and len(current) >= 4 and current[2] > (current[0] + current[1]) * 0.6:
                             # 強制 setattr で書き戻し。``__setattr__``
                             # 横取りで白に固定される。
                             try:
@@ -291,9 +287,7 @@ class LabelledTextInput(MDTextField):
             "_max_length_text_color",
         ):
             with contextlib.suppress(Exception):
-                self.bind(
-                    **{_kivymd_color_attr: _make_kivymd_color_handler(_kivymd_color_attr)}
-                )
+                self.bind(**{_kivymd_color_attr: _make_kivymd_color_handler(_kivymd_color_attr)})
 
     def _on_kivymd_text_color(self, instance: Any, value: Any) -> None:
         # Phase 280: KivyMD 1.2.0 の ``_text_color_focus`` 系プロパティが
@@ -313,11 +307,7 @@ class LabelledTextInput(MDTextField):
                 attr = getattr(self, "_last_kivymd_color_attr", "_text_color_focus")
                 target = list(Theme.TEXT_COLOR)
                 current = getattr(self, attr, None)
-                if (
-                    current
-                    and len(current) >= 4
-                    and current[2] > (current[0] + current[1]) * 0.6
-                ):
+                if current and len(current) >= 4 and current[2] > (current[0] + current[1]) * 0.6:
                     # KivyMD の ``on_<prop>`` ハンドラは通常未定義なので、
                     # 強制 setattr で書き戻し。``__setattr__`` 横取りで
                     # 白に固定される。
