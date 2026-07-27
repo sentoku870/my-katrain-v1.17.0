@@ -36,6 +36,22 @@ from katrain.core.reports.constants import (
     MISTAKE_STREAK_MIN_CONSECUTIVE,
     MISTAKE_STREAK_THRESHOLD_LOSS,
 )
+from katrain.core.reports.definitions import PHASE_ALIASES
+
+
+def _normalise_phase(phase: str) -> str:
+    """Apply PHASE_ALIASES so JSON output uses public-facing names.
+
+    PR-04d (H4): ``classify_game_phase`` and the dynamic phase detector
+    can return the legacy ``"yose"`` string (kept for back-compat with
+    internal callers). The Karte JSON contract documents only
+    ``opening / middle / endgame`` (see docs/karte-schema.md §2.5), so
+    we rewrite ``yose`` to ``endgame`` at the section boundary. Without
+    this, ``weaknesses[*].phase`` could disagree with
+    ``important_moves[*].phase`` in the same Karte.
+    """
+    return PHASE_ALIASES.get(phase, phase)
+
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval
@@ -145,7 +161,7 @@ def weakness_hypothesis_for(
 
         result.append(
             {
-                "phase": phase,
+                "phase": _normalise_phase(phase),
                 "category": category,
                 "count": count,
                 "total_loss": round(loss, 2),
