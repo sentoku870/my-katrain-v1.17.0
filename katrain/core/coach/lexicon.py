@@ -30,6 +30,7 @@ Usage::
 from __future__ import annotations
 
 import re
+import sys
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -40,9 +41,43 @@ from typing import Any
 # YAML parser: PyYAML is already a project dependency (ai/constants etc.)
 import yaml
 
+# PR-03 (⑤): the lexicon YAML lives under ``docs/resources/`` in the
+# source tree. PyInstaller does not include that directory in the binary
+# bundle by default; ``spec/KaTrain.spec`` now exposes it under
+# ``sys._MEIPASS/docs/resources`` at runtime. ``_resolve_default_lexicon_path``
+# prefers the frozen path when running inside a PyInstaller bundle and
+# falls back to the source-tree path otherwise. We keep
+# ``DEFAULT_LEXICON_PATH`` as a module-level Path for backwards
+# compatibility (test fixtures import it directly), but production code
+# should call ``_resolve_default_lexicon_path()`` so the frozen build
+# works without monkey-patching.
 DEFAULT_LEXICON_PATH = (
     Path(__file__).resolve().parent.parent.parent.parent / "docs" / "resources" / "go_lexicon_master_last.yaml"
 )
+
+
+def _resolve_default_lexicon_path() -> Path:
+    """Return the runtime location of ``go_lexicon_master_last.yaml``.
+
+    Resolution order:
+
+    1. ``sys._MEIPASS/docs/resources/...`` — PyInstaller frozen build.
+       ``spec/KaTrain.spec`` bundles ``docs/resources`` at this location
+       so LLM Coach works in the distributed Windows binary.
+    2. ``DEFAULT_LEXICON_PATH`` — source-tree path used in development
+       and tests.
+
+    Returns the first existing path. If neither exists, returns the
+    source-tree path so callers see the same :class:`FileNotFoundError`
+    they saw before this PR (the error message in the GUI still points
+    at the source path; pre-existing behaviour).
+    """
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        frozen = Path(meipass) / "docs" / "resources" / "go_lexicon_master_last.yaml"
+        if frozen.is_file():
+            return frozen
+    return DEFAULT_LEXICON_PATH
 
 
 # --- Dataclasses ---
@@ -234,14 +269,16 @@ def load_lexicon(path: str | Path | None = None) -> LexiconBundle:
     """Parse the YAML and return a LexiconBundle.
 
     Args:
-        path: Optional YAML path. Defaults to ``docs/resources/go_lexicon_master_last.yaml``.
+        path: Optional YAML path. Defaults to
+            :func:`_resolve_default_lexicon_path`, which honours the
+            ``sys._MEIPASS`` PyInstaller location when present.
 
     Raises:
         FileNotFoundError: If path does not exist.
         yaml.YAMLError: If the YAML is malformed.
         KeyError: If a required field is missing on an entry.
     """
-    target = Path(path) if path else DEFAULT_LEXICON_PATH
+    target = Path(path) if path else _resolve_default_lexicon_path()
     with open(target, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
