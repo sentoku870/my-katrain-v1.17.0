@@ -178,7 +178,10 @@ _INLINE_SYMPTOM_ID_RE = re.compile(
 )
 
 # Coordinates like "P13", "Q5", "A19" — match standalone tokens.
-_MOVE_COORD_RE = re.compile(r"\b([A-Ta-t])\s*(\d{1,2})\b")
+# PR-06 (S11): removed the module-level ``_MOVE_COORD_RE`` — it was
+# defined but never referenced anywhere in the codebase (grep
+# returned only the definition site). Coordinate validation lives
+# elsewhere.
 
 # Phase 226-A (A3): strict move-number regex. Either prefix *or* suffix
 # is required (no longer both-optional), and a small set of unit

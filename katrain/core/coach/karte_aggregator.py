@@ -429,7 +429,17 @@ def group_representative_moves_by_tag(
         # to 0.0 so the move still shows up under the tag (just
         # ranked last). We do not use raw ``points_lost`` to keep
         # ordering stable across kartes that predate Phase 158-I.
-        loss = move.get("loss_clamped") or move.get("score_loss") or move.get("points_lost") or 0.0
+        # PR-06 (M8): use ``is None`` checks rather than truthy ``or``
+        # so a legitimate ``0.0`` loss is preserved instead of falling
+        # through to the next field (the same pattern was fixed for
+        # summary_json_export in Phase 159A).
+        loss: float | int | None = move.get("loss_clamped")
+        if loss is None:
+            loss = move.get("score_loss")
+        if loss is None:
+            loss = move.get("points_lost")
+        if loss is None:
+            loss = 0.0
         try:
             loss_f = float(loss)
         except (TypeError, ValueError):

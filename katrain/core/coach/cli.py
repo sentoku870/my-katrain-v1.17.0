@@ -559,7 +559,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
             lines.append("(summary fixtures pin pattern extraction, not per-move symptoms)")
             patterns = extract_summary_weakness_patterns(fix.karte)
             lines.append(f"- extracted patterns: {len(patterns)}")
-            lines.append("- expected_symptom_ids: {} (n/a for summaries)")
+            lines.append("- expected_symptom_ids: (n/a for summaries)")
             lines.append(f"- notes: {fix.tolerance_notes}")
             lines.append("")
             pass_count += 1

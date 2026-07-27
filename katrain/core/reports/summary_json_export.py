@@ -373,7 +373,7 @@ def _build_overall_block(stats: Any, confidence_val: str) -> dict[str, Any]:
     return {
         "total_games": stats.total_games,
         "total_moves": stats.total_moves,
-        "total_loss": round(stats.total_points_lost, 1),
+        "total_loss": round(stats.total_points_lost, 2),
         "avg_loss": round(stats.avg_points_lost_per_move, 3),
         "confidence": confidence_val,
     }
