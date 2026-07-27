@@ -49,6 +49,12 @@ datas = [
     (f"{base_path}/fonts", "katrain/fonts"),
     (f"{base_path}/i18n", "katrain/i18n"),
     (f"{base_path}/KataGo", "katrain/KataGo"),
+    # PR-03: Bundle the Go Lexicon YAML so LLM Coach prompts can resolve
+    # terminology in the distributed Windows binary (PR-03 ⑤). The source
+    # path is the repo root's docs/resources/; we expose it as a sibling
+    # directory next to ``katrain/`` inside the bundle so the lexicon
+    # loader can locate it via ``sys._MEIPASS`` at runtime.
+    ("../docs/resources", "docs/resources"),
 ]
 
 # KivyMD data files will be handled by the custom hook
