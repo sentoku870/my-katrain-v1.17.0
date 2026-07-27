@@ -67,12 +67,18 @@ _VALID_PHASES: frozenset[str] = frozenset({"opening", "middle", "endgame"})
 #   抽出した弱点パターン: [a, b, c]
 #   ExtractedPatterns: [a, b, c]
 #   弱点パターン: [a, b, c]
+#
+# PR-02 (S1): exclude angle-bracket placeholders (`<category1>` etc.)
+# so the prompt's template row never matches. The Phase 203 spec only
+# ships snake_case / kebab-case ids (atari_blindness, endgame_slip,
+# opening / middle / endgame phases), so restricting to
+# non-bracket / non-comma characters is safe for legitimate answers.
 _PATTERN_LIST_LINE_RE = re.compile(
     r"""
     (?:抽出した弱点パターン|弱点パターン|抽出パターン|ExtractedPatterns?|WeaknessPatterns?)
     \s*[:：=]\s*
     \[
-    (.*?)                  # captured: id list
+    ([^\[\]<>]+?)           # captured: id list (no placeholders)
     \]
     \s*$
     """,
@@ -80,12 +86,13 @@ _PATTERN_LIST_LINE_RE = re.compile(
 )
 
 # Phase 227-B: optional phase-list contract line.
+# PR-02 (S1): same placeholder exclusion as the pattern regex above.
 _PHASE_LIST_LINE_RE = re.compile(
     r"""
     (?:参照したphase|参照phase|PhasesReferenced|Phases)
     \s*[:：=]\s*
     \[
-    (.*?)
+    ([^\[\]<>]+?)
     \]
     \s*$
     """,
@@ -288,19 +295,31 @@ def _split_id_list(raw: str) -> tuple[str, ...]:
 
 
 def _extract_pattern_categories(text: str) -> tuple[str, ...]:
-    """Extract the trailing ``抽出した弱点パターン: [...]`` line."""
-    m = _PATTERN_LIST_LINE_RE.search(text)
-    if m is None:
+    """Extract the trailing ``抽出した弱点パターン: [...]`` line.
+
+    PR-02 (S1): when the user pastes the prompt + LLM answer together
+    the first match of the pattern line is the prompt's template row
+    (``<category1>``, ``<category2>``), which then validates the
+    placeholder values instead of the actual answer. Take the LAST
+    match instead — same strategy the karte validator adopted in
+    Phase 272 (see ``llm_validator.py`` ``_extract_referenced_ids``).
+    """
+    matches = list(_PATTERN_LIST_LINE_RE.finditer(text))
+    if not matches:
         return ()
-    return _split_id_list(m.group(1))
+    return _split_id_list(matches[-1].group(1))
 
 
 def _extract_referenced_phases(text: str) -> tuple[str, ...]:
-    """Extract the optional ``参照したphase: [...]`` line."""
-    m = _PHASE_LIST_LINE_RE.search(text)
-    if m is None:
+    """Extract the optional ``参照したphase: [...]`` line.
+
+    PR-02 (S1): same last-match rationale as
+    :func:`_extract_pattern_categories`.
+    """
+    matches = list(_PHASE_LIST_LINE_RE.finditer(text))
+    if not matches:
         return ()
-    return _split_id_list(m.group(1))
+    return _split_id_list(matches[-1].group(1))
 
 
 def _extract_move_numbers(text: str) -> tuple[int, ...]:
@@ -476,8 +495,27 @@ def validate_summary_llm_output(
     available_categories = _summary_available_categories(summary_json)
     available_phases = _summary_available_phases(summary_json)
 
-    # ---- 1. Pattern category existence ----
+    # PR-02 (S6): surface a LOW warning when neither the
+    # ``抽出した弱点パターン`` contract line nor the ``参照したphase`` line
+    # is present. Without these, rules 1 and 3 below operate on an empty
+    # set and the answer would silently pass even if the LLM completely
+    # ignored the contract.
     referenced_cats = _extract_pattern_categories(llm_text)
+    referenced_phases = _extract_referenced_phases(llm_text)
+    if not referenced_cats and not referenced_phases:
+        issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.LOW,
+                kind="missing_contract_line",
+                message=(
+                    "出力契約「抽出した弱点パターン: [...]」「参照したphase: [...]」"
+                    "のどちらも検出されません。検証は実質スキップされています"
+                ),
+                context={},
+            )
+        )
+
+    # ---- 1. Pattern category existence ----
     for cat in referenced_cats:
         if available_categories and cat not in available_categories:
             issues.append(
@@ -517,19 +555,20 @@ def validate_summary_llm_output(
         )
 
     # ---- 4. Phase label cross-check ----
-    # Trailing contract line first (most authoritative).
-    contract_phases = _extract_referenced_phases(llm_text)
+    # Trailing contract line first (most authoritative). The function
+    # was already called above for the PR-02 (S6) missing-contract
+    # warning; reuse the cached result to avoid duplicate regex work.
     prose_phases = _extract_phases_from_prose(llm_text)
-    referenced_phases: list[str] = []
+    referenced_phases_final: list[str] = []
     seen_phases: set[str] = set()
-    for p in list(contract_phases) + list(prose_phases):
+    for p in list(referenced_phases) + list(prose_phases):
         p_lower = p.lower()
         if p_lower not in seen_phases:
-            referenced_phases.append(p_lower)
+            referenced_phases_final.append(p_lower)
             seen_phases.add(p_lower)
 
     if available_phases:
-        for phase in referenced_phases:
+        for phase in referenced_phases_final:
             if phase not in available_phases:
                 issues.append(
                     ValidationIssue(
@@ -563,7 +602,7 @@ def validate_summary_llm_output(
         llm_text=llm_text,
         issues=tuple(issues),
         referenced_categories=referenced_cats,
-        referenced_phases=tuple(referenced_phases),
+        referenced_phases=tuple(referenced_phases_final),
         referenced_move_numbers=referenced_moves,
         referenced_game_ids=referenced_game_ids,
         referenced_lexicon_ids=(),
