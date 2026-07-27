@@ -315,12 +315,12 @@ def _extract_move_numbers(text: str) -> tuple[int, ...]:
     summary mode the same string is ambiguous with the *count* pattern
     ``"全388手中51手（13.1%）"``. The summary regex drops the bare "X手"
     alternative and accepts only explicit move markers (第/手目/#/move/
-    着手/番). The loop still iterates groups 1–6 for safety (5 of 6
-    are populated after the change; remaining slots are simply ``None``).
+    着手/番). The regex has exactly 5 capture groups; the loop iterates
+    groups 1–5.
     """
     out: list[int] = []
     for m in _SUMMARY_MOVE_NUMBER_RE.finditer(text):
-        for grp in range(1, 7):
+        for grp in range(1, 6):
             raw = m.group(grp)
             if raw is None:
                 continue

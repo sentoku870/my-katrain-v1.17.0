@@ -260,7 +260,7 @@ class CriticalMoveItem(TypedDict):
     meaning_tag_id: str | None               # MeaningTagId enum value
     meaning_tag_label: str | None            # タグの人間可読ラベル（lang 依存）
     game_phase: str
-    position_difficulty: str                 # "easy" / "normal" / "strict" / "unknown"
+    position_difficulty: str                 # "easy" / "normal" / "hard" / "only" / "unknown"
     area: str | None
     reason_tags: list[str]                   # v3.5 から REASON_CODE_ALIASES 正規化済み
     complexity_discounted: bool

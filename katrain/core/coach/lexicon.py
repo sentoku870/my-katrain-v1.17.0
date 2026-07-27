@@ -567,9 +567,11 @@ def build_id_to_ja_term_map(entry_ids: Iterable[str] | None = None) -> dict[str,
 def all_ja_terms() -> tuple[str, ...]:
     """Convenience: every known ``ja_term`` (entries only), sorted.
 
-    Phase 226-A: provides the full inventory of Japanese terms that
-    the LLM is *allowed* to use inside 「」 brackets. Used by the
-    validator to detect off-injection terms.
+    PR-06 (S11): kept for API stability but **currently unused**. The
+    docstring previously claimed the validator consumes this list, but
+    no validator call site references it. Downstream code that wants
+    the Japanese term inventory should call
+    :func:`build_id_to_ja_term_map` (concepts-aware) instead.
     """
     bundle = _load_default_cached()
     return tuple(sorted({e.ja_term for e in bundle.entries}))
