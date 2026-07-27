@@ -253,6 +253,9 @@ msgstr "Summary Pattern Prompt"
 msgid "mykatrain:llm-coach:summary-build-failed"
 msgstr "Summary prompt build failed: {error}"
 
+msgid "mykatrain:llm-coach:summary-validate-failed"
+msgstr "Summary validation failed: {error}"
+
 msgid "mykatrain:llm-coach:summary-copy-success"
 msgstr ""
 "✅ Summary pattern prompt copied ({chars} chars, {games} games, {patterns} "

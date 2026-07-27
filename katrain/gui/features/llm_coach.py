@@ -154,7 +154,12 @@ def build_llm_prompt(
         if ctx is not None:
             ctx.log(msg, OUTPUT_ERROR)
         return False, msg
-    except (json.JSONDecodeError, KeyError, ValueError) as exc:
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
+        # PR-05 (H-i): previously only the three most-common cases
+        # were caught; ``TypeError`` (e.g. wrong schema shape passed
+        # to ``build_prompt``) would crash the GUI thread and the
+        # button looked unresponsive. Added so karte and summary paths
+        # behave symmetrically.
         msg = i18n._("mykatrain:llm-coach:invalid-karte").format(error=str(exc))
         if ctx is not None:
             ctx.log(msg, OUTPUT_ERROR)
@@ -480,10 +485,28 @@ def validate_summary_llm_response(
             if ctx is not None:
                 ctx.log(msg, OUTPUT_ERROR)
             return False, msg
+    except Exception as exc:  # noqa: BLE001 — propagate as user-facing error
+        msg = i18n._("mykatrain:llm-coach:summary-build-failed").format(error=str(exc))
+        if ctx is not None:
+            ctx.log(msg, OUTPUT_ERROR)
+        return False, msg
+
+    try:
         prompt = build_summary_weakness_prompt(summary, cfg)
+    except Exception as exc:  # noqa: BLE001 — propagate as user-facing error
+        msg = i18n._("mykatrain:llm-coach:summary-build-failed").format(error=str(exc))
+        if ctx is not None:
+            ctx.log(msg, OUTPUT_ERROR)
+        return False, msg
+
+    try:
+        # PR-05 (H-i): validate has its own failure path so a build
+        # error and a validator crash no longer both surface as
+        # ``summary-build-failed``. Previously the single catch-all
+        # mis-reported every validator failure as a build failure.
         report = validate_summary_llm_output(cleaned, summary, prompt)
     except Exception as exc:  # noqa: BLE001
-        msg = i18n._("mykatrain:llm-coach:summary-build-failed").format(error=str(exc))
+        msg = i18n._("mykatrain:llm-coach:summary-validate-failed").format(error=str(exc))
         if ctx is not None:
             ctx.log(msg, OUTPUT_ERROR)
         return False, msg
