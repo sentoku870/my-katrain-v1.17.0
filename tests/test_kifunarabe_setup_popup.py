@@ -179,5 +179,110 @@ class TestLoadSgfIntoNewGame(unittest.TestCase):
         self.assertTrue(gui.log.called)
 
 
+# Phase 292-B: ``_prefill_from_config`` is a pure function so we can
+# test the KifunarabeConfig → spinner-index conversion without spinning
+# up a Kivy display.
+class TestPrefillFromConfig(unittest.TestCase):
+    def test_none_config_returns_defaults(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        side, hints, moves, auto = mod._prefill_from_config(None)
+        self.assertEqual((side, hints, moves, auto), (0, 3, 3, False))
+
+    def test_both_default(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(turn="both", max_hints=3, max_moves=0)
+        side, hints, moves, auto = mod._prefill_from_config(cfg)
+        self.assertEqual((side, hints, moves, auto), (0, 3, 3, False))
+
+    def test_black_50_moves_2_hints(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(turn="B", max_hints=2, max_moves=50)
+        side, hints, moves, auto = mod._prefill_from_config(cfg)
+        self.assertEqual((side, hints, moves, auto), (1, 2, 0, False))
+
+    def test_white_100_moves_0_hints(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(turn="W", max_hints=0, max_moves=100)
+        side, hints, moves, auto = mod._prefill_from_config(cfg)
+        self.assertEqual((side, hints, moves, auto), (2, 0, 1, False))
+
+    def test_150_moves_5_hints(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(turn="both", max_hints=5, max_moves=150)
+        side, hints, moves, auto = mod._prefill_from_config(cfg)
+        self.assertEqual((side, hints, moves, auto), (0, 5, 2, False))
+
+    def test_all_moves_index_3(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(turn="both", max_hints=0, max_moves=0)
+        side, hints, moves, auto = mod._prefill_from_config(cfg)
+        self.assertEqual(moves, 3)  # "全部" (all)
+
+    def test_auto_export_flag_propagates(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        from katrain.core.study.kifunarabe import KifunarabeConfig
+
+        cfg = KifunarabeConfig(
+            turn="both",
+            max_hints=3,
+            max_moves=0,
+            auto_export_weaknesses=True,
+        )
+        _, _, _, auto = mod._prefill_from_config(cfg)
+        self.assertTrue(auto)
+
+    def test_invalid_turn_falls_back_to_both(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+
+        # Invalid turn values are blocked by KifunarabeConfig.__post_init__,
+        # so we craft a duck-typed config object to exercise the getattr fallback.
+        class _BadConfig:
+            turn = "invalid"
+            max_hints = 3
+            max_moves = 0
+            auto_export_weaknesses = False
+
+        side, hints, moves, auto = mod._prefill_from_config(_BadConfig())
+        self.assertEqual(side, 0)  # default: both
+
+    def test_out_of_range_hints_falls_back_to_default(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+
+        # KifunarabeConfig rejects out-of-range hints in __post_init__,
+        # so duck-type an invalid config to exercise the getattr fallback.
+        class _BadConfig:
+            turn = "both"
+            max_hints = 99
+            max_moves = 0
+            auto_export_weaknesses = False
+
+        _, hints, _, _ = mod._prefill_from_config(_BadConfig())
+        self.assertEqual(hints, 3)  # default
+
+    def test_unknown_max_moves_falls_back_to_all(self) -> None:
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+
+        # KifunarabeConfig rejects unknown max_moves in __post_init__,
+        # so duck-type an invalid config to exercise the getattr fallback.
+        class _BadConfig:
+            turn = "both"
+            max_hints = 3
+            max_moves = 25
+            auto_export_weaknesses = False
+
+        _, _, moves, _ = mod._prefill_from_config(_BadConfig())
+        self.assertEqual(moves, 3)  # default all
+
+
 if __name__ == "__main__":
     unittest.main()

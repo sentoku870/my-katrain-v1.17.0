@@ -172,6 +172,13 @@ class KifunarabeController(
         # each position fires at most once. Reset by
         # ``KifunarabeSessionMixin.start_session``.
         self._last_critical_3_highlight: int = 0
+        # Phase 292-B: holds the *last* KifunarabeConfig so the summary
+        # popup can offer "もう一度並べる" / "Replay" — re-opening the
+        # setup popup with the same SGF and pre-filling the previous
+        # turn / max_hints / max_moves. Set by
+        # ``KifunarabeSessionMixin`` just before ``self._session`` is
+        # cleared on every end path.
+        self._last_config: Any = None
         # Phase 249-α: ``_source_sgf_path`` removed. The attribute was
         # declared in Phase 181-B as the future source of a "save-game-
         # after-kifunarabe" cleanup hook, but no caller ever wrote to
