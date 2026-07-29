@@ -112,7 +112,18 @@ jobs:
           KIVY_NO_FILELOG: 1
           KIVY_NO_CONSOLELOG: 1
           KIVY_NO_ENV_CONFIG: 1
+          # 2026-07-29 SIGSEGV fix: ``kivy.uix.button.Button()``
+          # construction (via ``EventLoop.ensure_window`` → SDL2
+          # ``create_window``) was aborting the interpreter (exit 139)
+          # on the GHA Linux runner because xvfb's default X server
+          # has no GLX extension, so SDL2's OpenGL probe crashes
+          # hard at the C level. Forcing Mesa's software renderer
+          # bypasses GLX entirely while still letting Kivy's window
+          # surface + GL backend initialize. ``KIVY_GL_BACKEND=mock``
+          # is also kept as defence-in-depth in case Kivy falls back
+          # to hardware probing despite ``LIBGL_ALWAYS_SOFTWARE``.
           KIVY_GL_BACKEND: mock
+          LIBGL_ALWAYS_SOFTWARE: 1
           # GHA runners have no audio device. Without an explicit null
           # driver, SDL2's audio probe can abort hard (C-level, no Python
           # traceback) during collection when kivy/ffpyplayer load.

@@ -255,6 +255,27 @@ def _points_lost_exceeds(ctx: SymptomContext, threshold: float) -> bool:
     return ctx.points_lost is not None and ctx.points_lost > threshold
 
 
+def _avg_points_lost_exceeds(ctx: SymptomContext, threshold: float) -> bool:
+    """Threshold helper for detectors that read an aggregate loss value.
+
+    For per-move contexts (constructed inline by tests or by the live
+    analyzer) ``points_lost`` carries the value, and ``avg_points_lost``
+    is unset. For the Karte-derived context ``build_symptom_context_from_karte``
+    sets ``points_lost=None`` (no per-move data, see PR-04b) and stores
+    the average in ``avg_points_lost``. This helper accepts either
+    field so detectors like FIRST_MOVE_CONFUSION and CAPTURE_OVERSIGHT
+    work consistently across both contexts.
+
+    Per-move detectors (ATARI_BLINDNESS, EVALUATION_ERRORS,
+    BIG_POINT_BLINDNESS, CUT_RISK) keep using ``_points_lost_exceeds``
+    to enforce a strict per-move threshold even if the karte-level
+    average is populated.
+    """
+    if ctx.avg_points_lost is not None:
+        return ctx.avg_points_lost > threshold
+    return ctx.points_lost is not None and ctx.points_lost > threshold
+
+
 def _winrate_drop_exceeds(ctx: SymptomContext, pct: float) -> bool:
     return ctx.winrate_lost is not None and ctx.winrate_lost * 100.0 > pct
 
@@ -284,7 +305,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.MISSED_CAPTURE,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.MISSED_CAPTURE) and _points_lost_exceeds(c, 1.0),
+        detector=lambda c: _has_hint(c, HintCategory.MISSED_CAPTURE) and _avg_points_lost_exceeds(c, 1.0),
     ),
     Symptom(
         id=SymptomId.LADDER_NET_OVERSIGHT,
@@ -352,7 +373,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=None,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.BEGINNER),
         auto_detected=True,
-        detector=lambda c: ctx_is_phase(c, "opening") and _points_lost_exceeds(c, 5.0),
+        detector=lambda c: ctx_is_phase(c, "opening") and _avg_points_lost_exceeds(c, 5.0),
     ),
     Symptom(
         id=SymptomId.BIG_POINT_BLINDNESS,
