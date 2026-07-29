@@ -10,7 +10,7 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/stale@v10
+      - uses: actions/stale@v11
         with:
           operations-per-run: 200
           stale-issue-message: "This issue is stale because it has been open 90 days with no activity. Remove the stale label or comment or it will be closed in 30 days."
