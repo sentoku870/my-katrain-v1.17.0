@@ -597,6 +597,20 @@ class KataGoEngine(BaseEngine):
         with self.thread_lock:
             return not self.queries and self.write_queue.empty()
 
+    @property
+    def is_pondering(self) -> bool:
+        """True iff a ponder query is currently registered with KataGo.
+
+        The active ponder query is tracked in ``self.ponder_query`` (set in
+        ``engine_io.write_stdin_thread`` and cleared by
+        ``engine_query.stop_pondering_unlocked`` / ``on_new_game``). Reading
+        this attribute is sufficient because pondering state transitions
+        happen under ``thread_lock``; the value may briefly lag a writer
+        on another thread, which is acceptable for the GUI's
+        "skip duplicate ponder" check.
+        """
+        return self.ponder_query is not None
+
     def is_alive(self) -> bool:
         """Lightweight health check; thin wrapper over check_alive().
 
