@@ -133,6 +133,7 @@ class TestCallSitesMigrated:
                 canonical_path = str(py_file.relative_to(repo_root))
 
         assert count == 1, f"Expected exactly 1 'def short_hash' definition, found {count}."
-        assert canonical_path == "katrain/common/short_hash.py", (
+        # Use forward slashes for cross-platform stability (Windows returns backslashes).
+        assert canonical_path is not None and canonical_path.replace("\\", "/") == "katrain/common/short_hash.py", (
             f"The canonical helper must live at katrain/common/short_hash.py, found {canonical_path!r}."
         )

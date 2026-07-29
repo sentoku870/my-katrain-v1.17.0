@@ -147,10 +147,11 @@ class TestBuildOverallBlock:
             "confidence": "high",
         }
 
-    def test_total_loss_rounded_to_1_decimal(self):
+    def test_total_loss_rounded_to_2_decimals(self):
+        # PR-06 unified summary rounding at 2 decimals (Phase 158-H policy).
         stats = _make_stats(total_points_lost=50.45678)
         block = _build_overall_block(stats, "medium")
-        assert block["total_loss"] == 50.5
+        assert block["total_loss"] == 50.46
 
     def test_avg_loss_rounded_to_3_decimal(self):
         stats = _make_stats(avg_points_lost_per_move=0.45678)

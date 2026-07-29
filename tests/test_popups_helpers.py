@@ -161,13 +161,32 @@ class TestWrapAnchor:
     """``wrap_anchor`` wraps a widget in an ``AnchorLayout`` and returns it."""
 
     def test_returns_anchor_with_widget(self):
-        from kivy.uix.button import Button
+        # 2026-07-29 SIGSEGV fix: instantiating ``AnchorLayout`` here
+        # would trigger ``EventLoop.ensure_window`` → SDL2
+        # ``create_window`` → C-level SIGSEGV (exit 139) on the GHA
+        # Linux runner under xvfb because xvfb's default X server has
+        # no GLX (the ``LIBGL_ALWAYS_SOFTWARE=1`` env in the workflow
+        # is not honoured until the Kivy window provider is initialised,
+        # which the very first widget instantiation is what triggers).
+        #
+        # We exercise the *contract* (``wrap_anchor(widget)`` returns
+        # whatever ``AnchorLayout().add_widget(widget)`` returns) by
+        # patching ``AnchorLayout`` so no widget tree is ever built.
+        # The original 2-line body (``AnchorLayout().add_widget(widget)``)
+        # is so trivial that a structural test is sufficient.
+        from unittest.mock import MagicMock, patch
 
-        from katrain.gui.popups._base import wrap_anchor
+        from kivy.uix.anchorlayout import AnchorLayout
+        from kivy.uix.widget import Widget
 
-        btn = Button(text="Go")
-        wrapped = wrap_anchor(btn)
-        # The result is an AnchorLayout (Kivy type); just verify behaviour.
-        assert wrapped is not None
-        assert len(wrapped.children) == 1
-        assert wrapped.children[0] is btn
+        sentinel_anchor = MagicMock(spec=AnchorLayout, name="fake-anchor")
+        sentinel_anchor.children = [MagicMock(spec=Widget, name="fake-child")]
+        sentinel_widget = MagicMock(spec=Widget, name="input-widget")
+
+        with patch("katrain.gui.popups._base.AnchorLayout", return_value=sentinel_anchor):
+            from katrain.gui.popups._base import wrap_anchor
+
+            result = wrap_anchor(sentinel_widget)
+
+        assert result is sentinel_anchor
+        sentinel_anchor.add_widget.assert_called_once_with(sentinel_widget)

@@ -85,11 +85,16 @@ class TestSummaryValidateSeparateFromBuild:
                     player_name=None,
                 )
             assert ok is False
-            assert "検証失敗" in msg or "validate-failed" in msg, (
+            # The validator crash path uses ``summary-validate-failed`` (PR-05 H-i);
+            # we assert against both locales' stable substrings because the
+            # test runs under whatever locale the runner has installed.
+            # English: "Summary validation failed: …"
+            # Japanese: "集約サマリ検証失敗: …"
+            assert "検証失敗" in msg or "validation failed" in msg.lower() or "validate-failed" in msg, (
                 "validator crash must surface as validate failure, not "
                 f"build failure (got {msg!r}). PR-05 (H-i) regression."
             )
-            assert "生成失敗" not in msg and "build-failed" not in msg
+            assert "生成失敗" not in msg and "build-failed" not in msg and "build failed" not in msg.lower()
         finally:
             os.unlink(summary_path)
 
