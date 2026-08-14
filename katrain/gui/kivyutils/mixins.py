@@ -2,13 +2,20 @@
 
 Phase 140 P2-2: Extracted from katrain/gui/kivyutils.py.
 Phase 287-F: Added ``TooltipMixin`` for long-press tooltips.
+Phase 296: ``TooltipMixin`` rebuilt on vanilla Kivy ``Label`` + ``Window``
+because KivyMD 1.2.0's ``MDTooltip`` is a *behavior mixin* (combined with
+a button widget), not a standalone popup. Calling
+``MDTooltip(text=..., pos_hint=...)`` raises TypeError; the class has
+no ``text`` or ``pos_hint`` property and no ``open`` / ``dismiss``.
 """
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Any
 
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 from kivy.uix.widget import Widget
@@ -66,7 +73,12 @@ class TooltipMixin(Widget):
     hover for tooltips or memorise icons. KivyMD 1.2.0 removed the
     built-in HoverBehavior, so we implement a long-press trigger:
     press the button, hold 500 ms, the tooltip appears below the
-    cursor. Release before 500 ms → normal click behaviour.
+    widget. Release before 500 ms → normal click behaviour.
+
+    Phase 296: KivyMD 1.2.0's ``MDTooltip`` is a behavior mixin (combined
+    with a widget class via multiple inheritance), not a standalone popup.
+    We therefore build a vanilla Kivy ``Label`` + canvas-drawn background
+    and attach it directly to the ``Window`` instead.
 
     Properties:
         tooltip_text: the message shown in the popup. Empty string
@@ -104,30 +116,55 @@ class TooltipMixin(Widget):
             self._tooltip_event = None
 
     def _show_tooltip(self, *_args: Any) -> None:
-        # Lazy import to avoid loading kivymd tooltip at module-import time.
-        try:
-            from kivymd.uix.tooltip import MDTooltip
-        except ImportError:
-            return
         if not self.tooltip_text or not self.get_root_window():
             return
         # Re-use a single popup so we don't leak widgets on repeated long-presses.
         if self._tooltip_popup is None or not self._tooltip_popup.parent:
-            self._tooltip_popup = MDTooltip(
-                text=self.tooltip_text,
-                pos_hint={"center_x": 0.5, "center_y": 0.5},
-            )
-        else:
-            self._tooltip_popup.text = self.tooltip_text
+            self._build_tooltip_popup()
+        popup = self._tooltip_popup
+        popup.text = self.tooltip_text
+        # Force the texture to refresh so texture_size reflects the
+        # latest text and we can size the popup synchronously below.
+        popup.texture_update()
+        pad_x, pad_y = 16, 8
+        popup.size = (popup.texture_size[0] + pad_x, popup.texture_size[1] + pad_y)
         # Anchor the tooltip below the widget centre.
-        self._tooltip_popup.pos = (
-            self.center_x - self._tooltip_popup.width / 2,
-            self.y - self._tooltip_popup.height - 4,
+        popup.pos = (
+            self.center_x - popup.width / 2,
+            self.y - popup.height - 4,
         )
-        if self._tooltip_popup.parent is None:
-            self._tooltip_popup.open()
+        if popup.parent is None:
+            Window.add_widget(popup)
+
+    def _build_tooltip_popup(self) -> None:
+        """Create a vanilla Kivy Label-based tooltip popup.
+
+        We avoid ``kivymd.uix.tooltip.MDTooltip`` because in 1.2.0 it is
+        a behavior mixin, not a popup widget: it has no ``text`` /
+        ``pos_hint`` properties and no ``open`` / ``dismiss`` methods.
+        A plain ``Label`` with a canvas-drawn opaque background is
+        portable across KivyMD versions and keeps the long-press API
+        identical.
+        """
+        from kivy.graphics import Color, Rectangle
+        from kivy.uix.label import Label
+
+        popup = Label(
+            text=self.tooltip_text,
+            color=(1, 1, 1, 1),
+            font_size="12sp",
+            size_hint=(None, None),
+        )
+        with popup.canvas.before:
+            Color(0, 0, 0, 0.85)
+            popup._tooltip_bg = Rectangle(pos=popup.pos, size=popup.size)
+        popup.bind(
+            pos=lambda inst, val: setattr(inst._tooltip_bg, "pos", val),
+            size=lambda inst, val: setattr(inst._tooltip_bg, "size", val),
+        )
+        self._tooltip_popup = popup
 
     def _dismiss_tooltip(self) -> None:
         if self._tooltip_popup is not None:
-            with __import__("contextlib").suppress(Exception):
-                self._tooltip_popup.dismiss()
+            with suppress(Exception):
+                Window.remove_widget(self._tooltip_popup)
