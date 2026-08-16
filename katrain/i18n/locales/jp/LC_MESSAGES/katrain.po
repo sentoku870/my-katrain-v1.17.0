@@ -860,9 +860,17 @@ msgstr "手数"
 msgid "Opening"
 msgstr "序盤"
 
+#. middle of the game filter in performance report
+msgid "Midgame"
+msgstr "中盤"
+
 #. end of the game filter in performance report
 msgid "Endgame"
 msgstr "終盤"
+
+#. entire game filter in performance report (default tab)
+msgid "Entire Game"
+msgstr "全局面"
 
 #. statistic in performance report
 msgid "stat:meanpointloss"

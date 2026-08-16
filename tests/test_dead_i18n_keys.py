@@ -60,8 +60,9 @@ REGRESSION_DEAD_KEYS = {
     "Unknown move",
     "Delta vs played: {delta:+.1f} points",
     # Phase 285 — Phase 250 important-moves refactor (replaced by -black/-white)
-    "Entire Game",
-    "Midgame",
+    # Note: "Entire Game" / "Midgame" were re-introduced for the F3 evaluation
+    # report depth-filter tabs (game_popups.kv + misc_popups.py
+    # DEPTH_FILTER_MAP), so they are no longer dead keys.
     # Phase 285 — Phase 227-D LLM Coach popup keys that were added but never wired
     "mykatrain:llm-coach:type-detection-failed",
     "mykatrain:llm-coach:summary-perspective-label",

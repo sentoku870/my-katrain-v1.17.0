@@ -500,9 +500,17 @@ msgstr "Performance Report"
 msgid "Opening"
 msgstr "Opening"
 
+#. middle of the game filter in performance report
+msgid "Midgame"
+msgstr "Midgame"
+
 #. end of the game filter in performance report
 msgid "Endgame"
 msgstr "Endgame"
+
+#. entire game filter in performance report (default tab)
+msgid "Entire Game"
+msgstr "Entire Game"
 
 #. header in performance report
 msgid "header:keystats"
