@@ -18,6 +18,8 @@ mock ``Clock`` so the test runs deterministically.
 from __future__ import annotations
 
 import importlib
+import os
+import tempfile
 import unittest
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -177,6 +179,56 @@ class TestLoadSgfIntoNewGame(unittest.TestCase):
         # The error path calls ``gui.log`` exactly once with a level
         # indicator.
         self.assertTrue(gui.log.called)
+
+    def test_successful_load_passes_analyze_fast_true(self) -> None:
+        """Kifunarabe sessions must use ``fast_visits`` (simple analysis).
+
+        ``_load_sgf_into_new_game`` dispatches ``gui("new-game", ...)``
+        with ``analyze_fast=True`` so the initial
+        ``Game.analyze_all_nodes`` sweep goes through
+        ``engine:fast_visits`` (the simple-analysis max exploration
+        count) instead of the heavier ``engine:max_visits``. The
+        previous code passed ``analyze_fast=False`` and the kifunarabe
+        setup had to wait for full-depth analysis before the
+        candidate-marker layer could render. This test pins the flag
+        so a regression to ``False`` is caught.
+
+        We mock ``KaTrainSGF.parse_file`` to avoid depending on a real
+        SGF file and we mock ``Clock`` so ``_kick_root_analysis`` does
+        not actually run.
+        """
+        mod = importlib.import_module("katrain.gui.popups.kifunarabe_setup_popup")
+        gui = MagicMock()
+        gui.log = MagicMock()
+
+        fake_move_tree = MagicMock()
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".sgf", delete=False, encoding="utf-8") as fh:
+            fh.write("(;GM[1]FF[4]SZ[19];B[pd])")
+            tmp_path = fh.name
+        try:
+            with (
+                patch.object(mod, "_kick_root_analysis"),
+                patch(
+                    "katrain.core.game.KaTrainSGF.parse_file",
+                    return_value=fake_move_tree,
+                ),
+                patch("kivy.clock.Clock"),
+            ):
+                result = mod._load_sgf_into_new_game(gui, tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+        self.assertTrue(result)
+        # ``gui`` must have been called with the ``new-game`` message and
+        # ``analyze_fast=True`` so the engine's ``fast_visits`` is used
+        # for the initial analysis sweep.
+        gui.assert_called_once()
+        args, kwargs = gui.call_args
+        self.assertEqual(args[0], "new-game")
+        self.assertTrue(kwargs.get("analyze_fast"))
+        self.assertIs(args[1], fake_move_tree)
+        self.assertIsNone(kwargs.get("sgf_filename"))
 
 
 # Phase 292-B: ``_prefill_from_config`` is a pure function so we can
