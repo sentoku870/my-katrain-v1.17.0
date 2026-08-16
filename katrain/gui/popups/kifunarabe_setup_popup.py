@@ -334,7 +334,15 @@ def _load_sgf_into_new_game(gui: Any, filename: str) -> bool:
     # ``sgf_filename=None`` is the key bit: the original file is decoupled
     # from the session, so any future "Save Game" treats this as a brand
     # new game and never overwrites the source.
-    gui("new-game", move_tree, analyze_fast=False, sgf_filename=None)
+    #
+    # ``analyze_fast=True`` makes the initial ``Game.analyze_all_nodes``
+    # sweep use ``engine:fast_visits`` (simple-analysis max exploration
+    # count) instead of ``engine:max_visits``. Kifunarabe sessions only
+    # need a handful of candidate moves per position, so deep analysis
+    # on every node is wasted compute. This also ensures the root node
+    # is analysed with ``fast_visits`` before ``_kick_root_analysis``
+    # runs (so the kicker's bail-out path is the steady-state).
+    gui("new-game", move_tree, analyze_fast=True, sgf_filename=None)
 
     # Kick an analysis pass on the current node so the candidate-marker
     # layer has data to render as soon as the setup popup is dismissed.
